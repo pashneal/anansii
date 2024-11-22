@@ -157,6 +157,8 @@ impl HexGrid {
         self.axial(x,y)
     }
 
+    /// Access the grid using the axial coordinate system
+    /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
     fn axial(&self, x : usize, y : usize) -> Vec<Option<Piece>> {
         let mut pieces = vec![];
         for piece in self.grid[y][x] {
@@ -167,11 +169,18 @@ impl HexGrid {
         return pieces
     }
 
-    fn oddr(&self, row: usize, col: usize) -> Vec<Option<Piece>> {
+    fn oddr_to_axial(&self, row: usize, col: usize) -> (i8, i8) {
         let q = col as i8 - (row as i8 - ((row as i8) & 1)) / 2;
-        let r = row;
-        if q < 0 { return vec![]; }
-        self.axial(q as usize, r)
+        let r = row as i8;
+        (q, r)
+    }
+
+    /// Access the grid using the odd-r coordinate system
+    /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
+    fn oddr(&self, row: usize, col: usize) -> Vec<Option<Piece>> {
+        let (q, r) = self.oddr_to_axial(row, col);
+        if q < 0 { return vec![]; } // out of bounds
+        self.axial(q as usize, r as usize)
     }
 
     pub fn move_piece(&mut self, from: HexLocation, to: HexLocation) {
@@ -190,12 +199,47 @@ impl HexGrid {
     ///   . 2 . m .
     ///  . . . . .
     ///
-    ///  center 2,1
-    ///
     ///  3 - [G b B] 
     ///  2 - [a M]
     pub fn to_dsl(&self) -> String {
-        todo!()
+        self.to_board() + "\n\n" + &self.to_stacks()
+    }
+
+    /// Outputs the stack part of this current grid according to the DSL
+    /// specified above. 
+    ///
+    /// Will have the format:
+    /// <number> - [ <piece> <piece> ... ]
+    /// <number> - [ <piece> <piece> ... ]
+    /// ...
+    pub fn to_stacks(&self) -> String {
+        let (min, max) = self.bounds();
+        let (bottom, left) = min;
+        let (top, right) = max;
+
+        let mut stack_string = String::new();
+
+
+        for row in bottom..=top {
+            for col in left..=right {
+                print!("({}, {}) ", row, col);
+                let pieces = self.oddr(row, col);
+                if pieces.len() > 1 {
+                    stack_string.push_str(&format!("{} - [ ", pieces.len()));
+                    for piece in pieces {
+                        if piece.is_none() {
+                            break;
+                        }
+                        stack_string.push_str(&piece.as_ref().unwrap().to_str());
+                        stack_string.push_str(" ");
+                    }
+                    stack_string.push_str("]\n");
+                }
+            }
+        }
+
+        stack_string
+
     }
 
     /// Outputs the board part of this current grid according to the DSL
@@ -248,12 +292,10 @@ impl HexGrid {
         }
 
         return board;
-
-
     }
 
     /// Returns a bounding box around all present pieces
-    /// in the grid accouding the odd_r format as described here: 
+    /// in the grid according the odd_r format as described here: 
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
     fn bounds(&self)  -> ((usize, usize), (usize, usize)) {
         let mut min_row = HEX_GRID_SIZE;
@@ -293,12 +335,6 @@ impl HexGrid {
 
 
 #[test]
-/// Test that the board prints various piece structures correctly
-/// - with stacks
-/// - with empty board
-/// - with single piece
-/// - with multiple pieces
-/// - width different paddings
 fn test_board_string_empty(){
     let grid = HexGrid::new();
     let board = grid.to_board();
@@ -399,6 +435,80 @@ fn test_board_string_multiple(){
     assert_eq!(board, expected);
 }
 
+#[test]
+fn test_board_multiple_stacks(){
+    let mut grid = HexGrid::new();
+    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+    let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
+    let black_beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
+    let black_mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
+    let black_grasshopper = Piece::new(PieceType::Grasshopper, PieceColor::Black);
+    let black_spider = Piece::new(PieceType::Spider, PieceColor::Black);
+    let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
+    let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
+
+    let start = HexLocation::new(2,0);
+    let white_ant_loc = start;
+    let white_queen_loc = white_ant_loc.apply(Direction::NW);
+    let black_beetle_loc = white_ant_loc.apply(Direction::E);
+    let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
+    let black_grasshopper_loc = black_beetle_loc.apply(Direction::NE);
+    let stack2_loc = white_ant_loc.apply(Direction::SW);
+    let stack3_loc = white_ant_loc.apply(Direction::NE);
+    let black_spider_loc = stack2_loc.apply(Direction::SW);
+    let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
+    let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
+
+
+    grid.add(white_queen, white_queen_loc);
+    grid.add(white_queen, white_queen_loc);
+    grid.add(white_queen, white_queen_loc);
+
+    grid.add(white_ant, white_ant_loc);
+    grid.add(black_beetle, black_beetle_loc);
+
+    grid.add(black_mosquito, black_mosquito_loc);
+    grid.add(black_mosquito, black_mosquito_loc);
+
+    grid.add(black_grasshopper, black_grasshopper_loc);
+    grid.add(black_grasshopper, black_grasshopper_loc);
+
+    grid.add(black_spider, black_spider_loc);
+    grid.add(white_ladybug, white_ladybug_loc);
+    grid.add(white_beetle, white_beetle_loc);
+
+    grid.add(black_beetle, stack2_loc);
+    grid.add(black_mosquito, stack2_loc);
+
+    grid.add(white_queen, stack3_loc);
+    grid.add(black_grasshopper, stack3_loc);
+    grid.add(white_ant, stack3_loc);
+
+
+    // Modeled after the board string:
+    //let expected = concat!(
+        //" . . . . . .\n",
+        //". . 3 3 2 .\n",
+        //" . . A b . .\n",
+        //". . 2 . 2 .\n",
+        //" . s . . . .\n",
+        //". . L . . .\n",
+        //" . B . . . .\n",
+        //". . . . . .\n",
+    //);
+
+    let expected = concat!(
+        "3 - [ Q Q Q ]\n",
+        "3 - [ Q g A ]\n",
+        "2 - [ g g ]\n",
+        "2 - [ b m ]\n",
+        "2 - [ m m ]\n",
+    );
+    let board = grid.to_stacks();
+    println!("{}", board);
+
+    assert_eq!(board, expected);
+}
 
 #[test]
 fn test_board_string_padding(){

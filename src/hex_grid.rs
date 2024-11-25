@@ -124,6 +124,10 @@ impl HexLocation {
         }
         HexLocation::new(x, y)
     }
+
+    pub fn add(&self, other: HexLocation) -> HexLocation {
+        HexLocation::new(self.x + other.x, self.y + other.y)
+    }
 }
 
 pub const HEX_GRID_SIZE: usize = 60;
@@ -248,7 +252,7 @@ impl HexGrid {
     /// with the DSL
     ///
     /// Will have the format
-    /// start - [ <x>, <y> ]
+    /// start - [ <x> <y> ]
     pub fn start_string(&self) -> String {
         let ((top, left), _) = self.bounds();
 
@@ -262,7 +266,7 @@ impl HexGrid {
         );
 
         let mut start = "start - [".to_owned();
-        start.push_str(&format!(" {}, {} ", left, top));
+        start.push_str(&format!(" {} {} ", left, top));
         start.push_str("]");
         start
     }
@@ -609,7 +613,7 @@ fn test_start_string1() {
     grid.add(white_queen, se);
 
     let start_string = grid.start_string();
-    let expected = "start - [ 0, -2 ]";
+    let expected = "start - [ 0 -2 ]";
     assert_eq!(start_string, expected);
 }
 
@@ -636,6 +640,6 @@ fn test_start_string2() {
     println!("{}", board);
 
     let start_string = grid.start_string();
-    let expected = "start - [ 4, -8 ]";
+    let expected = "start - [ 4 -8 ]";
     assert_eq!(start_string, expected);
 }

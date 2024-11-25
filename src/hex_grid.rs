@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceType {
     Queen,
     Grasshopper,
@@ -28,13 +28,13 @@ impl PieceType {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceColor {
     Black,
     White,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Piece {
     pub piece: PieceType,
     pub color: PieceColor,
@@ -66,7 +66,7 @@ pub enum Direction {
     W,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct HexLocation {
     pub x: i8,
     pub y: i8,

@@ -1,6 +1,6 @@
 use crate::hex_grid::*;
-use thiserror::Error;
 use regex::Regex;
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, ParserError>;
 
@@ -59,28 +59,36 @@ pub enum Alignment {
 
 impl Parser {
     /// Parses a HexGrid from a string according to the DSL specification.
-    pub fn parse_hex_grid(input : &str) -> Result<HexGrid> {
+    pub fn parse_hex_grid(input: &str) -> Result<HexGrid> {
         // Assume that the board starts the input, and is terminated
         // but a double newline
         let board_end = input.find("\n\n");
         let board_end = match board_end {
             Some(index) => index,
-            None => return Err(ParserError::ParseError("No double newline found".to_string())),
+            None => {
+                return Err(ParserError::ParseError(
+                    "No double newline found".to_string(),
+                ))
+            }
         };
 
         let board = &input[..board_end];
         // Assume that the start string is next
-        let index = input[board_end+2..].find("\n\n");
+        let index = input[board_end + 2..].find("\n\n");
         let start_end = match index {
             Some(index) => index + board_end + 2,
-            None => return Err(ParserError::ParseError("No double newline found after board".to_string())),
+            None => {
+                return Err(ParserError::ParseError(
+                    "No double newline found after board".to_string(),
+                ))
+            }
         };
 
         let start = &input[board_end..start_end];
 
         // Assume that the stack string is next (end of input terminates the stack
         // string)
-        let stack = &input[start_end+2..];
+        let stack = &input[start_end + 2..];
         println!("Board: {}\nStart: {}\nStack: {}", board, start, stack);
         let pieces = Parser::parse_board(board)?;
         let pieces = Parser::parse_start(start, &pieces)?;
@@ -97,12 +105,10 @@ impl Parser {
                         }
                     }
                 }
-                BoardInput::Piece(piece) => {
-                    grid.add(*piece, *loc) 
-                }
+                BoardInput::Piece(piece) => grid.add(*piece, *loc),
                 _ => {}
             }
-        };
+        }
 
         Ok(grid)
     }
@@ -190,10 +196,10 @@ impl Parser {
 
     /// Given a HexGrid board string according to the DSL specification,
     /// interpret it as a set of board inputs with locations
-    /// correct relative to each other and the top left corner of the board 
+    /// correct relative to each other and the top left corner of the board
     /// assigned to (0,0).
     ///
-    /// In other words, while the HexLocation may be incorrect relative to the 
+    /// In other words, while the HexLocation may be incorrect relative to the
     /// ultimate HexGrid, all directions and distances between pieces should be
     /// correct.
     ///
@@ -261,11 +267,14 @@ impl Parser {
     }
 
     /// Given a HexGrid start string according to the DSL specification,
-    /// interpret it as a HexLocation. 
+    /// interpret it as a HexLocation.
     ///
-    /// Create a new array with the given (piece, hex location) 
+    /// Create a new array with the given (piece, hex location)
     /// reflecting the correct axial locations relative to the start location.
-    fn parse_start(input: &str, pieces : &Vec<(BoardInput, HexLocation)>) -> Result<Vec<(BoardInput, HexLocation)>> {
+    fn parse_start(
+        input: &str,
+        pieces: &Vec<(BoardInput, HexLocation)>,
+    ) -> Result<Vec<(BoardInput, HexLocation)>> {
         let re = Regex::new(r"start\s*-\s*\[\s*(-?\d+)\s*(-?\d+)\s*\]").unwrap();
         let captures = re.captures(input);
         let Some(captures) = captures else {
@@ -286,11 +295,13 @@ impl Parser {
         return Ok(result);
     }
 
-
     /// Given a HexGrid stack string according to the DSL specification,
     /// convert the match Stack -> StackPieces in a given tuple of (BoardInput,
     /// HexLocation) pairs and return the new array with everything else unchanged.
-    fn parse_stacks(input: &str, pieces : &Vec<(BoardInput, HexLocation)>) -> Result<Vec<(BoardInput, HexLocation)>> {
+    fn parse_stacks(
+        input: &str,
+        pieces: &Vec<(BoardInput, HexLocation)>,
+    ) -> Result<Vec<(BoardInput, HexLocation)>> {
         let mut result = Vec::new();
         let mut index = 0;
         for line in input.lines() {
@@ -300,7 +311,9 @@ impl Parser {
                 return Err(ParserError::StackLineSyntaxError(line.to_string()));
             };
 
-            let stack_num = captures[1].parse::<u8>().expect("Couldn't parse stack number");
+            let stack_num = captures[1]
+                .parse::<u8>()
+                .expect("Couldn't parse stack number");
             while index < pieces.len() {
                 let (input, _) = pieces[index];
                 if matches!(input, BoardInput::Stack(_)) {
@@ -311,7 +324,9 @@ impl Parser {
             }
 
             if index >= pieces.len() {
-                return Err(ParserError::StackParseError("More stacks specified than input".to_string()));
+                return Err(ParserError::StackParseError(
+                    "More stacks specified than input".to_string(),
+                ));
             }
 
             let (stack, loc) = pieces[index];
@@ -320,19 +335,22 @@ impl Parser {
                 BoardInput::Stack(num) => num,
                 _ => unreachable!(),
             };
-            
+
             if num != stack_num {
                 return Err(ParserError::StackParseError(format!("Stack number mismatch, check that stack string is in board order. Expected {} Got {} on line {}", num, stack_num, line.to_string())));
             }
 
-            let mut stack = [None ; 7];
+            let mut stack = [None; 7];
             for (i, piece) in captures[2].split_whitespace().enumerate() {
                 let piece_type = PieceType::try_from_char(&piece.chars().next().unwrap());
                 if piece_type.is_err() {
-                    return Err(ParserError::StackParseError(format!("Invalid piece type: {}", piece)));
+                    return Err(ParserError::StackParseError(format!(
+                        "Invalid piece type: {}",
+                        piece
+                    )));
                 }
 
-                let color = if piece.chars().nth(0).unwrap().is_lowercase(){
+                let color = if piece.chars().nth(0).unwrap().is_lowercase() {
                     PieceColor::Black
                 } else {
                     PieceColor::White
@@ -344,13 +362,12 @@ impl Parser {
 
             result.push((BoardInput::StackPieces(stack), loc));
             index += 1;
-
         }
 
         while index < pieces.len() {
             result.push(pieces[index]);
             index += 1;
-        } 
+        }
 
         Ok(result)
     }
@@ -508,8 +525,8 @@ pub fn test_board_follows_board_order() {
     use PieceColor::*;
     use PieceType::*;
     let board_string = concat!(
-        " . l m . 4\n", 
-        ". q . g 2\n", 
+        " . l m . 4\n",
+        ". q . g 2\n",
         " . . . . .\n",
         "A Q b 3 P\n",
         " . . . . .\n"
@@ -522,10 +539,12 @@ pub fn test_board_follows_board_order() {
         result
     );
 
-
     let board = result.unwrap();
     assert_eq!(board.len(), 11);
-    let pieces = board.into_iter().map(|(input, _)| input).collect::<Vec<_>>();
+    let pieces = board
+        .into_iter()
+        .map(|(input, _)| input)
+        .collect::<Vec<_>>();
     let expected = vec![
         BoardInput::Piece(Piece::new(Ladybug, Black)),
         BoardInput::Piece(Piece::new(Mosquito, Black)),
@@ -541,7 +560,6 @@ pub fn test_board_follows_board_order() {
     ];
 
     assert_eq!(pieces, expected);
-
 }
 
 #[test]
@@ -549,11 +567,7 @@ pub fn test_board_location_relative_to_top_left() {
     use PieceColor::*;
     use PieceType::*;
 
-    let board_string = concat!(
-        ". l m . .\n", 
-        " 2 l m . .\n", 
-        "2 . . . .\n", 
-    );
+    let board_string = concat!(". l m . .\n", " 2 l m . .\n", "2 . . . .\n",);
 
     let result = Parser::parse_board(board_string);
     assert!(
@@ -573,12 +587,14 @@ pub fn test_board_location_relative_to_top_left() {
         top_left.apply(Direction::E).apply(Direction::E),
         top_left.apply(Direction::SE),
         top_left.apply(Direction::SE).apply(Direction::E),
-        top_left.apply(Direction::SE).apply(Direction::E).apply(Direction::E),
+        top_left
+            .apply(Direction::SE)
+            .apply(Direction::E)
+            .apply(Direction::E),
         top_left.apply(Direction::SE).apply(Direction::SW),
     ];
 
     assert_eq!(pieces, expected);
-
 }
 
 #[test]
@@ -588,9 +604,18 @@ pub fn test_simple_start_loc() {
 
     let start_string = "start - [ 3 -2 ]";
     let pieces = vec![
-        (BoardInput::Piece(Piece::new(Queen, White)), HexLocation::new(0, 0)),
-        (BoardInput::Piece(Piece::new(Grasshopper, Black)), HexLocation::new(1, 0)),
-        (BoardInput::Piece(Piece::new(Ant, White)), HexLocation::new(0, 1)),
+        (
+            BoardInput::Piece(Piece::new(Queen, White)),
+            HexLocation::new(0, 0),
+        ),
+        (
+            BoardInput::Piece(Piece::new(Grasshopper, Black)),
+            HexLocation::new(1, 0),
+        ),
+        (
+            BoardInput::Piece(Piece::new(Ant, White)),
+            HexLocation::new(0, 1),
+        ),
     ];
 
     let result = Parser::parse_start(start_string, &pieces);
@@ -602,9 +627,18 @@ pub fn test_simple_start_loc() {
 
     // New locations should have been shifted by 3, -2 while preserving order
     let expected = vec![
-        (BoardInput::Piece(Piece::new(Queen, White)), HexLocation::new(3, -2)),
-        (BoardInput::Piece(Piece::new(Grasshopper, Black)), HexLocation::new(4, -2)),
-        (BoardInput::Piece(Piece::new(Ant, White)), HexLocation::new(3, -1)),
+        (
+            BoardInput::Piece(Piece::new(Queen, White)),
+            HexLocation::new(3, -2),
+        ),
+        (
+            BoardInput::Piece(Piece::new(Grasshopper, Black)),
+            HexLocation::new(4, -2),
+        ),
+        (
+            BoardInput::Piece(Piece::new(Ant, White)),
+            HexLocation::new(3, -1),
+        ),
     ];
 
     assert_eq!(result.unwrap(), expected);
@@ -615,12 +649,9 @@ pub fn test_parse_stacks() {
     use PieceColor::*;
     use PieceType::*;
 
-    // Make sure that it fills in the stacks and leaves everything 
+    // Make sure that it fills in the stacks and leaves everything
     // else alone
-    let board = concat!(
-        "2 3 a\n", 
-        " 4 5 A\n"
-    );
+    let board = concat!("2 3 a\n", " 4 5 A\n");
 
     let parse_string = concat!(
         "2-[m m]\n",
@@ -676,16 +707,12 @@ pub fn test_parse_stacks() {
     let white_ant = BoardInput::Piece(Piece::new(Ant, White));
     let black_ant = BoardInput::Piece(Piece::new(Ant, Black));
 
-    let expected = vec![
-        stack_2,
-        stack_3,
-        black_ant,
-        stack_4,
-        stack_5,
-        white_ant,
-    ];
+    let expected = vec![stack_2, stack_3, black_ant, stack_4, stack_5, white_ant];
 
-    let pieces = pieces.into_iter().map(|(input, _)| input).collect::<Vec<_>>();
+    let pieces = pieces
+        .into_iter()
+        .map(|(input, _)| input)
+        .collect::<Vec<_>>();
     for (i, piece) in pieces.iter().enumerate() {
         assert_eq!(piece, &expected[i]);
     }
@@ -695,9 +722,7 @@ pub fn test_parse_stacks_empty() {
     use PieceColor::*;
     use PieceType::*;
 
-    let board = concat!(
-        "A"
-    );
+    let board = concat!("A");
 
     let parse_string = "";
 
@@ -705,30 +730,26 @@ pub fn test_parse_stacks_empty() {
 
     let pieces = Parser::parse_stacks(parse_string, &pieces).expect("Couldn't parse stacks");
 
-
     let white_ant = BoardInput::Piece(Piece::new(Ant, White));
 
-    let expected = vec![
-        white_ant,
-    ];
+    let expected = vec![white_ant];
 
-    let pieces = pieces.into_iter().map(|(input, _)| input).collect::<Vec<_>>();
+    let pieces = pieces
+        .into_iter()
+        .map(|(input, _)| input)
+        .collect::<Vec<_>>();
     for (i, piece) in pieces.iter().enumerate() {
         assert_eq!(piece, &expected[i]);
     }
 }
 
-
 #[test]
 pub fn test_conversion() {
-    let expected = concat!(
-        ". . .\n",
-        " . A .\n",
-        ". . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    );
+    let expected = concat!(". . .\n", " . A .\n", ". . .\n\n", "start - [ 0 0 ]\n\n",);
 
-    let board = Parser::parse_hex_grid(expected).expect("Couldn't parse board").to_dsl();
+    let board = Parser::parse_hex_grid(expected)
+        .expect("Couldn't parse board")
+        .to_dsl();
     assert_eq!(expected, board);
 }
 
@@ -749,7 +770,9 @@ pub fn test_conversion_stack() {
         "2 - [ q q ]",
     );
 
-    let board = Parser::parse_hex_grid(expected).expect("Couldn't parse board").to_dsl();
+    let board = Parser::parse_hex_grid(expected)
+        .expect("Couldn't parse board")
+        .to_dsl();
     assert!(expected == board.trim() || acceptable == board.trim());
 }
 

@@ -76,7 +76,6 @@ impl Parser {
                     board_inputs.push(BoardInput::Stack);
                     space_count = 0;
                     piece_count = 1;
-
                 }
                 'a'..='z' => {
                     if piece_count > 0 {
@@ -131,8 +130,8 @@ impl Parser {
         Ok((board_inputs, alignment))
     }
 
-    /// Given a HexGrid board string according to the DSL specication, 
-    /// interpret it as a set of board inputs with locations 
+    /// Given a HexGrid board string according to the DSL specication,
+    /// interpret it as a set of board inputs with locations
     /// arbitrarily assigned, but correct relative to each other.
     ///
     /// In other words, while the HexLocation may be incorrect,
@@ -141,10 +140,9 @@ impl Parser {
     ///
     /// If an interpretation is not possible, return an error.
     pub fn parse_board(input: &str) -> Result<Vec<(BoardInput, HexLocation)>> {
-
         let input = input.trim_end();
         let mut result = Vec::new();
-        let mut row_size : Option<usize> = None;
+        let mut row_size: Option<usize> = None;
         let mut last_alignment = None;
         let mut first_row_alignment = None;
 
@@ -155,14 +153,14 @@ impl Parser {
                 Some(alignment) => {}
             }
 
-
-
             // Be sure row size is consitent throughout the board
             match row_size {
                 None => row_size = Some(board_inputs.len()),
                 Some(size) => {
                     if size != board_inputs.len() {
-                        return Err(ParserError::ParseError("Row lengths do not match".to_string()));
+                        return Err(ParserError::ParseError(
+                            "Row lengths do not match".to_string(),
+                        ));
                     }
                 }
             }
@@ -172,12 +170,13 @@ impl Parser {
                 None => last_alignment = Some(row_alignment),
                 Some(alignment) => {
                     if alignment == row_alignment {
-                        return Err(ParserError::ParseError("Row alignment is not alternating".to_string()));
+                        return Err(ParserError::ParseError(
+                            "Row alignment is not alternating".to_string(),
+                        ));
                     }
                     last_alignment = Some(row_alignment);
                 }
             }
-
 
             for (x, input) in board_inputs.iter().enumerate() {
                 if *input == BoardInput::Empty {
@@ -186,7 +185,7 @@ impl Parser {
 
                 // If the first row is shifted, make sure our x coordinate reflects
                 // even-r offset coordinates rather than odd-r
-                let (q,r) = if first_row_alignment == Some(Alignment::Shifted) {
+                let (q, r) = if first_row_alignment == Some(Alignment::Shifted) {
                     HexGrid::evenr_to_axial(y, x)
                 } else {
                     HexGrid::oddr_to_axial(y, x)
@@ -214,7 +213,11 @@ pub fn test_board_parse_simple() {
     );
 
     let result = Parser::parse_board(board_string);
-    assert!(result.is_ok(), "expected parse_board to give result, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "expected parse_board to give result, got {:?}",
+        result
+    );
 
     let board = result.unwrap();
     assert_eq!(board.len(), 7);
@@ -258,7 +261,11 @@ pub fn test_board_parse_empty() {
     );
 
     let result = Parser::parse_board(board_string);
-    assert!(result.is_ok(), "expected parse_board to give result, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "expected parse_board to give result, got {:?}",
+        result
+    );
     let board = result.unwrap();
     assert_eq!(board.len(), 0);
 }
@@ -271,7 +278,11 @@ pub fn test_board_parse_single() {
     let board_string = concat!(" . . . . .\n", ". . . . .\n", " A . . . .\n",);
 
     let result = Parser::parse_board(board_string);
-    assert!(result.is_ok(), "expected parse_board to give result, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "expected parse_board to give result, got {:?}",
+        result
+    );
     let board = result.unwrap();
     assert_eq!(board.len(), 1);
     let (input, _) = board[0];
@@ -282,13 +293,14 @@ pub fn test_board_parse_single() {
 pub fn test_board_parse_fitted() {
     use PieceColor::*;
     use PieceType::*;
-    let board_string = concat!(
-        " . l m . 4\n", 
-        ". q . g 2\n", 
-        " A Q b 3 P\n",);
+    let board_string = concat!(" . l m . 4\n", ". q . g 2\n", " A Q b 3 P\n",);
 
     let result = Parser::parse_board(board_string);
-    assert!(result.is_ok(), "expected parse_board to give result, got {:?}", result);
+    assert!(
+        result.is_ok(),
+        "expected parse_board to give result, got {:?}",
+        result
+    );
 
     let board = result.unwrap();
     assert_eq!(board.len(), 11);

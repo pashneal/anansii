@@ -244,7 +244,7 @@ impl HexGrid {
     ///  3 - [G b B]
     ///  2 - [a M]
     pub fn to_dsl(&self) -> String {
-        self.board_string() + "\n" + &self.start_string() + "\n" + &self.stacks_string()
+        self.board_string() + "\n" + &self.start_string() + "\n\n" + &self.stacks_string()
     }
 
     /// Returns the coordinate of the top-most and left-most corner of the

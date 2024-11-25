@@ -1,4 +1,13 @@
 use std::collections::HashMap;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum HexGridError {
+    #[error("String input cannot be converted to piece")]
+    PieceError,
+}
+
+pub type Result<T> = std::result::Result<T, HexGridError>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PieceType {
@@ -24,6 +33,25 @@ impl PieceType {
             Pillbug => "P",
             Ladybug => "L",
             Mosquito => "M",
+        }
+    }
+
+    pub fn try_from_char(c: &char) -> Result<PieceType> {
+        let string = c.to_string();
+        PieceType::try_from_str(&string)
+    }
+    pub fn try_from_str(string: &str) -> Result<PieceType> {
+        use PieceType::*;
+        match string.to_uppercase().as_str() {
+            "Q" => Ok(Queen),
+            "G" => Ok(Grasshopper),
+            "S" => Ok(Spider),
+            "B" => Ok(Beetle),
+            "A" => Ok(Ant),
+            "P" => Ok(Pillbug),
+            "L" => Ok(Ladybug),
+            "M" => Ok(Mosquito),
+            _ => Err(HexGridError::PieceError),
         }
     }
 }
@@ -169,8 +197,14 @@ impl HexGrid {
         return pieces;
     }
 
-    fn oddr_to_axial(&self, row: usize, col: usize) -> (i8, i8) {
+    pub fn oddr_to_axial(row: usize, col: usize) -> (i8, i8) {
         let q = col as i8 - (row as i8 - ((row as i8) & 1)) / 2;
+        let r = row as i8;
+        (q, r)
+    }
+
+    pub fn evenr_to_axial(row: usize, col: usize) -> (i8, i8) {
+        let q = col as i8 - (row as i8 + ((row as i8) & 1)) / 2;
         let r = row as i8;
         (q, r)
     }
@@ -178,7 +212,7 @@ impl HexGrid {
     /// Access the grid using the odd-r coordinate system
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
     fn oddr(&self, row: usize, col: usize) -> Vec<Option<Piece>> {
-        let (q, r) = self.oddr_to_axial(row, col);
+        let (q, r) = HexGrid::oddr_to_axial(row, col);
         if q < 0 {
             return vec![];
         } // out of bounds
@@ -221,7 +255,7 @@ impl HexGrid {
         let top_row = top - 1;
         let left_col = left - 1;
 
-        let (left_q, top_r) = self.oddr_to_axial(top_row, left_col);
+        let (left_q, top_r) = HexGrid::oddr_to_axial(top_row, left_col);
         let (left, top) = (
             left_q - HEX_GRID_CENTER.0 as i8,
             top_r - HEX_GRID_CENTER.1 as i8,

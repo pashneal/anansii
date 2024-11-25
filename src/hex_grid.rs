@@ -152,6 +152,8 @@ impl HexGrid {
         None
     }
 
+
+
     pub fn peek(&self, location: HexLocation) -> Vec<Option<Piece>> {
         let (x,y) = HexGrid::centralize(location);
         self.axial(x,y)
@@ -199,10 +201,33 @@ impl HexGrid {
     ///   . 2 . m .
     ///  . . . . .
     ///
+    ///  start - [ 3, -2 ]
+    ///
     ///  3 - [G b B] 
     ///  2 - [a M]
     pub fn to_dsl(&self) -> String {
-        self.to_board() + "\n\n" + &self.to_stacks()
+        self.board_string() + "\n" + &self.start_string() + "\n" + &self.stacks_string()
+    }
+
+    /// Returns the coordinate of the top-most and left-most corner of the
+    /// grid when returned by board_string() in a form compatible
+    /// with the DSL
+    ///
+    /// Will have the format
+    /// start - [ <x>, <y> ]
+    pub fn start_string(&self) ->  String {
+        let ((top, left), _) = self.bounds();
+
+        let top_row = top - 1;
+        let left_col = left - 1;
+
+        let (left_q, top_r) = self.oddr_to_axial(top_row, left_col);
+        let (left, top) = (left_q - HEX_GRID_CENTER.0 as i8, top_r - HEX_GRID_CENTER.1 as i8);
+
+        let mut start = "start - [".to_owned();
+        start.push_str(&format!(" {}, {} ", left, top));
+        start.push_str("]");
+        start
     }
 
     /// Outputs the stack part of this current grid according to the DSL
@@ -212,15 +237,15 @@ impl HexGrid {
     /// <number> - [ <piece> <piece> ... ]
     /// <number> - [ <piece> <piece> ... ]
     /// ...
-    pub fn to_stacks(&self) -> String {
+    pub fn stacks_string(&self) -> String {
         let (min, max) = self.bounds();
-        let (bottom, left) = min;
-        let (top, right) = max;
+        let (top, left) = min;
+        let (bottom, right) = max;
 
         let mut stack_string = String::new();
 
 
-        for row in bottom..=top {
+        for row in top..=bottom {
             for col in left..=right {
                 print!("({}, {}) ", row, col);
                 let pieces = self.oddr(row, col);
@@ -253,7 +278,7 @@ impl HexGrid {
     ///   . 2 . m .
     ///  . . . . .
     ///
-    pub fn to_board(&self) -> String {
+    pub fn board_string(&self) -> String {
         if self.is_empty() {
             return ".".to_owned();
         }
@@ -264,13 +289,12 @@ impl HexGrid {
         
         let left = min_col-1;
         let right = max_col+1;
-        let top = max_row+1;
-        let bottom = min_row-1;
+        let bottom = max_row+1;
+        let top = min_row-1;
 
         let mut board = String::new();
 
-        println!("left: {}, right: {}, top: {}, bottom: {}\n", left, right, top, bottom);
-        for row in bottom..=top {
+        for row in top..=bottom {
             if row % 2 == 1 {
                 board.push_str(" ");
             }
@@ -337,7 +361,7 @@ impl HexGrid {
 #[test]
 fn test_board_string_empty(){
     let grid = HexGrid::new();
-    let board = grid.to_board();
+    let board = grid.board_string();
     let expected = ".";
     assert_eq!(board, expected, "Empty board should be a single dot");
 }
@@ -348,7 +372,7 @@ fn test_board_string_single(){
     let mut grid = HexGrid::new();
     let piece = Piece::new(PieceType::Queen, PieceColor::White);
     grid.add(piece, HexLocation::new(0,1));
-    let board = grid.to_board();
+    let board = grid.board_string();
     let expected = concat!(
         ". . .\n",
         " . Q .\n",
@@ -365,7 +389,7 @@ fn test_board_string_single_stack(){
     let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
     grid.add(piece, HexLocation::new(0,1));
     grid.add(dummy, HexLocation::new(0,1));
-    let board = grid.to_board();
+    let board = grid.board_string();
     let expected = concat!(
         ". . .\n",
         " . 2 .\n",
@@ -429,7 +453,7 @@ fn test_board_string_multiple(){
         ". . . . . .\n",
     );
 
-    let board = grid.to_board();
+    let board = grid.board_string();
     println!("{}", board);
 
     assert_eq!(board, expected);
@@ -504,11 +528,12 @@ fn test_board_multiple_stacks(){
         "2 - [ b m ]\n",
         "2 - [ m m ]\n",
     );
-    let board = grid.to_stacks();
+    let board = grid.stacks_string();
     println!("{}", board);
 
     assert_eq!(board, expected);
 }
+
 
 #[test]
 fn test_board_string_padding(){
@@ -530,7 +555,7 @@ fn test_board_string_padding(){
     grid.add(white_queen, ne);
     grid.add(white_queen, se);
 
-    let board = grid.to_board();
+    let board = grid.board_string();
     println!("{}", board);
     assert_eq!(board, expected);
 
@@ -552,7 +577,62 @@ fn test_board_string_padding(){
     grid.add(white_queen, nw);
     grid.add(white_queen, sw);
 
-    let board = grid.to_board();
+    let board = grid.board_string();
     println!("{}", board);
     assert_eq!(board, expected);
+}
+
+
+#[test]
+fn test_start_string1(){
+    let start = HexLocation::new(0,0);
+    let ne = start.apply(Direction::NE);
+    let se = start.apply(Direction::SE);
+
+    // The board looks like this:
+    //let expected = concat!(
+        //". . .\n",
+        //" . Q .\n",
+        //". Q .\n",
+        //" . Q .\n",
+        //". . .\n",
+    //);
+
+    let mut grid = HexGrid::new();
+    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+    grid.add(white_queen, start);
+    grid.add(white_queen, ne);
+    grid.add(white_queen, se);
+
+    let start_string = grid.start_string();
+    let expected = "start - [ 0, -2 ]";
+    assert_eq!(start_string, expected);
+}
+
+
+#[test]
+fn test_start_string2(){
+    let start = HexLocation::new(5,-6);
+    let nw = start.apply(Direction::NW);
+    let sw = start.apply(Direction::SW);
+
+    // board  expected to look like:
+    //. . . .
+    // . Q . .
+    //. . Q .
+    // . Q . .
+    //. . . .
+
+    let mut grid = HexGrid::new();
+    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+    grid.add(white_queen, start);
+    grid.add(white_queen, nw);
+    grid.add(white_queen, sw);
+
+    let board = grid.board_string();
+    println!("{}", board);
+
+    let start_string = grid.start_string();
+    let expected = "start - [ 4, -8 ]";
+    assert_eq!(start_string, expected);
 }

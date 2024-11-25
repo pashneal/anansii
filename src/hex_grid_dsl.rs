@@ -759,14 +759,14 @@ pub fn test_conversion_stack() {
         ". . .\n",
         " . 2 .\n",
         ". . .\n\n",
-        "start - [ 0 2 ]\n\n",
+        "start - [ 1 2 ]\n\n",
         "2 - [ q q ]",
     );
     let acceptable = concat!(
         " . . .\n",
         ". 2 .\n",
         " . . .\n\n",
-        "start - [ 0 2 ]\n\n",
+        "start - [ 1 2 ]\n\n",
         "2 - [ q q ]",
     );
 
@@ -778,7 +778,59 @@ pub fn test_conversion_stack() {
 
 #[test]
 pub fn test_conversion_larger() {
-    // Test a more involved method
-    // has stack, spans multiple rows, has different pieces
-    // start is negative negative
+    use PieceColor::*;
+    use PieceType::*;
+    let expected = concat!(
+        " . Q 3 g .\n",
+        ". . A b .\n",
+        " . 2 . m .\n",
+        ". . . . .\n\n",
+        "start - [ -3 -2 ]\n\n",
+        "3 - [G b B]\n",
+        "2 - [a M]\n",
+    );
+
+    let grid = Parser::parse_hex_grid(expected)
+        .expect("Couldn't parse board");
+
+    let mut location =  HexLocation::new(-3, -2);
+    location = location.apply(Direction::E);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Queen, White),
+    ]);
+
+    location = location.apply(Direction::E);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Grasshopper, White),
+        Piece::new(Beetle, Black),
+        Piece::new(Beetle, White),
+    ]);
+
+    location = location.apply(Direction::E);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Grasshopper, Black)
+    ]);
+
+    location = location.apply(Direction::SW);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Beetle, Black),
+    ]);
+
+    location = location.apply(Direction::W);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Ant, White),
+    ]);
+
+    location  = location.apply(Direction::SW);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Ant, Black),
+        Piece::new(Mosquito, White),
+    ]);
+
+    location = location.apply(Direction::E).apply(Direction::E);
+    assert_eq!(grid.peek(location), vec![
+        Piece::new(Mosquito, Black),
+    ]);
+
+    assert_eq!(grid.num_pieces(), 10);
 }

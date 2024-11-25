@@ -184,18 +184,21 @@ impl HexGrid {
         None
     }
 
-    pub fn peek(&self, location: HexLocation) -> Vec<Option<Piece>> {
+    /// Access a copy of the pieces at a given location
+    /// stacked from bottom to top
+    pub fn peek(&self, location: HexLocation) -> Vec<Piece> {
         let (x, y) = HexGrid::centralize(location);
         self.axial(x, y)
     }
 
-    /// Access the grid using the axial coordinate system
+    /// Access the grid using the axial coordinate system, 
+    /// with only the pieces that are present at the location
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
-    fn axial(&self, x: usize, y: usize) -> Vec<Option<Piece>> {
+    fn axial(&self, x: usize, y: usize) -> Vec<Piece> {
         let mut pieces = vec![];
         for piece in self.grid[y][x] {
             if piece.is_some() {
-                pieces.push(piece);
+                pieces.push(piece.unwrap());
             }
         }
         return pieces;
@@ -215,7 +218,7 @@ impl HexGrid {
 
     /// Access the grid using the odd-r coordinate system
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
-    fn oddr(&self, row: usize, col: usize) -> Vec<Option<Piece>> {
+    fn oddr(&self, row: usize, col: usize) -> Vec<Piece> {
         let (q, r) = HexGrid::oddr_to_axial(row, col);
         if q < 0 {
             return vec![];
@@ -271,6 +274,23 @@ impl HexGrid {
         start
     }
 
+
+    pub fn num_pieces(&self) -> usize {
+        let mut count = 0;
+        for y in 0..HEX_GRID_SIZE {
+            for x in 0..HEX_GRID_SIZE {
+                for i in 0..MAX_HEIGHT {
+                    if self.grid[y][x][i].is_some() {
+                        count += 1;
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+        count
+    }
+
     /// Outputs the stack part of this current grid according to the DSL
     /// specified above.
     ///
@@ -292,10 +312,7 @@ impl HexGrid {
                 if pieces.len() > 1 {
                     stack_string.push_str(&format!("{} - [ ", pieces.len()));
                     for piece in pieces {
-                        if piece.is_none() {
-                            break;
-                        }
-                        stack_string.push_str(&piece.as_ref().unwrap().to_str());
+                        stack_string.push_str(&piece.to_str());
                         stack_string.push_str(" ");
                     }
                     stack_string.push_str("]\n");
@@ -342,7 +359,7 @@ impl HexGrid {
 
                 match pieces.len() {
                     0 => board.push_str("."),
-                    1 => board.push_str(&pieces[0].as_ref().unwrap().to_str()),
+                    1 => board.push_str(&pieces[0].to_str()),
                     _ => board.push_str(&format!("{}", pieces.len())),
                 }
                 // Do not add a space after the last column

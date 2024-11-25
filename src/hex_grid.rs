@@ -1,9 +1,5 @@
 use std::collections::HashMap;
 
-
-// DSL for the board
-// TODO
-
 #[derive(Copy, Clone, Debug)]
 pub enum PieceType {
     Queen,
@@ -40,8 +36,8 @@ pub enum PieceColor {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Piece {
-    pub piece : PieceType,
-    pub color : PieceColor,
+    pub piece: PieceType,
+    pub color: PieceColor,
 }
 
 impl Piece {
@@ -81,21 +77,26 @@ impl HexLocation {
         HexLocation { x, y }
     }
 
-    pub fn apply(&self, direction : Direction) -> Self {
+    pub fn apply(&self, direction: Direction) -> Self {
         use Direction::*;
         let (mut x, mut y) = (self.x, self.y);
         match direction {
-            NW => { y -= 1 }
-            E => { x += 1 }
-            W => { x -= 1 }
-            SE => { y += 1 }
-            NE => { x += 1; y -= 1 }
-            SW => { x -= 1; y += 1 }
+            NW => y -= 1,
+            E => x += 1,
+            W => x -= 1,
+            SE => y += 1,
+            NE => {
+                x += 1;
+                y -= 1
+            }
+            SW => {
+                x -= 1;
+                y += 1
+            }
         }
         HexLocation::new(x, y)
     }
 }
-
 
 pub const HEX_GRID_SIZE: usize = 60;
 pub const HEX_GRID_CENTER: (usize, usize) = (HEX_GRID_SIZE / 2, HEX_GRID_SIZE / 2);
@@ -106,10 +107,10 @@ pub const MAX_HEIGHT: usize = 7;
 /// The coordinate system is axial as found here:
 /// https://www.redblobgames.com/grids/hexagons/
 ///
-/// As pieces can potentially stack, they are filled from the 
+/// As pieces can potentially stack, they are filled from the
 /// first element of the array to the last
 ///
-/// HexLocation 0,0 is in the center of the grid to make 
+/// HexLocation 0,0 is in the center of the grid to make
 /// the grid easier to reason about as Hive is a boardless "floating" game
 pub struct HexGrid {
     grid: [[[Option<Piece>; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
@@ -122,7 +123,7 @@ impl HexGrid {
         }
     }
 
-    fn centralize(location: HexLocation) -> (usize, usize){
+    fn centralize(location: HexLocation) -> (usize, usize) {
         let (x, y) = (location.x, location.y);
         let (x, y) = (x + HEX_GRID_CENTER.0 as i8, y + HEX_GRID_CENTER.1 as i8);
         (x as usize, y as usize)
@@ -142,7 +143,6 @@ impl HexGrid {
         let (x, y) = HexGrid::centralize(location);
         for i in 0..MAX_HEIGHT {
             if self.grid[y][x][i].is_some() {
-
                 let piece = self.grid[y][x][i];
                 self.grid[y][x][i] = None;
                 return piece;
@@ -152,23 +152,21 @@ impl HexGrid {
         None
     }
 
-
-
     pub fn peek(&self, location: HexLocation) -> Vec<Option<Piece>> {
-        let (x,y) = HexGrid::centralize(location);
-        self.axial(x,y)
+        let (x, y) = HexGrid::centralize(location);
+        self.axial(x, y)
     }
 
     /// Access the grid using the axial coordinate system
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
-    fn axial(&self, x : usize, y : usize) -> Vec<Option<Piece>> {
+    fn axial(&self, x: usize, y: usize) -> Vec<Option<Piece>> {
         let mut pieces = vec![];
         for piece in self.grid[y][x] {
             if piece.is_some() {
                 pieces.push(piece);
             }
         }
-        return pieces
+        return pieces;
     }
 
     fn oddr_to_axial(&self, row: usize, col: usize) -> (i8, i8) {
@@ -181,7 +179,9 @@ impl HexGrid {
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
     fn oddr(&self, row: usize, col: usize) -> Vec<Option<Piece>> {
         let (q, r) = self.oddr_to_axial(row, col);
-        if q < 0 { return vec![]; } // out of bounds
+        if q < 0 {
+            return vec![];
+        } // out of bounds
         self.axial(q as usize, r as usize)
     }
 
@@ -197,13 +197,13 @@ impl HexGrid {
     ///
     ///  . . . . .
     ///   . Q 3 g .
-    ///  . . A b . 
+    ///  . . A b .
     ///   . 2 . m .
     ///  . . . . .
     ///
     ///  start - [ 3, -2 ]
     ///
-    ///  3 - [G b B] 
+    ///  3 - [G b B]
     ///  2 - [a M]
     pub fn to_dsl(&self) -> String {
         self.board_string() + "\n" + &self.start_string() + "\n" + &self.stacks_string()
@@ -215,14 +215,17 @@ impl HexGrid {
     ///
     /// Will have the format
     /// start - [ <x>, <y> ]
-    pub fn start_string(&self) ->  String {
+    pub fn start_string(&self) -> String {
         let ((top, left), _) = self.bounds();
 
         let top_row = top - 1;
         let left_col = left - 1;
 
         let (left_q, top_r) = self.oddr_to_axial(top_row, left_col);
-        let (left, top) = (left_q - HEX_GRID_CENTER.0 as i8, top_r - HEX_GRID_CENTER.1 as i8);
+        let (left, top) = (
+            left_q - HEX_GRID_CENTER.0 as i8,
+            top_r - HEX_GRID_CENTER.1 as i8,
+        );
 
         let mut start = "start - [".to_owned();
         start.push_str(&format!(" {}, {} ", left, top));
@@ -231,7 +234,7 @@ impl HexGrid {
     }
 
     /// Outputs the stack part of this current grid according to the DSL
-    /// specified above. 
+    /// specified above.
     ///
     /// Will have the format:
     /// <number> - [ <piece> <piece> ... ]
@@ -243,7 +246,6 @@ impl HexGrid {
         let (bottom, right) = max;
 
         let mut stack_string = String::new();
-
 
         for row in top..=bottom {
             for col in left..=right {
@@ -264,7 +266,6 @@ impl HexGrid {
         }
 
         stack_string
-
     }
 
     /// Outputs the board part of this current grid according to the DSL
@@ -274,7 +275,7 @@ impl HexGrid {
     ///
     ///  . . . . .
     ///   . Q 3 g .
-    ///  . . A b . 
+    ///  . . A b .
     ///   . 2 . m .
     ///  . . . . .
     ///
@@ -286,11 +287,11 @@ impl HexGrid {
         let (min, max) = self.bounds();
         let (min_row, min_col) = min;
         let (max_row, max_col) = max;
-        
-        let left = min_col-1;
-        let right = max_col+1;
-        let bottom = max_row+1;
-        let top = min_row-1;
+
+        let left = min_col - 1;
+        let right = max_col + 1;
+        let bottom = max_row + 1;
+        let top = min_row - 1;
 
         let mut board = String::new();
 
@@ -300,15 +301,14 @@ impl HexGrid {
             }
             for col in left..=right {
                 let pieces = self.oddr(row, col);
-                
+
                 match pieces.len() {
                     0 => board.push_str("."),
                     1 => board.push_str(&pieces[0].as_ref().unwrap().to_str()),
                     _ => board.push_str(&format!("{}", pieces.len())),
-                
                 }
                 // Do not add a space after the last column
-                if col != right {   
+                if col != right {
                     board.push_str(" ");
                 }
             }
@@ -319,9 +319,9 @@ impl HexGrid {
     }
 
     /// Returns a bounding box around all present pieces
-    /// in the grid according the odd_r format as described here: 
+    /// in the grid according the odd_r format as described here:
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
-    fn bounds(&self)  -> ((usize, usize), (usize, usize)) {
+    fn bounds(&self) -> ((usize, usize), (usize, usize)) {
         let mut min_row = HEX_GRID_SIZE;
         let mut min_col = HEX_GRID_SIZE;
         let mut max_row = 0;
@@ -329,7 +329,7 @@ impl HexGrid {
 
         for row in 0..HEX_GRID_SIZE {
             for col in 0..HEX_GRID_SIZE {
-                if self.oddr(row, col).len() > 0{
+                if self.oddr(row, col).len() > 0 {
                     min_row = min_row.min(row);
                     min_col = min_col.min(col);
                     max_row = max_row.max(row);
@@ -339,16 +339,14 @@ impl HexGrid {
         }
 
         ((min_row, min_col), (max_row, max_col))
-
     }
 
-
-    /// Checks to see if the board contains no pieces 
+    /// Checks to see if the board contains no pieces
     fn is_empty(&self) -> bool {
         for y in 0..HEX_GRID_SIZE {
             for x in 0..HEX_GRID_SIZE {
                 if self.grid[y][x][0].is_some() {
-                        return false;
+                    return false;
                 }
             }
         }
@@ -357,50 +355,40 @@ impl HexGrid {
     }
 }
 
-
 #[test]
-fn test_board_string_empty(){
+fn test_board_string_empty() {
     let grid = HexGrid::new();
     let board = grid.board_string();
     let expected = ".";
     assert_eq!(board, expected, "Empty board should be a single dot");
 }
 
-
 #[test]
-fn test_board_string_single(){
+fn test_board_string_single() {
     let mut grid = HexGrid::new();
     let piece = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(piece, HexLocation::new(0,1));
+    grid.add(piece, HexLocation::new(0, 1));
     let board = grid.board_string();
-    let expected = concat!(
-        ". . .\n",
-        " . Q .\n",
-        ". . .\n",
-    );
+    let expected = concat!(". . .\n", " . Q .\n", ". . .\n",);
 
     assert_eq!(board, expected, "Should represent a single piece");
 }
 
 #[test]
-fn test_board_string_single_stack(){
+fn test_board_string_single_stack() {
     let mut grid = HexGrid::new();
     let piece = Piece::new(PieceType::Queen, PieceColor::White);
     let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
-    grid.add(piece, HexLocation::new(0,1));
-    grid.add(dummy, HexLocation::new(0,1));
+    grid.add(piece, HexLocation::new(0, 1));
+    grid.add(dummy, HexLocation::new(0, 1));
     let board = grid.board_string();
-    let expected = concat!(
-        ". . .\n",
-        " . 2 .\n",
-        ". . .\n",
-    );
+    let expected = concat!(". . .\n", " . 2 .\n", ". . .\n",);
 
     assert_eq!(board, expected, "Should represent a single stack");
 }
 
 #[test]
-fn test_board_string_multiple(){
+fn test_board_string_multiple() {
     let mut grid = HexGrid::new();
     let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
     let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
@@ -412,7 +400,7 @@ fn test_board_string_multiple(){
     let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
     let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
 
-    let start = HexLocation::new(10,-3);
+    let start = HexLocation::new(10, -3);
     let white_ant_loc = start;
     let white_queen_loc = white_ant_loc.apply(Direction::NW);
     let black_beetle_loc = white_ant_loc.apply(Direction::E);
@@ -423,7 +411,6 @@ fn test_board_string_multiple(){
     let black_spider_loc = stack2_loc.apply(Direction::SW);
     let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
     let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
-
 
     grid.add(white_queen, white_queen_loc);
     grid.add(white_ant, white_ant_loc);
@@ -440,7 +427,6 @@ fn test_board_string_multiple(){
     grid.add(dummy, stack3_loc);
     grid.add(dummy, stack3_loc);
     grid.add(dummy, stack3_loc);
-
 
     let expected = concat!(
         " . . . . . .\n",
@@ -460,7 +446,7 @@ fn test_board_string_multiple(){
 }
 
 #[test]
-fn test_board_multiple_stacks(){
+fn test_board_multiple_stacks() {
     let mut grid = HexGrid::new();
     let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
     let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
@@ -471,7 +457,7 @@ fn test_board_multiple_stacks(){
     let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
     let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
 
-    let start = HexLocation::new(2,0);
+    let start = HexLocation::new(2, 0);
     let white_ant_loc = start;
     let white_queen_loc = white_ant_loc.apply(Direction::NW);
     let black_beetle_loc = white_ant_loc.apply(Direction::E);
@@ -482,7 +468,6 @@ fn test_board_multiple_stacks(){
     let black_spider_loc = stack2_loc.apply(Direction::SW);
     let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
     let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
-
 
     grid.add(white_queen, white_queen_loc);
     grid.add(white_queen, white_queen_loc);
@@ -508,17 +493,16 @@ fn test_board_multiple_stacks(){
     grid.add(black_grasshopper, stack3_loc);
     grid.add(white_ant, stack3_loc);
 
-
     // Modeled after the board string:
     //let expected = concat!(
-        //" . . . . . .\n",
-        //". . 3 3 2 .\n",
-        //" . . A b . .\n",
-        //". . 2 . 2 .\n",
-        //" . s . . . .\n",
-        //". . L . . .\n",
-        //" . B . . . .\n",
-        //". . . . . .\n",
+    //" . . . . . .\n",
+    //". . 3 3 2 .\n",
+    //" . . A b . .\n",
+    //". . 2 . 2 .\n",
+    //" . s . . . .\n",
+    //". . L . . .\n",
+    //" . B . . . .\n",
+    //". . . . . .\n",
     //);
 
     let expected = concat!(
@@ -534,20 +518,13 @@ fn test_board_multiple_stacks(){
     assert_eq!(board, expected);
 }
 
-
 #[test]
-fn test_board_string_padding(){
-    let start = HexLocation::new(0,0);
+fn test_board_string_padding() {
+    let start = HexLocation::new(0, 0);
     let ne = start.apply(Direction::NE);
     let se = start.apply(Direction::SE);
 
-    let expected = concat!(
-        ". . .\n",
-        " . Q .\n",
-        ". Q .\n",
-        " . Q .\n",
-        ". . .\n",
-    );
+    let expected = concat!(". . .\n", " . Q .\n", ". Q .\n", " . Q .\n", ". . .\n",);
 
     let mut grid = HexGrid::new();
     let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
@@ -559,17 +536,11 @@ fn test_board_string_padding(){
     println!("{}", board);
     assert_eq!(board, expected);
 
-    let start = HexLocation::new(0,1);
+    let start = HexLocation::new(0, 1);
     let nw = start.apply(Direction::NW);
     let sw = start.apply(Direction::SW);
 
-    let expected = concat!(
-        " . . .\n",
-        ". Q .\n",
-        " . Q .\n",
-        ". Q .\n",
-        " . . .\n",
-    );
+    let expected = concat!(" . . .\n", ". Q .\n", " . Q .\n", ". Q .\n", " . . .\n",);
 
     let mut grid = HexGrid::new();
     let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
@@ -582,20 +553,19 @@ fn test_board_string_padding(){
     assert_eq!(board, expected);
 }
 
-
 #[test]
-fn test_start_string1(){
-    let start = HexLocation::new(0,0);
+fn test_start_string1() {
+    let start = HexLocation::new(0, 0);
     let ne = start.apply(Direction::NE);
     let se = start.apply(Direction::SE);
 
     // The board looks like this:
     //let expected = concat!(
-        //". . .\n",
-        //" . Q .\n",
-        //". Q .\n",
-        //" . Q .\n",
-        //". . .\n",
+    //". . .\n",
+    //" . Q .\n",
+    //". Q .\n",
+    //" . Q .\n",
+    //". . .\n",
     //);
 
     let mut grid = HexGrid::new();
@@ -609,10 +579,9 @@ fn test_start_string1(){
     assert_eq!(start_string, expected);
 }
 
-
 #[test]
-fn test_start_string2(){
-    let start = HexLocation::new(5,-6);
+fn test_start_string2() {
+    let start = HexLocation::new(5, -6);
     let nw = start.apply(Direction::NW);
     let sw = start.apply(Direction::SW);
 

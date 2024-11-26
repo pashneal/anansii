@@ -23,17 +23,18 @@ type StackIds = Vec<Option<u8>>;
 ///
 /// Invariant : The unambigious Annotator assumes that Hive pieces can only be placed or moved
 /// but never removed from the board. Furthermore, it assumes that piece movements observe the
-/// One Hive Rule. If this is the case, all moves will be annotated correctly.
+/// One Hive Rule. If this is the case, all legal moves will be annotated correctly as 
+/// UHP MoveStrings.
 ///
-/// TODO: cleanup, make more precise
-/// Allowed moves:
+/// Unambiguous changes to the Annotator from state to state are as follows:
+///
 ///     - pass : no additions or removals made from the board
-///     - placement : a single piece is added to top of the board which did not exist
+///     - placement : a single piece is added to top of the board which did not previously exist
 ///     - movement : a single piece is moved from the top of one location to top of another.
 ///     The resulting board has greater than 1 piece on the board's lowest level
 ///
 /// If the state becomes ambiguous, some moves may not have correct unique identifiers
-/// (such as bG1, bG2, etc) and the annotator will instead return moves with question marks
+/// (such as bG1, bG2, etc) and the annotator may instead return moves with question marks
 /// (bG?, bG?, etc) to indicate that the piece's identity is ambiguous.
 #[derive(Debug, Clone)]
 pub struct Annotator {

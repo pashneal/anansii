@@ -161,7 +161,7 @@ pub const MAX_HEIGHT: usize = 7;
 /// the grid easier to reason about as Hive is a boardless "floating" game
 #[derive(Debug, Clone)]
 pub struct HexGrid {
-    grid: [[[Option<Piece>; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
+    grid: Vec<Vec<Vec<Option<Piece>>>>
 }
 
 impl HexGrid {
@@ -171,7 +171,7 @@ impl HexGrid {
 
     pub fn new() -> HexGrid {
         HexGrid {
-            grid: [[[None; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
+            grid: vec![vec![vec![None; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
         }
     }
 
@@ -180,8 +180,14 @@ impl HexGrid {
     /// in the grid
     pub fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
-        for y in 0..HEX_GRID_SIZE {
-            for x in 0..HEX_GRID_SIZE {
+
+        let left = -(HEX_GRID_CENTER.0 as i8);
+        let right = HEX_GRID_CENTER.0 as i8;
+        let top = -(HEX_GRID_CENTER.1 as i8);
+        let bottom = HEX_GRID_CENTER.1 as i8;
+
+        for y in  top..bottom {
+            for x in left..right {
                 let loc = HexLocation::new(x as i8, y as i8);
                 let stack = self.peek(loc);
                 if stack.len() > 0 {
@@ -236,7 +242,7 @@ impl HexGrid {
         if x < 0 || x >= HEX_GRID_SIZE || y < 0 || y >= HEX_GRID_SIZE {
             return vec![];
         }
-        for piece in self.grid[y][x] {
+        for piece in &self.grid[y][x] {
             if piece.is_some() {
                 pieces.push(piece.unwrap());
             }
@@ -346,7 +352,6 @@ impl HexGrid {
 
         for row in top..=bottom {
             for col in left..=right {
-                print!("({}, {}) ", row, col);
                 let pieces = self.oddr(row, col);
                 if pieces.len() > 1 {
                     stack_string.push_str(&format!("{} - [ ", pieces.len()));
@@ -693,7 +698,6 @@ fn test_start_string2() {
     grid.add(white_queen, sw);
 
     let board = grid.board_string();
-    println!("{}", board);
 
     let start_string = grid.start_string();
     let expected = "start - [ 4 -8 ]";

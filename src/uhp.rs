@@ -53,6 +53,8 @@ pub struct Annotator {
 }
 
 pub type Height = usize;
+
+#[derive(Debug)]
 enum Diff {
     Added {
         loc: HexLocation,
@@ -83,15 +85,18 @@ impl Annotator {
     /// constitutes removal or addition of heights above that height
     fn get_differences(&self, current_grid: &HexGrid) -> Vec<Diff> {
         let mut diffs = Vec::new();
+
         // Look for added pieces
         for (new_stack, loc) in current_grid.pieces() {
             let old_stack = self.prev_grid.peek(loc);
             // Any piece higher the old stack's length is necessarily added
+            // new_stack > old_stack 
             for height in old_stack.len()..new_stack.len() {
                 let piece = new_stack[height];
                 diffs.push(Diff::Added { loc, piece, height });
             }
 
+            // new_stack <= old_stack
             for height in 0..old_stack.len().min(new_stack.len()) {
                 if old_stack[height] != new_stack[height] {
                     // First difference detected, assume all others
@@ -165,31 +170,37 @@ impl Annotator {
             let piece = hex_grid.peek(nw);
             let piece = piece.last().unwrap();
             let id = ids.get(&nw).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::NW, &piece.to_uhp(id))
         } else if hex_grid.peek(sw).len() > 0 {
             let piece = hex_grid.peek(sw);
             let piece = piece.last().unwrap();
             let id = ids.get(&sw).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::SW, &piece.to_uhp(id))
         } else if hex_grid.peek(ne).len() > 0 {
             let piece = hex_grid.peek(ne);
             let piece = piece.last().unwrap();
             let id = ids.get(&ne).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::NE, &piece.to_uhp(id))
         } else if hex_grid.peek(se).len() > 0 {
             let piece = hex_grid.peek(se);
             let piece = piece.last().unwrap();
             let id = ids.get(&se).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::SE, &piece.to_uhp(id))
         } else if hex_grid.peek(e).len() > 0 {
             let piece = hex_grid.peek(e);
             let piece = piece.last().unwrap();
             let id = ids.get(&e).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::E, &piece.to_uhp(id))
         } else if hex_grid.peek(w).len() > 0 {
             let piece = hex_grid.peek(w);
             let piece = piece.last().unwrap();
             let id = ids.get(&w).unwrap().last().unwrap().unwrap();
+
             relative_direction(Direction::W, &piece.to_uhp(id))
         } else {
             panic!("No reference found, some invariant was violated!");
@@ -352,15 +363,16 @@ impl Annotator {
 
         // If we have more than 2 diffs, we can't infer the state, but can return an
         // ambiguous state if the diffs are purely additions
-        // If we have 0 diffs, we can't infer the state either, yet
 
         todo!("ambiguous state with only additions (thereby resulted from legal state transitions")
     }
 
+    /// TODO: spec well
     pub fn move_strings(&self) -> Vec<String> {
         self.moves.clone()
     }
 
+    /// TODO: spec well
     pub fn uhp_move_strings(&self) -> Vec<String> {
         self.move_strings()
             .iter()
@@ -619,7 +631,6 @@ pub fn test_annotator_climb() {
     );
 }
 
-#[ignore]
 #[test]
 pub fn test_uhp_move_strings() {
     let mut annotator = Annotator::new();
@@ -632,11 +643,7 @@ pub fn test_uhp_move_strings() {
         "start - [ 0 0 ]\n\n",
     ));
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -646,12 +653,9 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -661,12 +665,9 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -676,12 +677,9 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -691,12 +689,9 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -705,14 +700,12 @@ pub fn test_uhp_move_strings() {
         ". . L p .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "2 - [ S m ]\n\n",
+        "2 - [ S m ]\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single movement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single climb up should be handled correctly");
+    
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -721,13 +714,11 @@ pub fn test_uhp_move_strings() {
         ". . . p .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n\n",
+        "3 - [ S m L ]\n",
     ));
+
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single movement should be handled correctly"
-    );
+    annotator = result.expect("Single climb up should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -736,13 +727,11 @@ pub fn test_uhp_move_strings() {
         ". . . . .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n\n",
+        "3 - [ S m L ]\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single movement should be handled correctly"
-    );
+    annotator = result.expect("Single movement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -751,14 +740,11 @@ pub fn test_uhp_move_strings() {
         ". . G . .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n\n",
+        "3 - [ S m L ]\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single movement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Single movement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -767,14 +753,11 @@ pub fn test_uhp_move_strings() {
         ". . G . .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n\n",
+        "3 - [ S m L ]\n",
     ));
+	  
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Second placement should be handled correctly"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Second placement should be handled correctly");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -783,11 +766,10 @@ pub fn test_uhp_move_strings() {
         ". . G . .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n\n",
+        "3 - [ S m L ]\n",
     ));
     let result = annotator.next_state(&grid);
-    assert!(result.is_ok(), "Pieces should be fungible even if moved");
-    annotator = result.unwrap();
+    annotator = result.expect("Pieces should be fungible even if moved");
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -796,19 +778,15 @@ pub fn test_uhp_move_strings() {
         ". . . . .\n",
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
-        "4 - [ S m L G]\n\n",
+        "4 - [ S m L G]\n",
     ));
     let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Pieces should be fungible even if climbing up"
-    );
-    annotator = result.unwrap();
+    annotator = result.expect("Pieces should be fungible even if climbing up");
 
     let moves = annotator.move_strings();
     let possible_moves = vec![
         vec![String::from("wS1")],
-        vec![String::from("wS1 /wL1")],
+        vec![String::from("wL1 /wS1")],
         vec![String::from(r"bP1 wS1\"), String::from("bP1 wL1-")],
         vec![String::from(r"bM1 wS1/")],
         vec![
@@ -825,24 +803,24 @@ pub fn test_uhp_move_strings() {
         vec![
             String::from(r"bP1 wS1/"),
             String::from(r"bP1 bM1/"),
-            String::from(r"bP1 bL1/"),
+            String::from(r"bP1 wL1/"),
             String::from(r"bP1 \wG1"),
         ],
         vec![
             String::from(r"wG1 /wS1"),
             String::from(r"wG1 /bM1"),
-            String::from(r"wG1 /bL1"),
+            String::from(r"wG1 /wL1"),
         ],
         vec![
             String::from(r"wG2 wS1-"),
             String::from(r"wG2 bM1-"),
-            String::from(r"wG2 bL1-"),
+            String::from(r"wG2 wL1-"),
             String::from(r"wG2 bP1\"),
         ],
         vec![
             String::from(r"wG2 -wS1"),
             String::from(r"wG2 -bM1"),
-            String::from(r"wG2 -bL1"),
+            String::from(r"wG2 -wL1"),
             String::from(r"wG2 \wG1"),
         ],
         vec![String::from(r"wG1 wG2-"), String::from(r"wG1 /bP1")],
@@ -861,7 +839,7 @@ pub fn test_uhp_move_strings() {
     let uhp_moves = annotator.uhp_move_strings();
     let possible_uhp_moves = vec![
         vec![String::from("wS1")],
-        vec![String::from("wS1 /wL")],
+        vec![String::from("wL /wS1")],
         vec![String::from(r"bP wS1\"), String::from("bP wL-")],
         vec![String::from(r"bM wS1/")],
         vec![
@@ -878,24 +856,24 @@ pub fn test_uhp_move_strings() {
         vec![
             String::from(r"bP wS1/"),
             String::from(r"bP bM/"),
-            String::from(r"bP bL/"),
+            String::from(r"bP wL/"),
             String::from(r"bP \wG1"),
         ],
         vec![
             String::from(r"wG1 /wS1"),
             String::from(r"wG1 /bM"),
-            String::from(r"wG1 /bL"),
+            String::from(r"wG1 /wL"),
         ],
         vec![
             String::from(r"wG2 wS1-"),
             String::from(r"wG2 bM-"),
-            String::from(r"wG2 bL-"),
+            String::from(r"wG2 wL-"),
             String::from(r"wG2 bP\"),
         ],
         vec![
             String::from(r"wG2 -wS1"),
             String::from(r"wG2 -bM"),
-            String::from(r"wG2 -bL"),
+            String::from(r"wG2 -wL"),
             String::from(r"wG2 \wG1"),
         ],
         vec![String::from(r"wG1 wG2-"), String::from(r"wG1 /bP")],
@@ -911,3 +889,9 @@ pub fn test_uhp_move_strings() {
         );
     }
 }
+
+#[test]
+pub fn test_annotator_climb_across() {
+    //TODO: climbing across distinct stacks
+}
+

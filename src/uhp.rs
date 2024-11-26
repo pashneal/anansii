@@ -90,7 +90,7 @@ impl Annotator {
         for (new_stack, loc) in current_grid.pieces() {
             let old_stack = self.prev_grid.peek(loc);
             // Any piece higher the old stack's length is necessarily added
-            // new_stack > old_stack 
+            // new_stack > old_stack
             for height in old_stack.len()..new_stack.len() {
                 let piece = new_stack[height];
                 diffs.push(Diff::Added { loc, piece, height });
@@ -368,7 +368,7 @@ impl Annotator {
     }
 
     /// Give a MoveString representation of the moves infered so far by this annotator.
-    /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos, 
+    /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos,
     /// Pillbugs and Ladybugs have ids appended to them. (e.g. wQ1, bM1, etc)
     pub fn move_strings(&self) -> Vec<String> {
         self.moves.clone()
@@ -376,7 +376,7 @@ impl Annotator {
 
     /// Give a UHP-compatible MoveString representation of the moves
     /// infered so for by this annotator. If the game state started from
-    /// an empty board and only legal moves were taken, 
+    /// an empty board and only legal moves were taken,
     /// then these strings will be correct according to the UHP.
     ///
     /// Queens, Mosquitos, Pillbugs and Ladybugs have no ids appended to them.
@@ -661,7 +661,7 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single placement should be handled correctly");
 
@@ -673,7 +673,7 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single placement should be handled correctly");
 
@@ -685,7 +685,7 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single placement should be handled correctly");
 
@@ -697,7 +697,7 @@ pub fn test_uhp_move_strings() {
         " . . . . .\n\n",
         "start - [ 0 0 ]\n\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single placement should be handled correctly");
 
@@ -710,10 +710,9 @@ pub fn test_uhp_move_strings() {
         "start - [ 0 0 ]\n\n",
         "2 - [ S m ]\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single climb up should be handled correctly");
-    
 
     let grid = HexGrid::from_dsl(concat!(
         " . . . . .\n",
@@ -737,7 +736,7 @@ pub fn test_uhp_move_strings() {
         "start - [ 0 0 ]\n\n",
         "3 - [ S m L ]\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single movement should be handled correctly");
 
@@ -750,7 +749,7 @@ pub fn test_uhp_move_strings() {
         "start - [ 0 0 ]\n\n",
         "3 - [ S m L ]\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Single movement should be handled correctly");
 
@@ -763,7 +762,7 @@ pub fn test_uhp_move_strings() {
         "start - [ 0 0 ]\n\n",
         "3 - [ S m L ]\n",
     ));
-	  
+
     let result = annotator.next_state(&grid);
     annotator = result.expect("Second placement should be handled correctly");
 
@@ -902,4 +901,3 @@ pub fn test_uhp_move_strings() {
 pub fn test_annotator_climb_across() {
     //TODO: climbing across distinct stacks
 }
-

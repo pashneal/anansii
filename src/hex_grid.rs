@@ -161,7 +161,7 @@ pub const MAX_HEIGHT: usize = 7;
 /// the grid easier to reason about as Hive is a boardless "floating" game
 #[derive(Debug, Clone)]
 pub struct HexGrid {
-    grid: Vec<Vec<Vec<Option<Piece>>>>
+    grid: Vec<Vec<Vec<Option<Piece>>>>,
 }
 
 impl HexGrid {
@@ -186,7 +186,7 @@ impl HexGrid {
         let top = -(HEX_GRID_CENTER.1 as i8);
         let bottom = HEX_GRID_CENTER.1 as i8;
 
-        for y in  top..bottom {
+        for y in top..bottom {
             for x in left..right {
                 let loc = HexLocation::new(x as i8, y as i8);
                 let stack = self.peek(loc);

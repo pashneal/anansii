@@ -144,7 +144,11 @@ impl Annotator {
         diffs
     }
 
-    fn reference(
+    /// Computes the second part of a UHP MoveString, the anchor.
+    /// location - the piece's new location,
+    /// hex_grid - the newest state of the hexgrid
+    /// ids - mappings from the newest state of the board to unique identifiers for each piece
+    fn anchor_reference(
         hex_grid: &HexGrid,
         location: HexLocation,
         ids: &HashMap<HexLocation, StackIds>,
@@ -208,6 +212,8 @@ impl Annotator {
         };
     }
 
+    /// Given a piece that was removed and a piece that was added,
+    /// annotate the move in UHP format and return the new state of the annotator
     fn piece_moved(&self, old: &Diff, new: &Diff, grid: &HexGrid) -> Annotator {
         if self.ambiguous {
             todo!()
@@ -247,7 +253,7 @@ impl Annotator {
         debug_assert!(ids.len() == *new_height);
         ids.push(id);
 
-        let anchor = Annotator::reference(grid, *new_loc, &new_ids);
+        let anchor = Annotator::anchor_reference(grid, *new_loc, &new_ids);
         let piece_string = new_piece.to_uhp(id.expect("Expected an id"));
         let move_string = format!("{} {}", piece_string, anchor);
 
@@ -263,6 +269,9 @@ impl Annotator {
         }
     }
 
+
+    /// Given a piece that was placed, annotate the move in UHP format
+    /// and return the new state of the annotator
     fn piece_placed(&self, position: &Diff, grid: &HexGrid) -> Annotator {
         if self.ambiguous {
             todo!()
@@ -288,7 +297,7 @@ impl Annotator {
         let move_string = if self.prev_grid.is_empty() {
             format!("{}", piece_string)
         } else {
-            let anchor = Annotator::reference(&self.prev_grid, *loc, &new_ids);
+            let anchor = Annotator::anchor_reference(&self.prev_grid, *loc, &new_ids);
             format!("{} {}", piece_string, anchor)
         };
 
@@ -304,6 +313,8 @@ impl Annotator {
         }
     }
 
+    /// Add a new state to the annotator, representing a single legal move taken 
+    /// from the last state of the board to the current state of the board.
     pub fn next_state(&self, current_grid: &HexGrid) -> Result<Annotator> {
         // No difference, passing moves
 

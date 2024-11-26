@@ -367,12 +367,20 @@ impl Annotator {
         todo!("ambiguous state with only additions (thereby resulted from legal state transitions")
     }
 
-    /// TODO: spec well
+    /// Give a MoveString representation of the moves infered so far by this annotator.
+    /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos, 
+    /// Pillbugs and Ladybugs have ids appended to them. (e.g. wQ1, bM1, etc)
     pub fn move_strings(&self) -> Vec<String> {
         self.moves.clone()
     }
 
-    /// TODO: spec well
+    /// Give a UHP-compatible MoveString representation of the moves
+    /// infered so for by this annotator. If the game state started from
+    /// an empty board and only legal moves were taken, 
+    /// then these strings will be correct according to the UHP.
+    ///
+    /// Queens, Mosquitos, Pillbugs and Ladybugs have no ids appended to them.
+    /// (e.g. wQ, bM, etc)
     pub fn uhp_move_strings(&self) -> Vec<String> {
         self.move_strings()
             .iter()

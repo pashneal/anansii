@@ -39,7 +39,7 @@ pub enum ParserError {
 ///
 /// TODO: concrete specs for DSL, for now it's vibes
 ///
-struct Parser {}
+pub struct Parser {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum BoardInput {
@@ -89,7 +89,6 @@ impl Parser {
         // Assume that the stack string is next (end of input terminates the stack
         // string)
         let stack = &input[start_end + 2..];
-        println!("Board: {}\nStart: {}\nStack: {}", board, start, stack);
         let pieces = Parser::parse_board(board)?;
         let pieces = Parser::parse_start(start, &pieces)?;
         let pieces = Parser::parse_stacks(stack, &pieces)?;
@@ -790,47 +789,39 @@ pub fn test_conversion_larger() {
         "2 - [a M]\n",
     );
 
-    let grid = Parser::parse_hex_grid(expected)
-        .expect("Couldn't parse board");
+    let grid = Parser::parse_hex_grid(expected).expect("Couldn't parse board");
 
-    let mut location =  HexLocation::new(-3, -2);
+    let mut location = HexLocation::new(-3, -2);
     location = location.apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Queen, White),
-    ]);
+    assert_eq!(grid.peek(location), vec![Piece::new(Queen, White),]);
 
     location = location.apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Grasshopper, White),
-        Piece::new(Beetle, Black),
-        Piece::new(Beetle, White),
-    ]);
+    assert_eq!(
+        grid.peek(location),
+        vec![
+            Piece::new(Grasshopper, White),
+            Piece::new(Beetle, Black),
+            Piece::new(Beetle, White),
+        ]
+    );
 
     location = location.apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Grasshopper, Black)
-    ]);
+    assert_eq!(grid.peek(location), vec![Piece::new(Grasshopper, Black)]);
 
     location = location.apply(Direction::SW);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Beetle, Black),
-    ]);
+    assert_eq!(grid.peek(location), vec![Piece::new(Beetle, Black),]);
 
     location = location.apply(Direction::W);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Ant, White),
-    ]);
+    assert_eq!(grid.peek(location), vec![Piece::new(Ant, White),]);
 
-    location  = location.apply(Direction::SW);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Ant, Black),
-        Piece::new(Mosquito, White),
-    ]);
+    location = location.apply(Direction::SW);
+    assert_eq!(
+        grid.peek(location),
+        vec![Piece::new(Ant, Black), Piece::new(Mosquito, White),]
+    );
 
     location = location.apply(Direction::E).apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![
-        Piece::new(Mosquito, Black),
-    ]);
+    assert_eq!(grid.peek(location), vec![Piece::new(Mosquito, Black),]);
 
     assert_eq!(grid.num_pieces(), 10);
 }

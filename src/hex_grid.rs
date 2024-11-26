@@ -1,3 +1,4 @@
+use crate::hex_grid_dsl::Parser;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -9,7 +10,7 @@ pub enum HexGridError {
 
 pub type Result<T> = std::result::Result<T, HexGridError>;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PieceType {
     Queen,
     Grasshopper,
@@ -56,7 +57,7 @@ impl PieceType {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PieceColor {
     Black,
     White,
@@ -82,6 +83,20 @@ impl Piece {
 
         piece_str
     }
+
+    pub fn to_uhp(&self, id: u8) -> String {
+        match self.color {
+            PieceColor::White => format!("w{}{}", self.piece.to_str(), id),
+            PieceColor::Black => format!("b{}{}", self.piece.to_str(), id),
+        }
+    }
+}
+
+impl std::hash::Hash for Piece {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.piece.hash(state);
+        self.color.hash(state);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -94,7 +109,7 @@ pub enum Direction {
     W,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct HexLocation {
     pub x: i8,
     pub y: i8,
@@ -144,15 +159,37 @@ pub const MAX_HEIGHT: usize = 7;
 ///
 /// HexLocation 0,0 is in the center of the grid to make
 /// the grid easier to reason about as Hive is a boardless "floating" game
+#[derive(Debug, Clone)]
 pub struct HexGrid {
     grid: [[[Option<Piece>; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
 }
 
 impl HexGrid {
+    pub fn from_dsl(input: &str) -> Self {
+        Parser::parse_hex_grid(input).expect("Failed to parse input into HexGrid")
+    }
+
     pub fn new() -> HexGrid {
         HexGrid {
             grid: [[[None; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
         }
+    }
+
+    /// Return piece stacks on the board in "board order", that is,
+    /// from top to bottom, then left to right, including their location
+    /// in the grid
+    pub fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        let mut pieces = vec![];
+        for y in 0..HEX_GRID_SIZE {
+            for x in 0..HEX_GRID_SIZE {
+                let loc = HexLocation::new(x as i8, y as i8);
+                let stack = self.peek(loc);
+                if stack.len() > 0 {
+                    pieces.push((stack, loc))
+                };
+            }
+        }
+        pieces
     }
 
     fn centralize(location: HexLocation) -> (usize, usize) {
@@ -191,11 +228,14 @@ impl HexGrid {
         self.axial(x, y)
     }
 
-    /// Access the grid using the axial coordinate system, 
+    /// Access the grid using the axial coordinate system,
     /// with only the pieces that are present at the location
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
     fn axial(&self, x: usize, y: usize) -> Vec<Piece> {
         let mut pieces = vec![];
+        if x < 0 || x >= HEX_GRID_SIZE || y < 0 || y >= HEX_GRID_SIZE {
+            return vec![];
+        }
         for piece in self.grid[y][x] {
             if piece.is_some() {
                 pieces.push(piece.unwrap());
@@ -274,7 +314,6 @@ impl HexGrid {
         start
     }
 
-
     pub fn num_pieces(&self) -> usize {
         let mut count = 0;
         for y in 0..HEX_GRID_SIZE {
@@ -283,7 +322,7 @@ impl HexGrid {
                     if self.grid[y][x][i].is_some() {
                         count += 1;
                     } else {
-                        break
+                        break;
                     }
                 }
             }
@@ -397,7 +436,7 @@ impl HexGrid {
     }
 
     /// Checks to see if the board contains no pieces
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         for y in 0..HEX_GRID_SIZE {
             for x in 0..HEX_GRID_SIZE {
                 if self.grid[y][x][0].is_some() {

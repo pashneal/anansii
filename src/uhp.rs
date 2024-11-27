@@ -28,10 +28,10 @@ type StackIds = Vec<Option<u8>>;
 ///
 /// Unambiguous changes to the Annotator from state to state are as follows:
 ///
-///     - pass : no additions or removals made from the board
-///     - placement : a single piece is added to top of the board which did not previously exist
-///     - movement : a single piece is moved from the top of one location to top of another.
-///     The resulting board has greater than 1 piece on the board's lowest level
+/// - pass : no additions or removals made from the board
+/// - placement : a single piece is added to top of the board which did not previously exist
+/// - movement : a single piece is moved from the top of one location to top of another.
+/// The resulting board has greater than 1 piece on the board's lowest level
 ///
 /// If the state becomes ambiguous, some moves may not have correct unique identifiers
 /// (such as bG1, bG2, etc) and the annotator may instead return moves with question marks
@@ -154,7 +154,9 @@ impl Annotator {
         ids: &HashMap<HexLocation, StackIds>,
     ) -> String {
 
+
         let stack = hex_grid.peek(location);
+        debug_assert!(stack.len() > 0, "There should be a piece here!");
         if stack.len() > 1 {
             // If the piece climbs atop the hive, use the piece below it as the anchor
             let piece_below = stack[stack.len() - 2];

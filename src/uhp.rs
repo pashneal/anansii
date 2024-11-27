@@ -1432,4 +1432,3 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
     }
 }
 
-// TODO: prefer to return absolute move notation for climbing atop the hive

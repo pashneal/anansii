@@ -63,6 +63,22 @@ pub enum PieceColor {
     White,
 }
 
+impl PieceColor {
+    pub fn opposite(&self) -> PieceColor {
+        match self {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        }
+    }
+
+    pub fn to_str(&self) -> &str {
+        match self {
+            PieceColor::White => "White",
+            PieceColor::Black => "Black",
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Piece {
     pub piece: PieceType,

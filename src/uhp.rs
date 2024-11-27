@@ -1,6 +1,7 @@
 use crate::hex_grid::*;
 use std::collections::HashMap;
 use thiserror::Error;
+use crate::constants::*;
 
 #[derive(Error, Debug)]
 pub enum UHPError {
@@ -11,6 +12,7 @@ pub enum UHPError {
 }
 
 pub type Result<T> = std::result::Result<T, UHPError>;
+pub type CommandResult = std::result::Result<String, String>;
 
 /// This struct represents UHP (Universal Hive Protocol) interface
 /// https://github.com/jonthysell/Mzinga/wiki/UniversalHiveProtocol
@@ -528,6 +530,211 @@ impl Annotator {
         &self.prev_grid
     }
 }
+
+pub enum GameType{
+    Standard,
+    M,
+    L,
+    P,
+    ML,
+    MP,
+    LP,
+    MLP,
+}
+
+impl GameType {
+    pub fn to_str(&self) -> &str {
+        match self {
+            GameType::Standard => "Base",
+            GameType::M => "Base+M",
+            GameType::L => "Base+L",
+            GameType::P => "Base+P",
+            GameType::ML => "Base+ML",
+            GameType::MP => "Base+MP",
+            GameType::LP => "Base+LP",
+            GameType::MLP => "Base+MLP",
+        }
+    }
+}
+
+pub struct UHPInterface {
+    annotations: Vec<Annotator>,
+    game_type: GameType,
+    player_to_move: PieceColor,
+}
+
+impl UHPInterface {
+    pub fn new() -> UHPInterface {
+        UHPInterface {
+            annotations: vec![Annotator::new()],
+            game_type: GameType::Standard,
+            player_to_move: PieceColor::White,
+        }
+    }
+
+    fn info(&self) -> CommandResult {
+        Ok(ENGINE_NAME.to_string() + " v" + VERSION + "\n" + "Mosquito;Ladybug;Pillbug" + "\n")
+    }
+
+    fn unknown(&self) -> CommandResult {
+        Err("Unknown command, cannot parse".to_string())
+    }
+
+    fn new_game(&mut self, input: &str) -> CommandResult {
+        self.annotations = vec![Annotator::new()];
+        self.player_to_move = PieceColor::White;
+        if input == "newgame" {
+            self.game_type = GameType::Standard;
+            return Ok("ok\n".to_string());
+        }
+        if input.len() < 10 {
+            return Err("Invalid game type".to_string());
+        }
+
+        if !input.contains(";") {
+            self.game_type = match &input[8..] {
+                "Base" => GameType::Standard,
+                "Base+M" => GameType::M,
+                "Base+L" => GameType::L,
+                "Base+P" => GameType::P,
+                "Base+ML" | "Base+LM" => GameType::ML,
+                "Base+MP" | "Base+PM" => GameType::MP,
+                "Base+LP" | "Base+PL" => GameType::LP,
+                "Base+MLP" | "Base+MPL" | "Base+LMP" | "Base+LPM" | "Base+PML" | "Base+PLM" => GameType::MLP,
+                _ => return Err("Unable to interpret GameTypeString".to_string()),
+            };
+            // TODO: do other things?
+
+        } else {
+            let rest = input[8..].to_string();
+            let mut delimited = rest.split(";");
+
+            let base = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            if base != "Base" { return Err("Expected 'Base' in position 0 of GameString ".to_string()); }
+
+            let game_state = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            match game_state {
+                "NotStarted" => {}, //TODO: do something
+                "InProgress" => {} //TODO: do something
+                _ => return Err("Expected GameStateString at position 1 of GameString".to_string()),
+            }
+
+            let turn_string = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            if turn_string.len() < 8 {
+                return Err("Expected TurnString at position 2 of GameString".to_string());
+            }
+            let color = match turn_string[5..].to_lowercase().as_str() {
+                "white" => PieceColor::White,
+                "black" => PieceColor::Black,
+                _ => return Err("Expected piece color at position 2 of GameString".to_string()),
+            };
+            //self.player_to_move = color;
+
+            let num = turn_string[6..turn_string.len()-2].to_string();
+            let _turn_num = num.parse::<u8>().map_err(|_| "Expected number at position 2 of GameString")?;
+
+            while let Some(move_string) = delimited.next() {
+                self.make_move(move_string)?;
+            }
+            // TODO: check colors, turn number, etc
+        }
+
+        Ok(self.game_string())
+
+    }
+
+    fn game_string(&self) -> String {
+        let turn_number = self.annotations.len() / 2;
+        let moves = self.annotations.last().unwrap().uhp_move_strings().join(";");
+        let game_type = self.game_type.to_str();
+        let color = self.player_to_move.to_str();
+        format!("{};InProgress;{}[{}];{}\n", game_type, color, turn_number, moves)
+    }
+
+    fn make_move(&mut self, move_string: &str) -> CommandResult {
+        let annotator = self.annotations.last().unwrap();
+        let annotator = annotator.next_standard_move(move_string).map_err(|e| e.to_string())?;
+        self.annotations.push(annotator);
+        self.player_to_move = self.player_to_move.opposite(); 
+        Ok(self.game_string())
+    }
+
+    fn play(&mut self, input: &str) -> CommandResult {
+        if input.len() < 7 {
+            return Err("Invalid move string for play command".to_string());
+        }
+
+        self.make_move(&input[5..].trim())
+    }
+
+    fn valid_moves(&mut self) -> CommandResult {
+        todo!()
+    }
+
+    fn pass(&mut self) -> CommandResult {
+        self.make_move("pass")
+    }
+
+    fn best_move(&mut self, input : &str) -> CommandResult {
+        todo!()
+    }
+
+    fn undo_one(&mut self) -> CommandResult {
+        if self.annotations.len() == 1 {
+            return Err("Cannot undo past the first move".to_string());
+        }
+        self.annotations.pop();
+        self.player_to_move = self.player_to_move.opposite();
+        Ok(self.game_string())
+    }
+
+    fn undo(&mut self, input: &str) -> CommandResult {
+        if input == "undo" {
+            return self.undo_one();
+        }
+
+        let num = input[5..].trim().parse::<u8>().map_err(|_| "Invalid number for undo command".to_string())?;
+        if num as usize >= self.annotations.len() {
+            return Err("Cannot undo past the first move".to_string());
+        }
+        if num < 1 {
+            return Err("Invalid number for undo command".to_string());
+        }
+
+        let mut game_string = Ok("".to_string());
+        for _ in 0..num {
+            game_string = self.undo_one();
+        }
+        game_string
+    }
+
+    fn options(&mut self, input: &str) -> CommandResult {
+        todo!()
+    }
+
+    pub fn command(&mut self,  input: &str) -> String {
+        let response = match input.trim() {
+            "info" => self.info(),
+            "validmoves" => self.valid_moves(),
+            "pass" => self.pass(),
+            a if a.starts_with("bestmove") => self.best_move(a),
+            a if a.starts_with("newgame") => self.new_game(a), 
+            a if a.starts_with("play") => self.play(a),
+            a if a.starts_with("undo") => self.undo(a),
+            a if a.starts_with("options") => self.options(a),
+            _ => self.unknown(), 
+        };
+        let response = match response {
+            Ok(response) => response,
+            Err(response) => "err ".to_string() + &response,
+        };
+
+        debug_assert!(if response.len() > 0 { response.chars().last().unwrap() == '\n' } else { true },
+        "Non-empty response should end with a newline");
+        response + "ok\n"
+    }
+}
+
 
 #[test]
 pub fn test_annotator_empty() {
@@ -1267,7 +1474,7 @@ pub fn test_annotator_standard_move_string_interpretation() {
         let result = annotator.next_standard_move(move_string);
         assert!(
             result.is_ok(),
-            "Move string {:?} should be legal, but got error {:?}",
+            "Move input {:?} should be legal, but got error {:?}",
             move_string,
             result
         );
@@ -1420,7 +1627,7 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
         let result = annotator.next_uhp_move(move_string);
         assert!(
             result.is_ok(),
-            "Move string {:?} should be legal, but got error {:?}",
+            "Move input {:?} should be legal, but got error {:?}",
             move_string,
             result
         );

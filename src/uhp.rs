@@ -23,7 +23,7 @@ type StackIds = Vec<Option<u8>>;
 ///
 /// Invariant : The unambigious Annotator assumes that Hive pieces can only be placed or moved
 /// but never removed from the board. Furthermore, it assumes that piece movements observe the
-/// One Hive Rule. If this is the case, all legal moves will be annotated correctly as 
+/// One Hive Rule. If this is the case, all legal moves will be annotated correctly as
 /// UHP MoveStrings.
 ///
 /// Unambiguous changes to the Annotator from state to state are as follows:
@@ -269,7 +269,6 @@ impl Annotator {
         }
     }
 
-
     /// Given a piece that was placed, annotate the move in UHP format
     /// and return the new state of the annotator
     fn piece_placed(&self, position: &Diff, grid: &HexGrid) -> Annotator {
@@ -313,7 +312,7 @@ impl Annotator {
         }
     }
 
-    /// Add a new state to the annotator, representing a single legal move taken 
+    /// Add a new state to the annotator, representing a single legal move taken
     /// from the last state of the board to the current state of the board.
     pub fn next_state(&self, current_grid: &HexGrid) -> Result<Annotator> {
         // No difference, passing moves
@@ -382,7 +381,7 @@ impl Annotator {
         todo!("ambiguous state with only additions (thereby resulted from legal state transitions")
     }
 
-    /// Assuming an unambiguous state, find the piece, locataion and height 
+    /// Assuming an unambiguous state, find the piece, locataion and height
     /// uniquely described by the given piece string. examples "wQ1", "bM1", etc
     fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
         for (loc, stack) in &self.ids {
@@ -401,7 +400,7 @@ impl Annotator {
     /// Add a new state to the annotator, representing a move string expect with identifiers
     /// appended to all pieces. (e.g. wQ1, bM1, etc)
     ///
-    /// The move must represent a legal Hive move from the last state of the board 
+    /// The move must represent a legal Hive move from the last state of the board
     /// to the current state.
     ///
     /// Returns the resulting state of the annotator after the move is applied
@@ -414,7 +413,7 @@ impl Annotator {
 
         if move_string.len() <= 3 {
             let mut new_grid = HexGrid::new();
-            new_grid.add(new_piece, HexLocation::new(0,0));
+            new_grid.add(new_piece, HexLocation::new(0, 0));
             return self.next_state(&new_grid);
         } else if move_string == "pass" {
             return self.next_state(&self.prev_grid);
@@ -426,21 +425,23 @@ impl Annotator {
 
         // direction either at front, end or neither
         let first_last = (
-            anchor_piece_string.chars().next().unwrap(), 
-            anchor_piece_string.chars().last().unwrap()
+            anchor_piece_string.chars().next().unwrap(),
+            anchor_piece_string.chars().last().unwrap(),
         );
 
         let (direction, anchor_piece_string) = match first_last {
-            ('-', _) => (Some(Direction::W) , &anchor_piece_string[1..]),
-            (_, '-') => (Some(Direction::E), &anchor_piece_string[..length-1]),
+            ('-', _) => (Some(Direction::W), &anchor_piece_string[1..]),
+            (_, '-') => (Some(Direction::E), &anchor_piece_string[..length - 1]),
             ('\\', _) => (Some(Direction::NW), &anchor_piece_string[1..]),
             ('/', _) => (Some(Direction::SW), &anchor_piece_string[1..]),
-            (_, '/') => (Some(Direction::NE), &anchor_piece_string[..length-1]),
-            (_, '\\') => (Some(Direction::SE), &anchor_piece_string[..length-1]),
-            _ => (None , anchor_piece_string),
+            (_, '/') => (Some(Direction::NE), &anchor_piece_string[..length - 1]),
+            (_, '\\') => (Some(Direction::SE), &anchor_piece_string[..length - 1]),
+            _ => (None, anchor_piece_string),
         };
 
-        let (_, mut final_loc, _) = self.find(anchor_piece_string).expect("Could not find anchor");
+        let (_, mut final_loc, _) = self
+            .find(anchor_piece_string)
+            .expect("Could not find anchor");
         if let Some(direction) = direction {
             final_loc = final_loc.apply(direction);
         }
@@ -453,7 +454,7 @@ impl Annotator {
                 debug_assert!(new_grid.peek(old_loc).len() == height);
                 new_grid.add(piece, final_loc);
             }
-            None =>  {
+            None => {
                 new_grid.add(new_piece, final_loc);
             }
         }
@@ -464,7 +465,7 @@ impl Annotator {
     /// Add a new state the annotator, representing a UHP move string with identifiers
     /// not appended to the mosquito, pillbug, ladybug and queen pieces. (e.g. wQ, bM, etc)
     ///
-    /// The move must represent a legal Hive move from the last state of the board 
+    /// The move must represent a legal Hive move from the last state of the board
     /// to the current state.
     ///
     /// Returns the resulting state of the annotator after the move is applied
@@ -510,9 +511,7 @@ impl Annotator {
     pub fn uhp_move_strings(&self) -> Vec<String> {
         self.standard_move_strings()
             .iter()
-            .map(|move_string| {
-                Annotator::standard_to_uhp(move_string)
-            })
+            .map(|move_string| Annotator::standard_to_uhp(move_string))
             .collect()
     }
 
@@ -531,7 +530,10 @@ pub fn test_annotator_empty() {
         "Empty -> empty should be a legal state transition"
     );
     annotator = result.unwrap();
-    assert_eq!(annotator.standard_move_strings(), vec![String::from("pass")]);
+    assert_eq!(
+        annotator.standard_move_strings(),
+        vec![String::from("pass")]
+    );
     assert_eq!(annotator.uhp_move_strings(), vec![String::from("pass")]);
 }
 
@@ -747,7 +749,7 @@ pub fn test_annotator_climb() {
         vec![String::from("bA1 -wQ1")],
         vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
         vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
-        vec![String::from("wB1 /bA1")]
+        vec![String::from("wB1 /bA1")],
     ];
     assert!(possible_standard_moves.len() == standard_moves.len());
     for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
@@ -767,13 +769,12 @@ pub fn test_annotator_climb() {
         String::from("bA1 -wQ"),
         String::from("wB1 bA1-"),
         String::from("wB1 -wQ"),
-        String::from("wB1 /bA1")
+        String::from("wB1 /bA1"),
     ];
     assert!(possible_uhp_moves.len() == uhp_moves.len());
     for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
         assert_eq!(expected, actual);
     }
-    
 }
 
 #[test]
@@ -945,7 +946,7 @@ pub fn test_uhp_move_strings() {
             String::from(r"bM1 wS1"),
         ],
         vec![
-            String::from(r"wL1 \bP1"), 
+            String::from(r"wL1 \bP1"),
             String::from(r"wL1 -wG1"),
             String::from(r"wL1 bM1"),
         ],
@@ -973,7 +974,7 @@ pub fn test_uhp_move_strings() {
             String::from(r"wG2 \wG1"),
         ],
         vec![
-            String::from(r"wG1 wG2-"), 
+            String::from(r"wG1 wG2-"),
             String::from(r"wG1 /bP1"),
             String::from(r"wG1 wL1"),
         ],
@@ -1248,7 +1249,12 @@ pub fn test_annotator_standard_move_string_interpretation() {
             result
         );
         annotator = result.unwrap();
-        assert!(annotator.grid() == grid, "Grids should be equal \nannotator:\n{}\ngrid:\n{}", annotator.grid().to_dsl(), grid.to_dsl());
+        assert!(
+            annotator.grid() == grid,
+            "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
+            annotator.grid().to_dsl(),
+            grid.to_dsl()
+        );
     }
 }
 
@@ -1261,7 +1267,7 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
         String::from(r"bB1 bP/"),
         String::from(r"wQ /wA1"),
         String::from(r"bQ bB1\"),
-        String::from(r"wB1 wQ\"), 
+        String::from(r"wB1 wQ\"),
         String::from(r"bB1 bP"),  // Move atop the hive absolute notation
         String::from(r"wB1 wQ-"), // Move atop the hive with relative notation
         String::from(r"bB1 wB1"), // absolute again
@@ -1362,7 +1368,7 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
             " . . . . . .\n",
             ". . . . . .\n\n",
             "start - [-1 -2]\n\n",
-            "3 - [ L B b]\n",
+            "3 - [ L B b ]\n",
         )),
         HexGrid::from_dsl(concat!(
             " . . . . . .\n",
@@ -1372,7 +1378,7 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
             " . . . . . .\n",
             ". . . . . .\n\n",
             "start - [-1 -2]\n\n",
-            "3 - [ L B b]\n",
+            "3 - [ L B b ]\n",
         )),
         HexGrid::from_dsl(concat!(
             " . . . . . .\n",
@@ -1396,7 +1402,12 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
             result
         );
         annotator = result.unwrap();
-        assert!(annotator.grid() == grid, "Grids should be equal \nannotator:\n{}\ngrid:\n{}", annotator.grid().to_dsl(), grid.to_dsl());
+        assert!(
+            annotator.grid() == grid,
+            "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
+            annotator.grid().to_dsl(),
+            grid.to_dsl()
+        );
     }
 }
 

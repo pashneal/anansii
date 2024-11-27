@@ -1,4 +1,5 @@
-use crate::hex_grid_dsl::Parser; use std::collections::HashMap;
+use crate::hex_grid_dsl::Parser;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

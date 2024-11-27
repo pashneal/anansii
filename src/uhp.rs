@@ -153,6 +153,15 @@ impl Annotator {
         location: HexLocation,
         ids: &HashMap<HexLocation, StackIds>,
     ) -> String {
+
+        let stack = hex_grid.peek(location);
+        if stack.len() > 1 {
+            // If the piece climbs atop the hive, use the piece below it as the anchor
+            let piece_below = stack[stack.len() - 2];
+            let id_below = ids.get(&location).unwrap().iter().nth(stack.len() - 2).unwrap().unwrap();
+            return piece_below.to_uhp(id_below);
+        }
+
         let nw = location.apply(Direction::NW);
         let sw = location.apply(Direction::SW);
         let ne = location.apply(Direction::NE);
@@ -296,7 +305,7 @@ impl Annotator {
         let move_string = if self.prev_grid.is_empty() {
             format!("{}", piece_string)
         } else {
-            let anchor = Annotator::anchor_reference(&self.prev_grid, *loc, &new_ids);
+            let anchor = Annotator::anchor_reference(grid, *loc, &new_ids);
             format!("{} {}", piece_string, anchor)
         };
 
@@ -315,8 +324,6 @@ impl Annotator {
     /// Add a new state to the annotator, representing a single legal move taken
     /// from the last state of the board to the current state of the board.
     pub fn next_state(&self, current_grid: &HexGrid) -> Result<Annotator> {
-        // No difference, passing moves
-
         let mut total_count = 0;
         for count in self.piece_counts.values() {
             total_count += count;
@@ -760,21 +767,26 @@ pub fn test_annotator_climb() {
             actual
         );
     }
-
     let uhp_moves = annotator.uhp_move_strings();
     let possible_uhp_moves = vec![
-        String::from("wB1"),
-        String::from("bA1 wB1-"),
-        String::from(r"wQ \wB1"),
-        String::from("bA1 -wQ"),
-        String::from("wB1 bA1-"),
-        String::from("wB1 -wQ"),
-        String::from("wB1 /bA1"),
+        vec![String::from("wB1")],
+        vec![String::from("bA1 wB1-")],
+        vec![String::from(r"wQ \wB1")],
+        vec![String::from("bA1 -wQ")],
+        vec![String::from("wB1 bA1-"), String::from("wB1 wQ")],
+        vec![String::from("wB1 -wQ"), String::from("wB1 bA1")],
+        vec![String::from("wB1 /bA1")],
     ];
     assert!(possible_uhp_moves.len() == uhp_moves.len());
     for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
-        assert_eq!(expected, actual);
+        assert!(
+            expected.contains(actual),
+            "Expected {:?} to contain {:?}",
+            expected,
+            actual
+        );
     }
+
 }
 
 #[test]
@@ -1005,8 +1017,13 @@ pub fn test_uhp_move_strings() {
             String::from(r"bM -wG1"),
             String::from(r"bM \bP"),
             String::from(r"bM wL/"),
+            String::from(r"bM wS1"),
         ],
-        vec![String::from(r"wL \bP"), String::from(r"wL -wG1")],
+        vec![
+            String::from(r"wL \bP"),
+            String::from(r"wL -wG1"),
+            String::from(r"wL bM"),
+        ],
         vec![
             String::from(r"bP wS1/"),
             String::from(r"bP bM/"),
@@ -1030,7 +1047,11 @@ pub fn test_uhp_move_strings() {
             String::from(r"wG2 -wL"),
             String::from(r"wG2 \wG1"),
         ],
-        vec![String::from(r"wG1 wG2-"), String::from(r"wG1 /bP")],
+        vec![
+            String::from(r"wG1 wG2-"),
+            String::from(r"wG1 /bP"),
+            String::from(r"wG1 wL"),
+        ],
     ];
     assert_eq!(possible_uhp_moves.len() == uhp_moves.len(), true);
 

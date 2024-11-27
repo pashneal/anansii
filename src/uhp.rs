@@ -376,14 +376,128 @@ impl Annotator {
         // If we have more than 2 diffs, we can't infer the state, but can return an
         // ambiguous state if the diffs are purely additions
 
+        println!("Unhappy path diffs: {:?}", diffs);
+        println!("Unhappy position state: \n{}", current_grid.to_dsl());
+        println!("Unhappy previous state: \n{}", self.prev_grid.to_dsl());
         todo!("ambiguous state with only additions (thereby resulted from legal state transitions")
+    }
+
+    /// Assuming an unambiguous state, find the piece, locataion and height 
+    /// uniquely described by the given piece string. examples "wQ1", "bM1", etc
+    fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
+        for (loc, stack) in &self.ids {
+            for (height, piece_id) in stack.iter().enumerate() {
+                if let Some(id) = piece_id {
+                    let piece = self.prev_grid.peek(*loc)[height];
+                    if piece.to_uhp(*id) == piece_string {
+                        return Some((piece, *loc, height));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Add a new state to the annotator, representing a move string expect with identifiers
+    /// appended to all pieces. (e.g. wQ1, bM1, etc)
+    ///
+    /// The move must represent a legal Hive move from the last state of the board 
+    /// to the current state.
+    ///
+    /// Returns the resulting state of the annotator after the move is applied
+    pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
+        // TODO: cleanup logic - this function is a little long
+        let mut parts = move_string.split_whitespace();
+
+        let piece_string = parts.next().expect("Expected a piece");
+        let new_piece = Piece::from_uhp(piece_string).expect("Expected a valid piece");
+
+        if move_string.len() <= 3 {
+            let mut new_grid = HexGrid::new();
+            new_grid.add(new_piece, HexLocation::new(0,0));
+            return self.next_state(&new_grid);
+        } else if move_string == "pass" {
+            return self.next_state(&self.prev_grid);
+        }
+
+        let anchor_piece_string = parts.next().expect("Expected an anchor position");
+
+        let length = anchor_piece_string.len();
+
+        // direction either at front, end or neither
+        let first_last = (
+            anchor_piece_string.chars().next().unwrap(), 
+            anchor_piece_string.chars().last().unwrap()
+        );
+
+        let (direction, anchor_piece_string) = match first_last {
+            ('-', _) => (Some(Direction::W) , &anchor_piece_string[1..]),
+            (_, '-') => (Some(Direction::E), &anchor_piece_string[..length-1]),
+            ('\\', _) => (Some(Direction::NW), &anchor_piece_string[1..]),
+            ('/', _) => (Some(Direction::SW), &anchor_piece_string[1..]),
+            (_, '/') => (Some(Direction::NE), &anchor_piece_string[..length-1]),
+            (_, '\\') => (Some(Direction::SE), &anchor_piece_string[..length-1]),
+            _ => (None , anchor_piece_string),
+        };
+
+        let (_, mut final_loc, _) = self.find(anchor_piece_string).expect("Could not find anchor");
+        if let Some(direction) = direction {
+            final_loc = final_loc.apply(direction);
+        }
+
+        let mut new_grid = self.prev_grid.clone();
+
+        match self.find(piece_string) {
+            Some((piece, old_loc, height)) => {
+                new_grid.remove(old_loc);
+                debug_assert!(new_grid.peek(old_loc).len() == height);
+                new_grid.add(piece, final_loc);
+            }
+            None =>  {
+                new_grid.add(new_piece, final_loc);
+            }
+        }
+
+        self.next_state(&new_grid)
+    }
+
+    /// Add a new state the annotator, representing a UHP move string with identifiers
+    /// not appended to the mosquito, pillbug, ladybug and queen pieces. (e.g. wQ, bM, etc)
+    ///
+    /// The move must represent a legal Hive move from the last state of the board 
+    /// to the current state.
+    ///
+    /// Returns the resulting state of the annotator after the move is applied
+    pub fn next_uhp_move(&self, move_string: &str) -> Result<Annotator> {
+        let move_string = Annotator::uhp_to_standard(move_string);
+        self.next_standard_move(&move_string)
     }
 
     /// Give a MoveString representation of the moves infered so far by this annotator.
     /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos,
     /// Pillbugs and Ladybugs have ids appended to them. (e.g. wQ1, bM1, etc)
-    pub fn move_strings(&self) -> Vec<String> {
+    pub fn standard_move_strings(&self) -> Vec<String> {
         self.moves.clone()
+    }
+
+    /// Convert a legal standard hive move to a UHP-compatible move string
+    /// without unique identifiers appended to relevant pieces
+    fn standard_to_uhp(move_string: &str) -> String {
+        move_string
+            .replace("P1", "P")
+            .replace("M1", "M")
+            .replace("L1", "L")
+            .replace("Q1", "Q")
+    }
+
+    /// Convert a legal UHP-compatible move string to standard hive move string
+    /// with unique identifiers appended to all the pieces
+    fn uhp_to_standard(move_string: &str) -> String {
+        move_string
+            .replace("P", "P1")
+            .replace("M", "M1")
+            .replace("L", "L1")
+            .replace("Q", "Q1")
     }
 
     /// Give a UHP-compatible MoveString representation of the moves
@@ -394,16 +508,16 @@ impl Annotator {
     /// Queens, Mosquitos, Pillbugs and Ladybugs have no ids appended to them.
     /// (e.g. wQ, bM, etc)
     pub fn uhp_move_strings(&self) -> Vec<String> {
-        self.move_strings()
+        self.standard_move_strings()
             .iter()
             .map(|move_string| {
-                move_string
-                    .replace("P1", "P")
-                    .replace("M1", "M")
-                    .replace("L1", "L")
-                    .replace("Q1", "Q")
+                Annotator::standard_to_uhp(move_string)
             })
             .collect()
+    }
+
+    pub fn grid(&self) -> &HexGrid {
+        &self.prev_grid
     }
 }
 
@@ -417,7 +531,7 @@ pub fn test_annotator_empty() {
         "Empty -> empty should be a legal state transition"
     );
     annotator = result.unwrap();
-    assert_eq!(annotator.move_strings(), vec![String::from("pass")]);
+    assert_eq!(annotator.standard_move_strings(), vec![String::from("pass")]);
     assert_eq!(annotator.uhp_move_strings(), vec![String::from("pass")]);
 }
 
@@ -451,7 +565,7 @@ pub fn test_annotator_pass() {
     annotator = result.unwrap();
 
     assert_eq!(
-        annotator.move_strings(),
+        annotator.standard_move_strings(),
         vec![String::from("wL1"), String::from("pass")]
     );
     assert_eq!(
@@ -524,7 +638,7 @@ pub fn test_annotator_place() {
     annotator = result.unwrap();
 
     assert_eq!(
-        annotator.move_strings(),
+        annotator.standard_move_strings(),
         vec![
             String::from("wB1"),
             String::from("bA1 wB1-"),
@@ -625,30 +739,41 @@ pub fn test_annotator_climb() {
     let result = annotator.next_state(&grid);
     annotator = result.expect("Climb off should be handled correctly");
 
-    assert_eq!(
-        annotator.move_strings(),
-        vec![
-            String::from("wB1"),
-            String::from("bA1 wB1-"),
-            String::from(r"wQ1 \wB1"),
-            String::from("bA1 -wQ1"),
-            String::from("wB1 bA1-"),
-            String::from("wB1 -wQ1"),
-            String::from("wB1 /bA1")
-        ]
-    );
-    assert_eq!(
-        annotator.uhp_move_strings(),
-        vec![
-            String::from("wB1"),
-            String::from("bA1 wB1-"),
-            String::from(r"wQ \wB1"),
-            String::from("bA1 -wQ"),
-            String::from("wB1 bA1-"),
-            String::from("wB1 -wQ"),
-            String::from("wB1 /bA1")
-        ]
-    );
+    let standard_moves = annotator.standard_move_strings();
+    let possible_standard_moves = vec![
+        vec![String::from("wB1")],
+        vec![String::from("bA1 wB1-")],
+        vec![String::from(r"wQ1 \wB1")],
+        vec![String::from("bA1 -wQ1")],
+        vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
+        vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
+        vec![String::from("wB1 /bA1")]
+    ];
+    assert!(possible_standard_moves.len() == standard_moves.len());
+    for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
+        assert!(
+            expected.contains(actual),
+            "Expected {:?} to contain {:?}",
+            expected,
+            actual
+        );
+    }
+
+    let uhp_moves = annotator.uhp_move_strings();
+    let possible_uhp_moves = vec![
+        String::from("wB1"),
+        String::from("bA1 wB1-"),
+        String::from(r"wQ \wB1"),
+        String::from("bA1 -wQ"),
+        String::from("wB1 bA1-"),
+        String::from("wB1 -wQ"),
+        String::from("wB1 /bA1")
+    ];
+    assert!(possible_uhp_moves.len() == uhp_moves.len());
+    for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
+        assert_eq!(expected, actual);
+    }
+    
 }
 
 #[test]
@@ -802,7 +927,7 @@ pub fn test_uhp_move_strings() {
     let result = annotator.next_state(&grid);
     annotator = result.expect("Pieces should be fungible even if climbing up");
 
-    let moves = annotator.move_strings();
+    let moves = annotator.standard_move_strings();
     let possible_moves = vec![
         vec![String::from("wS1")],
         vec![String::from("wL1 /wS1")],
@@ -817,8 +942,13 @@ pub fn test_uhp_move_strings() {
             String::from(r"bM1 -wG1"),
             String::from(r"bM1 \bP1"),
             String::from(r"bM1 wL1/"),
+            String::from(r"bM1 wS1"),
         ],
-        vec![String::from(r"wL1 \bP1"), String::from(r"wL1 -wG1")],
+        vec![
+            String::from(r"wL1 \bP1"), 
+            String::from(r"wL1 -wG1"),
+            String::from(r"wL1 bM1"),
+        ],
         vec![
             String::from(r"bP1 wS1/"),
             String::from(r"bP1 bM1/"),
@@ -842,7 +972,11 @@ pub fn test_uhp_move_strings() {
             String::from(r"wG2 -wL1"),
             String::from(r"wG2 \wG1"),
         ],
-        vec![String::from(r"wG1 wG2-"), String::from(r"wG1 /bP1")],
+        vec![
+            String::from(r"wG1 wG2-"), 
+            String::from(r"wG1 /bP1"),
+            String::from(r"wG1 wL1"),
+        ],
     ];
     assert_eq!(possible_moves.len() == moves.len(), true);
 
@@ -912,4 +1046,358 @@ pub fn test_uhp_move_strings() {
 #[test]
 pub fn test_annotator_climb_across() {
     //TODO: climbing across distinct stacks
+    let mut annotator = Annotator::new();
+    let positions = vec![
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . S . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . S b .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . b S b .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " b b S b .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . 2 S b .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [ b b ]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . 2 2 . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [ b b ]\n",
+            "2 - [ S b ]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . 3 S . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ b b b]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". b . . .\n",
+            " . 2 S . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [ b b ]\n",
+        )),
+    ];
+
+    for grid in positions {
+        let result = annotator.next_state(&grid);
+        assert!(
+            result.is_ok(),
+            "Move should be legal, but got error {:?}",
+            result
+        );
+        annotator = result.unwrap();
+    }
 }
+
+#[test]
+pub fn test_annotator_standard_move_string_interpretation() {
+    let legal_moves = vec![
+        String::from(r"wL1"),
+        String::from(r"bL1 wL1\"),
+        String::from(r"wA1 \wL1"),
+        String::from(r"bM1 bL1\"),
+        String::from(r"wQ1 /wA1"),
+        String::from(r"bA1 /bL1"),
+        String::from(r"wP1 \wQ1"),
+        String::from(r"bQ1 bM1/"),
+        String::from(r"wA1 bQ1-"),
+        String::from(r"bM1 wA1-"),
+    ];
+
+    let positions = vec![
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . L . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . L . . .\n",
+            ". . . l . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . . .\n",
+            " . . L . . .\n",
+            ". . . l . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . A . . . .\n",
+            " . . L . . . .\n",
+            ". . . l . . .\n",
+            " . . . m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . A . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l . . .\n",
+            " . . . m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . A . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l . . .\n",
+            " . . a m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". P A . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l . . .\n",
+            " . . a m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". P A . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l q . .\n",
+            " . . a m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". P . . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l q A .\n",
+            " . . a m . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". P . . . . .\n",
+            " . Q L . . . .\n",
+            ". . . l q A m\n",
+            " . . a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+    ];
+
+    let mut annotator = Annotator::new();
+    for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
+        let result = annotator.next_standard_move(move_string);
+        assert!(
+            result.is_ok(),
+            "Move string {:?} should be legal, but got error {:?}",
+            move_string,
+            result
+        );
+        annotator = result.unwrap();
+        assert!(annotator.grid() == grid, "Grids should be equal \nannotator:\n{}\ngrid:\n{}", annotator.grid().to_dsl(), grid.to_dsl());
+    }
+}
+
+#[test]
+pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
+    let legal_moves = vec![
+        String::from(r"wL"),
+        String::from(r"bP wL-"),
+        String::from(r"wA1 \wL"),
+        String::from(r"bB1 bP/"),
+        String::from(r"wQ /wA1"),
+        String::from(r"bQ bB1\"),
+        String::from(r"wB1 wQ\"), 
+        String::from(r"bB1 bP"),  // Move atop the hive absolute notation
+        String::from(r"wB1 wQ-"), // Move atop the hive with relative notation
+        String::from(r"bB1 wB1"), // absolute again
+        String::from(r"wA1 bQ-"),
+        String::from(r"bB1 \wB1"),
+    ];
+
+    let positions = [
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . L . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . L p . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . . .\n",
+            " . . L p . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . b .\n",
+            " . . L p . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . b .\n",
+            " . Q L p . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . b .\n",
+            " . Q L p q .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . b .\n",
+            " . Q L p q .\n",
+            ". . B . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . . .\n",
+            " . Q L 2 q .\n",
+            ". . B . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+            "2 - [ p b ]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . . .\n",
+            " . Q 2 2 q .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+            "2 - [ L B ]\n",
+            "2 - [ p b ]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . A . . .\n",
+            " . Q 3 p q .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+            "3 - [ L B b]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . Q 3 p q A\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+            "3 - [ L B b]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . b . . .\n",
+            " . Q 2 p q A\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [-1 -2]\n\n",
+            "2 - [ L B ]\n",
+        )),
+    ];
+
+    let mut annotator = Annotator::new();
+    for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
+        let result = annotator.next_uhp_move(move_string);
+        assert!(
+            result.is_ok(),
+            "Move string {:?} should be legal, but got error {:?}",
+            move_string,
+            result
+        );
+        annotator = result.unwrap();
+        assert!(annotator.grid() == grid, "Grids should be equal \nannotator:\n{}\ngrid:\n{}", annotator.grid().to_dsl(), grid.to_dsl());
+    }
+}
+
+// TODO: prefer to return absolute move notation for climbing atop the hive

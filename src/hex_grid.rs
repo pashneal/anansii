@@ -1,5 +1,4 @@
-use crate::hex_grid_dsl::Parser;
-use std::collections::HashMap;
+use crate::hex_grid_dsl::Parser; use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -89,6 +88,17 @@ impl Piece {
             PieceColor::White => format!("w{}{}", self.piece.to_str(), id),
             PieceColor::Black => format!("b{}{}", self.piece.to_str(), id),
         }
+    }
+
+    pub fn from_uhp(uhp: &str) -> Result<Piece> {
+        let color = match &uhp[0..1] {
+            "w" => PieceColor::White,
+            "b" => PieceColor::Black,
+            _ => return Err(HexGridError::PieceError),
+        };
+
+        let piece = PieceType::try_from_char(&uhp.chars().nth(1).unwrap())?;
+        Ok(Piece::new(piece, color))
     }
 }
 
@@ -204,6 +214,7 @@ impl HexGrid {
         (x as usize, y as usize)
     }
 
+    /// Adds a piece to the top of the stack at the given location
     pub fn add(&mut self, piece: Piece, location: HexLocation) {
         let (x, y) = HexGrid::centralize(location);
         for i in 0..MAX_HEIGHT {
@@ -214,9 +225,10 @@ impl HexGrid {
         }
     }
 
+    /// Removes the top-most piece from the stack at the given location
     pub fn remove(&mut self, location: HexLocation) -> Option<Piece> {
         let (x, y) = HexGrid::centralize(location);
-        for i in 0..MAX_HEIGHT {
+        for i in (0..MAX_HEIGHT).rev() {
             if self.grid[y][x][i].is_some() {
                 let piece = self.grid[y][x][i];
                 self.grid[y][x][i] = None;
@@ -453,6 +465,14 @@ impl HexGrid {
         true
     }
 }
+
+impl PartialEq for HexGrid {
+    fn eq(&self, other: &Self) -> bool {
+        other.pieces() == self.pieces()
+    }
+}
+
+impl Eq for HexGrid {}
 
 #[test]
 fn test_board_string_empty() {

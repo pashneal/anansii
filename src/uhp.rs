@@ -580,6 +580,8 @@ impl UHPInterface {
         Err("Unknown command, cannot parse".to_string())
     }
 
+    /// Parse a GameTypeString (see Universal Hive Protocol wiki) 
+    /// and set the game type accordingly
     fn set_game_type(&mut self, input: &str) -> CommandResult {
         self.game_type = match input {
             "Base" => GameType::Standard,
@@ -595,6 +597,14 @@ impl UHPInterface {
         Ok("".to_string())
     }
 
+    /// Parse a newgame command, 
+    /// commands must be of the form:
+    ///
+    /// newgame
+    /// newgame GameTypeString
+    /// newgame GameString
+    ///
+    /// See the Universal Hive Protocol wiki for more information
     fn new_game(&mut self, input: &str) -> CommandResult {
         self.annotations = vec![Annotator::new()];
         self.player_to_move = PieceColor::White;
@@ -649,6 +659,8 @@ impl UHPInterface {
 
     }
 
+    /// Returns the current GameString according to the Universal Hive Protocol
+    /// wiki
     fn game_string(&self) -> String {
         let turn_number = ((self.annotations.len() -  1) / 2) + 1;
         let moves = self.annotations.last().unwrap().uhp_move_strings().join(";");
@@ -660,6 +672,8 @@ impl UHPInterface {
         format!("{};InProgress;{}[{}];{}", game_type, color, turn_number, moves)
     }
 
+    /// Parses a move string in the UHP protocol form and stores
+    /// it directly for construction of the GameString. 
     fn make_move(&mut self, move_string: &str) -> CommandResult {
         let annotator = self.annotations.last().unwrap();
         let annotator = annotator.next_uhp_move(move_string).map_err(|e| e.to_string())?;
@@ -668,6 +682,8 @@ impl UHPInterface {
         Ok(self.game_string())
     }
 
+    /// Parses a play command in the UHP protocol form and stores
+    /// the move string directly for access in the GameString
     fn play(&mut self, input: &str) -> CommandResult {
         if input.len() < 7 {
             return Err("Invalid move string for play command".to_string());
@@ -688,6 +704,7 @@ impl UHPInterface {
         todo!()
     }
 
+    /// Undoes a signle move and updates the game state if possible
     fn undo_one(&mut self) -> CommandResult {
         if self.annotations.len() == 1 {
             return Err("Cannot undo past the first move".to_string());
@@ -697,6 +714,13 @@ impl UHPInterface {
         Ok(self.game_string())
     }
 
+    /// Undo command,
+    /// Must be one of the following forms
+    ///
+    /// undo
+    /// undo number
+    ///
+    /// See the Universal Hive Protocol wiki for more information
     fn undo(&mut self, input: &str) -> CommandResult {
         if input == "undo" {
             return self.undo_one();
@@ -726,6 +750,13 @@ impl UHPInterface {
     }
 
 
+    /// Parses commands according to the Universal Hive Protocol 
+    /// and returns the appropriate response
+    ///
+    /// All responses end with "ok\n"
+    ///
+    /// If the command encounters and error, the string returned will
+    /// begin with "err" in accordance with the UHP 
     pub fn command(&mut self,  input: &str) -> String {
         let response = match input.trim() {
             "info" => self.info(),
@@ -1813,3 +1844,4 @@ pub fn test_game_states_input() {
     // TODO: WhiteWins,
     // TODO: Blackwins
 }
+

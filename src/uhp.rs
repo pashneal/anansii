@@ -52,7 +52,7 @@ pub struct Annotator {
     prev_grid: HexGrid,
     /// Whether each piece can be uniquely identified
     ambiguous: bool,
-    /// Move strings (not UHP-compatible)
+    /// Move strings (not necessarily UHP-compatible)
     moves: Vec<String>,
 }
 
@@ -422,6 +422,9 @@ impl Annotator {
     ///
     /// Returns the resulting state of the annotator after the move is applied
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
+        debug_assert!(self.ambiguous == false);
+        debug_assert!(move_string.trim() == move_string);
+
         // TODO: cleanup logic - this function is a little long
         let mut parts = move_string.split_whitespace();
 

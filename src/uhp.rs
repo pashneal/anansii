@@ -755,7 +755,7 @@ impl UHPInterface {
     ///
     /// All responses end with "ok\n"
     ///
-    /// If the command encounters and error, the string returned will
+    /// If the command encounters an error, the string returned will
     /// begin with "err" in accordance with the UHP 
     pub fn command(&mut self,  input: &str) -> String {
         let response = match input.trim() {

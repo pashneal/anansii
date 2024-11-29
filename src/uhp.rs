@@ -2,6 +2,7 @@ use crate::constants::*;
 use crate::hex_grid::*;
 use std::collections::HashMap;
 use thiserror::Error;
+use crate::game::*;
 
 #[derive(Error, Debug)]
 pub enum UHPError {
@@ -413,7 +414,8 @@ impl Annotator {
     }
 
     /// Add a new state to the annotator, representing a move string expect with identifiers
-    /// appended to all pieces. (e.g. wQ1, bM1, etc)
+    /// appended to all pieces. (e.g. wQ1, bM1, etc). Preserves the move's text verbatim to
+    /// be accessed later by the standard_move_strings() or uhp_move_strings() functions.
     ///
     /// The move must represent a legal Hive move from the last state of the board
     /// to the current state.
@@ -474,7 +476,17 @@ impl Annotator {
             }
         }
 
-        self.next_state(&new_grid)
+        let result = self.next_state(&new_grid);
+        // Replace last move with verbatim move string
+        result.map(|annotator| {
+            let mut moves = annotator.moves.clone();
+            moves.pop();
+            moves.push(move_string.to_string());
+            Annotator {
+                moves,
+                ..annotator
+            }
+        })
     }
 
     /// Add a new state the annotator, representing a UHP move string with identifiers
@@ -641,6 +653,9 @@ impl UHPInterface {
             match game_state {
                 "NotStarted" => {} //TODO: do something
                 "InProgress" => {} //TODO: do something
+                "Draw" => {}
+                "WhiteWins" => {}
+                "BlackWins" => {}
                 _ => return Err("Expected GameStateString at position 1 of GameString".to_string()),
             }
 
@@ -671,6 +686,19 @@ impl UHPInterface {
         Ok(self.game_string())
     }
 
+    fn game_result(&self) -> &str {
+        let annotator = self.annotations.last().unwrap();
+        let debugger = GameDebugger::from_moves(&annotator.uhp_move_strings()).unwrap();
+        let result = debugger.game_result();
+
+        match (self.annotations.len(), result) {
+            (1, None) => "NotStarted",
+            (_, None) => "InProgress",
+            (_, Some(GameResult::Draw)) => "Draw",
+            (_, Some(GameResult::WhiteWins)) => "WhiteWins",
+            (_, Some(GameResult::BlackWins)) => "BlackWins",
+        }
+    }
     /// Returns the current GameString according to the Universal Hive Protocol
     /// wiki
     fn game_string(&self) -> String {
@@ -683,12 +711,13 @@ impl UHPInterface {
             .join(";");
         let game_type = self.game_type.to_str();
         let color = self.player_to_move.to_str();
-        if self.annotations.len() == 1 {
-            return format!("{};NotStarted;{}[{}]", game_type, color, turn_number);
+        let game_result = self.game_result();
+        if game_result == "NotStarted" {
+            return format!("{};{};{}[{}]", game_type, game_result, color, turn_number);
         }
         format!(
-            "{};InProgress;{}[{}];{}",
-            game_type, color, turn_number, moves
+            "{};{};{}[{}];{}",
+            game_type, game_result , color, turn_number, moves
         )
     }
 
@@ -1859,16 +1888,61 @@ pub fn test_uhp_interface_undo() {
 }
 #[test]
 pub fn test_game_states_output() {
-    // These strings found in the output after some moves
-    // TODO: Draw,
-    // TODO: WhiteWins,
-    // TODO: Blackwins
+    let draw_before = r"Base;InProgress;Black[6];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1";
+    let draw_last_move = r"bQ bA1-";
+    let draw_complete = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
+
+    let black_wins_before = r"Base+LMP;InProgress;White[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\";
+    let black_wins_last_move = r"wA2 wQ\";
+    let black_wins_complete = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
+
+    let white_wins_before = r"Base+PL;InProgress;White[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/";
+    let white_wins_last_move = r"wB1 \bL";
+    let white_wins_complete = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
+
+    let mut uhp = UHPInterface::new();
+
+    uhp.command(&format!("newgame {}", draw_before));
+    let output = uhp.command(&format!("play {}", draw_last_move));
+    println!("{}", output);
+    println!("{}", format!("{}\nok\n", draw_complete));
+    assert!(output == format!("{}\nok\n", draw_complete));
+
+
+    uhp.command(&format!("newgame {}", black_wins_before));
+    let output = uhp.command(&format!("play {}", black_wins_last_move));
+    let output = output.to_string();
+    let black_wins_complete = black_wins_complete.to_string();
+    println!("{}", output[8..].to_string());
+    println!("{}", format!("{}\nok\n", black_wins_complete)[8..].to_string());
+    assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
+
+    uhp.command(&format!("newgame {}", white_wins_before));
+    let output = uhp.command(&format!("play {}", white_wins_last_move));
+    println!("{}", output);
+    println!("{}", format!("{}\nok\n", white_wins_complete));
+    assert!(output[7..] == format!("{}\nok\n", white_wins_complete)[7..]);
 }
 
 #[test]
 pub fn test_game_states_input() {
-    // These string passed *into* the game state
-    // TODO: Draw,
-    // TODO: WhiteWins,
-    // TODO: Blackwins
+    let mut uhp = UHPInterface::new();
+    let draw_game_string = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
+    let output = uhp.command(&format!("newgame {}", draw_game_string));
+    println!("{}", output);
+    println!("{}", format!("{}\nok\n", draw_game_string));
+    assert!(output == format!("{}\nok\n", draw_game_string));
+
+
+    let black_wins = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
+    let output = uhp.command(&format!("newgame {}", black_wins));
+    println!("{}", output);
+    println!("{}", format!("{}\nok\n", black_wins));
+    assert!(output[8..] == format!("{}\nok\n", black_wins)[8..]);
+
+    let white_wins = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
+    let output = uhp.command(&format!("newgame {}", white_wins));
+    println!("{}", output);
+    println!("{}", format!("{}\nok\n", white_wins));
+    assert!(output[7..] == format!("{}\nok\n", white_wins)[7..]);
 }

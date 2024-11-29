@@ -37,6 +37,23 @@ pub enum ParserError {
 ///
 /// ```
 ///
+/// The above string can also be used not to create a HexGrid, but instead to 
+/// produce locations at certain marked spots in the grid with the following format:
+///
+/// ```
+///  . . . . .
+///   . * . * .
+///  . . * * .
+///   . * . * .
+///  . . . . .
+///
+///  start - [ 3 -2 ]
+///
+/// ```
+///
+/// Where the "*" characters will be interpreted as HexLocations relative to the
+/// start location in the top left corner.
+///
 /// TODO: concrete specs for DSL, for now it's vibes
 ///
 pub struct Parser {}
@@ -46,6 +63,7 @@ pub enum BoardInput {
     Piece(Piece),
     Stack(u8),
     StackPieces([Option<Piece>; 7]),
+    Star,
     Empty,
 }
 
@@ -58,8 +76,53 @@ pub enum Alignment {
 }
 
 impl Parser {
+
+    /// Parses selector locations from the grid according to the DSL specification
+    /// and returns a vector of corresponding HexLocations in board order referring
+    /// to the "*" characters found.
+    pub fn parse_selector(input: &str) -> Result<Vec<HexLocation>> {
+        let (board_inputs, _) = Parser::parse_head(input)?;
+        let selector_locations = board_inputs.iter().filter_map(|(input, loc)| {
+            if let BoardInput::Star = input {
+                Some(*loc)
+            } else {
+                None
+            }
+        }).collect();
+
+        Ok(selector_locations)
+    }
     /// Parses a HexGrid from a string according to the DSL specification.
     pub fn parse_hex_grid(input: &str) -> Result<HexGrid> {
+        let (pieces, stack_index) = Parser::parse_head(input)?;
+        let stack = &input[stack_index..];
+
+        let pieces = Parser::parse_stacks(stack, &pieces)?;
+        let mut grid = HexGrid::new();
+
+        for (piece, loc) in pieces.iter() {
+            match piece {
+                BoardInput::StackPieces(stack) => {
+                    for piece in stack.iter() {
+                        if let Some(piece) = piece {
+                            grid.add(*piece, *loc);
+                        }
+                    }
+                }
+                BoardInput::Piece(piece) => grid.add(*piece, *loc),
+                _ => {}
+            }
+        }
+
+        Ok(grid)
+    }
+
+    /// Parses the "head", that is, the "board" and "start" parts of the DSL 
+    /// specification and returns inputs found in "board order" -
+    /// first by top to bottom, then by left to right.
+    ///
+    /// Also returns the index pointing to the "stack" part of the DSL
+    fn parse_head(input: &str) -> Result<(Vec<(BoardInput, HexLocation)>, usize)> {
         // Assume that the board starts the input, and is terminated
         // but a double newline
         let board_end = input.find("\n\n");
@@ -86,33 +149,11 @@ impl Parser {
 
         let start = &input[board_end..start_end];
 
-        // Assume that the stack string is next (end of input terminates the stack
-        // string)
-        let stack = &input[start_end + 2..];
         let pieces = Parser::parse_board(board)?;
-        let pieces = Parser::parse_start(start, &pieces)?;
-        let pieces = Parser::parse_stacks(stack, &pieces)?;
-
-        let mut grid = HexGrid::new();
-
-        for (piece, loc) in pieces.iter() {
-            match piece {
-                BoardInput::StackPieces(stack) => {
-                    for piece in stack.iter() {
-                        if let Some(piece) = piece {
-                            grid.add(*piece, *loc);
-                        }
-                    }
-                }
-                BoardInput::Piece(piece) => grid.add(*piece, *loc),
-                _ => {}
-            }
-        }
-
-        Ok(grid)
+        Parser::parse_start(start, &pieces).map(|pieces| (pieces, start_end + 2))
     }
 
-    /// Parses a row of dots, numbers, or letters and attempts
+    /// Parses a row of dots, numbers, asterixes, or letters and attempts
     /// to convert to BoardInputs and Alignment.
     /// Numbers are convertered to Stacks, letters to Pieces, and dots to Empty.
     ///
@@ -172,6 +213,10 @@ impl Parser {
 
                     space_count = 0;
                     piece_count = 1;
+                }
+                '*' => {
+                    board_inputs.push(BoardInput::Star);
+                    space_count = 0;
                 }
                 ' ' => {
                     // Space must be 0
@@ -824,4 +869,30 @@ pub fn test_conversion_larger() {
     assert_eq!(grid.peek(location), vec![Piece::new(Mosquito, Black),]);
 
     assert_eq!(grid.num_pieces(), 10);
+}
+
+
+#[test]
+pub fn test_parse_selector() {
+    let expected = concat!(
+        ". . . . .\n",
+        " . * A * .\n",
+        ". B * * .\n",
+        " . * 2 * .\n",
+        ". . . . .\n\n",
+        "start - [ 0 0 ]\n\n",
+        "2 - [ p p ]\n",
+    );
+
+    let selectors = Parser::parse_selector(expected).expect("Couldn't parse selectors");
+    let expected = vec![
+        HexLocation::new(1, 1),
+        HexLocation::new(3, 1),
+        HexLocation::new(1, 2),
+        HexLocation::new(2, 2),
+        HexLocation::new(0, 3),
+        HexLocation::new(2, 3)
+    ];
+
+    assert_eq!(selectors, expected);
 }

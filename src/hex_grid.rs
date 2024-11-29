@@ -24,6 +24,13 @@ pub struct HexGrid {
 }
 
 impl HexGrid {
+
+    /// Translates a DSL string with "*" characters and reports the 
+    /// locations of each * on the resulting board
+    pub fn selector(input: &str) -> Vec<HexLocation> {
+        Parser::parse_selector(input).expect("Failed to parse selector")
+    }
+
     pub fn from_dsl(input: &str) -> Self {
         Parser::parse_hex_grid(input).expect("Failed to parse input into HexGrid")
     }
@@ -158,11 +165,6 @@ impl HexGrid {
             return vec![];
         } // out of bounds
         self.axial(q as usize, r as usize)
-    }
-
-    pub fn move_piece(&mut self, from: HexLocation, to: HexLocation) {
-        let piece = self.remove(from);
-        self.add(piece.unwrap(), to);
     }
 
     /// Outputs the current state of the grid according to the DSL

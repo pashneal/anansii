@@ -1,6 +1,7 @@
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
 pub use crate::piece::*;
+use crate::game::Position;
 
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
@@ -348,6 +349,20 @@ impl PartialEq for HexGrid {
 }
 
 impl Eq for HexGrid {}
+
+impl Position for HexGrid {
+    fn new() -> Self {
+        HexGrid::new()
+    }
+
+    fn from_hex_grid(grid: &HexGrid) -> Self {
+        grid.clone()
+    }
+
+    fn to_hex_grid(&self) -> HexGrid {
+        self.clone()
+    }
+}
 
 #[test]
 fn test_board_string_empty() {

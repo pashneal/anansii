@@ -29,6 +29,7 @@ pub struct GameDebugger {
     annotations: Vec<Annotator>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GameResult {
     WhiteWins,
     BlackWins,
@@ -71,6 +72,20 @@ impl GameDebugger {
         Ok(())
     }
 
+    /// Give a list of legal UHP moves starting from the empty board,
+    /// create and return a GameDebugger with the moves accounted for.
+    pub fn from_moves(moves: &[String]) -> Result<Self> {
+        let annotator = Annotator::new();
+        let annotations = vec![annotator];
+        let mut game = GameDebugger { annotations };
+
+        for mv in moves.iter() {
+            game.make_move(mv)?;
+        }
+
+        Ok(game)
+    }
+
     /// Given all positions arrived at within the game create
     /// and return a GameDebugger with the positions.
     pub fn from_positions<P: Position>(positions: &Vec<P>) -> Result<Self> {
@@ -96,8 +111,8 @@ impl GameDebugger {
         let annotator = self.annotations.last().unwrap();
         let grid = annotator.position();
 
-        let white_queen = grid.find(Piece::new(Ladybug, White));
-        let black_queen = grid.find(Piece::new(Ladybug, Black));
+        let white_queen = grid.find(Piece::new(Queen, White));
+        let black_queen = grid.find(Piece::new(Queen, Black));
 
         if let Some((queen_loc, _)) = white_queen {
             if grid.get_neighbors(queen_loc).len() == 6 {
@@ -113,30 +128,100 @@ impl GameDebugger {
 
         let mut position_count = 0;
         for annotator in self.annotations.iter() {
-            if position_count > 2 {
-                return Some(GameResult::Draw);
-            }
             if annotator.position() == grid {
                 position_count += 1;
+            }
+            if position_count > 2 {
+                return Some(GameResult::Draw);
             }
         }
 
         None
+    }
+
+    /// Get the latest position in the game
+    pub fn position(&self) -> &HexGrid {
+        self.annotations.last().unwrap().position()
     }
 }
 
 pub trait Position {
     fn new() -> Self;
     fn to_hex_grid(&self) -> HexGrid;
-    fn from_hex_grid(&self, grid: &HexGrid) -> Self;
+    fn from_hex_grid(grid: &HexGrid) -> Self;
 }
 
 #[test]
 pub fn test_win() {
-    //TODO
+    let white_wins = [
+        String::from(r"wP"),
+        String::from(r"bL wP-"),
+        String::from(r"wB1 \wP"),
+        String::from(r"bQ bL/"),
+        String::from(r"wA1 /wB1"),
+        String::from(r"bA1 \bQ"),
+        String::from(r"wQ wA1\"),
+        String::from(r"bB1 bQ/"),
+        String::from(r"wB1 wP"),
+        String::from(r"bG1 bB1\"),
+        String::from(r"wA1 bQ\"),
+        String::from(r"bG2 bG1/"),
+        String::from(r"wB1 \bL"),
+    ];
+
+    let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+    for pos in white_wins.iter() {
+        assert!(game.game_result().is_none());
+        game.make_move(pos).unwrap();
+    }
+    assert_eq!(game.game_result(), Some(GameResult::WhiteWins));
+
+    let black_wins = [
+        String::from(r"wP"),
+        String::from(r"bL wP-"),
+        String::from(r"wB1 \wP"),
+        String::from(r"bQ bL/"),
+        String::from(r"wA1 /wB1"),
+        String::from(r"bA1 \bQ"),
+        String::from(r"wQ wA1\"),
+        String::from(r"bA2 bQ/"),
+        String::from(r"wB1 wP"),
+        String::from(r"bA1 /wA1"),
+        String::from(r"wB1 wP\"),
+        String::from(r"bA2 bA1\"),
+        String::from(r"wA2 \wP"),
+        String::from(r"bA3 bQ\"),
+        String::from(r"wA2 wQ\"),
+    ];
+
+    
+    let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+    for move_ in black_wins.iter() {
+        assert!(game.game_result().is_none());
+        game.make_move(move_).unwrap();
+    }
+    assert_eq!(game.game_result(), Some(GameResult::BlackWins));
 }
 
 #[test]
 pub fn test_draw() {
-    //TODO
+
+    let draw = [
+        String::from(r"wA1"),
+        String::from(r"bA1 wA1-"),
+        String::from(r"wQ -wA1"),
+        String::from(r"bQ bA1-"),
+        String::from(r"wQ \wA1"),
+        String::from(r"bQ bA1/"),
+        String::from(r"wQ -wA1"),
+        String::from(r"bQ bA1-"),
+        String::from(r"wQ /wA1"),
+        String::from(r"bQ bA1\"),
+        String::from(r"wQ -wA1"),
+        String::from(r"bQ bA1-"),
+    ];
+
+    let game = GameDebugger::from_moves(&draw).unwrap();
+    println!("game\n:{}", game.position().to_dsl());
+    assert_eq!(game.game_result(), Some(GameResult::Draw));
 }

@@ -1,7 +1,7 @@
+use crate::constants::*;
 use crate::hex_grid::*;
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::constants::*;
 
 #[derive(Error, Debug)]
 pub enum UHPError {
@@ -155,14 +155,18 @@ impl Annotator {
         location: HexLocation,
         ids: &HashMap<HexLocation, StackIds>,
     ) -> String {
-
-
         let stack = hex_grid.peek(location);
         debug_assert!(stack.len() > 0, "There should be a piece here!");
         if stack.len() > 1 {
             // If the piece climbs atop the hive, use the piece below it as the anchor
             let piece_below = stack[stack.len() - 2];
-            let id_below = ids.get(&location).unwrap().iter().nth(stack.len() - 2).unwrap().unwrap();
+            let id_below = ids
+                .get(&location)
+                .unwrap()
+                .iter()
+                .nth(stack.len() - 2)
+                .unwrap()
+                .unwrap();
             return piece_below.to_uhp(id_below);
         }
 
@@ -531,7 +535,7 @@ impl Annotator {
     }
 }
 
-pub enum GameType{
+pub enum GameType {
     Standard,
     M,
     L,
@@ -580,7 +584,7 @@ impl UHPInterface {
         Err("Unknown command, cannot parse".to_string())
     }
 
-    /// Parse a GameTypeString (see Universal Hive Protocol wiki) 
+    /// Parse a GameTypeString (see Universal Hive Protocol wiki)
     /// and set the game type accordingly
     fn set_game_type(&mut self, input: &str) -> CommandResult {
         self.game_type = match input {
@@ -591,13 +595,15 @@ impl UHPInterface {
             "Base+ML" | "Base+LM" => GameType::ML,
             "Base+MP" | "Base+PM" => GameType::MP,
             "Base+LP" | "Base+PL" => GameType::LP,
-            "Base+MLP" | "Base+MPL" | "Base+LMP" | "Base+LPM" | "Base+PML" | "Base+PLM" => GameType::MLP,
+            "Base+MLP" | "Base+MPL" | "Base+LMP" | "Base+LPM" | "Base+PML" | "Base+PLM" => {
+                GameType::MLP
+            }
             _ => return Err("Unable to interpret GameTypeString".to_string()),
         };
         Ok("".to_string())
     }
 
-    /// Parse a newgame command, 
+    /// Parse a newgame command,
     /// commands must be of the form:
     ///
     /// newgame
@@ -620,22 +626,27 @@ impl UHPInterface {
         if !input.contains(";") {
             self.set_game_type(&input[8..])?;
             // TODO: do other things?
-
         } else {
             let rest = input[8..].to_string();
             let mut delimited = rest.split(";");
 
-            let base = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            let base = delimited
+                .next()
+                .ok_or_else(|| String::from("Invalid GameString"))?;
             self.set_game_type(base)?;
 
-            let game_state = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            let game_state = delimited
+                .next()
+                .ok_or_else(|| String::from("Invalid GameString"))?;
             match game_state {
-                "NotStarted" => {}, //TODO: do something
+                "NotStarted" => {} //TODO: do something
                 "InProgress" => {} //TODO: do something
                 _ => return Err("Expected GameStateString at position 1 of GameString".to_string()),
             }
 
-            let turn_string = delimited.next().ok_or_else(|| String::from("Invalid GameString"))?;
+            let turn_string = delimited
+                .next()
+                .ok_or_else(|| String::from("Invalid GameString"))?;
             if turn_string.len() < 8 {
                 return Err("Expected TurnString at position 2 of GameString".to_string());
             }
@@ -646,8 +657,10 @@ impl UHPInterface {
             };
             //self.player_to_move = color;
 
-            let num = turn_string[6..turn_string.len()-1].to_string();
-            let _turn_num = num.parse::<u8>().map_err(|_| "Expected number at position 2 of GameString")?;
+            let num = turn_string[6..turn_string.len() - 1].to_string();
+            let _turn_num = num
+                .parse::<u8>()
+                .map_err(|_| "Expected number at position 2 of GameString")?;
 
             while let Some(move_string) = delimited.next() {
                 self.make_move(move_string)?;
@@ -656,29 +669,38 @@ impl UHPInterface {
         }
 
         Ok(self.game_string())
-
     }
 
     /// Returns the current GameString according to the Universal Hive Protocol
     /// wiki
     fn game_string(&self) -> String {
-        let turn_number = ((self.annotations.len() -  1) / 2) + 1;
-        let moves = self.annotations.last().unwrap().uhp_move_strings().join(";");
+        let turn_number = ((self.annotations.len() - 1) / 2) + 1;
+        let moves = self
+            .annotations
+            .last()
+            .unwrap()
+            .uhp_move_strings()
+            .join(";");
         let game_type = self.game_type.to_str();
         let color = self.player_to_move.to_str();
         if self.annotations.len() == 1 {
             return format!("{};NotStarted;{}[{}]", game_type, color, turn_number);
         }
-        format!("{};InProgress;{}[{}];{}", game_type, color, turn_number, moves)
+        format!(
+            "{};InProgress;{}[{}];{}",
+            game_type, color, turn_number, moves
+        )
     }
 
     /// Parses a move string in the UHP protocol form and stores
-    /// it directly for construction of the GameString. 
+    /// it directly for construction of the GameString.
     fn make_move(&mut self, move_string: &str) -> CommandResult {
         let annotator = self.annotations.last().unwrap();
-        let annotator = annotator.next_uhp_move(move_string).map_err(|e| e.to_string())?;
+        let annotator = annotator
+            .next_uhp_move(move_string)
+            .map_err(|e| e.to_string())?;
         self.annotations.push(annotator);
-        self.player_to_move = self.player_to_move.opposite(); 
+        self.player_to_move = self.player_to_move.opposite();
         Ok(self.game_string())
     }
 
@@ -700,7 +722,7 @@ impl UHPInterface {
         self.make_move("pass")
     }
 
-    fn best_move(&mut self, input : &str) -> CommandResult {
+    fn best_move(&mut self, input: &str) -> CommandResult {
         todo!()
     }
 
@@ -726,7 +748,10 @@ impl UHPInterface {
             return self.undo_one();
         }
 
-        let num = input[5..].trim().parse::<u8>().map_err(|_| "Invalid number for undo command".to_string())?;
+        let num = input[5..]
+            .trim()
+            .parse::<u8>()
+            .map_err(|_| "Invalid number for undo command".to_string())?;
         if num as usize >= self.annotations.len() {
             return Err("Cannot undo past the first move".to_string());
         }
@@ -745,37 +770,45 @@ impl UHPInterface {
         todo!()
     }
 
-    pub fn current_position(&self) -> &HexGrid { 
-        self.annotations.last().expect("There should always be a current position").position()
+    pub fn current_position(&self) -> &HexGrid {
+        self.annotations
+            .last()
+            .expect("There should always be a current position")
+            .position()
     }
 
-
-    /// Parses commands according to the Universal Hive Protocol 
+    /// Parses commands according to the Universal Hive Protocol
     /// and returns the appropriate response
     ///
     /// All responses end with "ok\n"
     ///
     /// If the command encounters an error, the string returned will
-    /// begin with "err" in accordance with the UHP 
-    pub fn command(&mut self,  input: &str) -> String {
+    /// begin with "err" in accordance with the UHP
+    pub fn command(&mut self, input: &str) -> String {
         let response = match input.trim() {
             "info" => self.info(),
             "validmoves" => self.valid_moves(),
             "pass" => self.pass(),
             a if a.starts_with("bestmove") => self.best_move(a),
-            a if a.starts_with("newgame") => self.new_game(a), 
+            a if a.starts_with("newgame") => self.new_game(a),
             a if a.starts_with("play") => self.play(a),
             a if a.starts_with("undo") => self.undo(a),
             a if a.starts_with("options") => self.options(a),
-            _ => self.unknown(), 
+            _ => self.unknown(),
         };
         let response = match response {
             Ok(response) => response,
             Err(response) => "err ".to_string() + &response,
         };
 
-        debug_assert!(if response.len() > 0 { response.chars().last().unwrap() != '\n' } else { true },
-        "Non-empty response should not end with a newline");
+        debug_assert!(
+            if response.len() > 0 {
+                response.chars().last().unwrap() != '\n'
+            } else {
+                true
+            },
+            "Non-empty response should not end with a newline"
+        );
         if response.len() == 0 {
             return "ok\n".to_string();
         } else {
@@ -783,7 +816,6 @@ impl UHPInterface {
         }
     }
 }
-
 
 #[test]
 pub fn test_annotator_empty() {
@@ -1044,7 +1076,6 @@ pub fn test_annotator_climb() {
             actual
         );
     }
-
 }
 
 #[test]
@@ -1690,7 +1721,6 @@ pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
     }
 }
 
-
 #[test]
 pub fn test_uhp_interface_newgame() {
     let mut uhp = UHPInterface::new();
@@ -1705,36 +1735,30 @@ pub fn test_uhp_interface_newgame_game_type_strings() {
     assert_eq!(result, "Base+M;NotStarted;White[1]\nok\n");
     let result = uhp.command("newgame Base+ML");
     assert!(
-        result == "Base+ML;NotStarted;White[1]\nok\n" ||
-        result == "Base+LM;NotStarted;White[1]\nok\n"
+        result == "Base+ML;NotStarted;White[1]\nok\n"
+            || result == "Base+LM;NotStarted;White[1]\nok\n"
     );
 
     let result = uhp.command("newgame Base+LM");
     assert!(
-        result == "Base+LM;NotStarted;White[1]\nok\n" ||
-        result == "Base+ML;NotStarted;White[1]\nok\n"
+        result == "Base+LM;NotStarted;White[1]\nok\n"
+            || result == "Base+ML;NotStarted;White[1]\nok\n"
     );
     let result = uhp.command("newgame Base+MLP");
     assert!(
-        result == "Base+MLP;NotStarted;White[1]\nok\n" ||
-        result == "Base+MPL;NotStarted;White[1]\nok\n" ||
-        result == "Base+PLM;NotStarted;White[1]\nok\n" ||
-        result == "Base+PML;NotStarted;White[1]\nok\n" ||
-        result == "Base+LMP;NotStarted;White[1]\nok\n" ||
-        result == "Base+LPM;NotStarted;White[1]\nok\n"
+        result == "Base+MLP;NotStarted;White[1]\nok\n"
+            || result == "Base+MPL;NotStarted;White[1]\nok\n"
+            || result == "Base+PLM;NotStarted;White[1]\nok\n"
+            || result == "Base+PML;NotStarted;White[1]\nok\n"
+            || result == "Base+LMP;NotStarted;White[1]\nok\n"
+            || result == "Base+LPM;NotStarted;White[1]\nok\n"
     );
-
 }
 
 #[test]
 pub fn test_uhp_interface_some_moves() {
     let moves = vec![
-        r"wL",
-        r"bP wL-",
-        r"wA1 \wL",
-        r"bB1 bP/",
-        r"wQ /wA1",
-        r"bQ bB1\",
+        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
     ];
     let final_position = HexGrid::from_dsl(concat!(
         ". . . . . .\n",
@@ -1746,30 +1770,24 @@ pub fn test_uhp_interface_some_moves() {
 
     let moves = moves.join(";");
     let newgame = format!("newgame Base+LP;InProgress;White[4];{}", moves);
-    
+
     let mut uhp = UHPInterface::new();
     let output = uhp.command(&newgame);
 
     println!("{}", output);
     assert!(
-        output == format!("Base+LP;InProgress;White[4];{}\nok\n", moves) ||
-        output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
+        output == format!("Base+LP;InProgress;White[4];{}\nok\n", moves)
+            || output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
     );
     println!("{}", uhp.current_position().to_dsl());
     println!("{}", final_position.to_dsl());
     assert!(*uhp.current_position() == final_position);
-
 }
 
 #[test]
 pub fn test_uhp_interface_play() {
     let moves = vec![
-        r"wL",
-        r"bP wL-",
-        r"wA1 \wL",
-        r"bB1 bP/",
-        r"wQ /wA1",
-        r"bQ bB1\",
+        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
     ];
     let final_position = HexGrid::from_dsl(concat!(
         ". . . . . .\n",
@@ -1778,7 +1796,7 @@ pub fn test_uhp_interface_play() {
         " . . . . . .\n\n",
         "start - [ -1 -2 ]\n\n"
     ));
-    
+
     let mut uhp = UHPInterface::new();
     uhp.command("newgame Base+PL");
 
@@ -1789,14 +1807,26 @@ pub fn test_uhp_interface_play() {
             _ => "Black",
         };
         let output = uhp.command(&format!("play {}", move_string));
-        let moves = moves.iter().take(i + 1).cloned().collect::<Vec<&str>>().join(";");
+        let moves = moves
+            .iter()
+            .take(i + 1)
+            .cloned()
+            .collect::<Vec<&str>>()
+            .join(";");
 
         println!("{}", output);
         assert!(
-            output == format!("Base+PL;InProgress;{}[{}];{}\nok\n", color, turn_number, moves) ||
-            output == format!("Base+LP;InProgress;{}[{}];{}\nok\n", color, turn_number, moves)
+            output
+                == format!(
+                    "Base+PL;InProgress;{}[{}];{}\nok\n",
+                    color, turn_number, moves
+                )
+                || output
+                    == format!(
+                        "Base+LP;InProgress;{}[{}];{}\nok\n",
+                        color, turn_number, moves
+                    )
         );
-
     }
 
     assert!(*uhp.current_position() == final_position);
@@ -1805,12 +1835,7 @@ pub fn test_uhp_interface_play() {
 #[test]
 pub fn test_uhp_interface_undo() {
     let moves = vec![
-        r"wL",
-        r"bP wL-",
-        r"wA1 \wL",
-        r"bB1 bP/",
-        r"wQ /wA1",
-        r"bQ bB1\",
+        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
     ];
 
     let mut uhp = UHPInterface::new();
@@ -1820,14 +1845,17 @@ pub fn test_uhp_interface_undo() {
     uhp.command(&format!("play {}", moves[2]));
     uhp.command(&format!("play {}", moves[3]));
     let output = uhp.command("undo");
-    assert_eq!( &output[8..], ";InProgress;Black[2];wL;bP wL-;wA1 \\wL\nok\n" );
+    assert_eq!(
+        &output[8..],
+        ";InProgress;Black[2];wL;bP wL-;wA1 \\wL\nok\n"
+    );
 
     let output = uhp.command("undo");
-    assert_eq!( &output[8..], ";InProgress;White[2];wL;bP wL-\nok\n" );
+    assert_eq!(&output[8..], ";InProgress;White[2];wL;bP wL-\nok\n");
 
     uhp.command(&format!("play {}", moves[2]));
     let output = uhp.command("undo 2");
-    assert_eq!( &output[8..], ";InProgress;Black[1];wL\nok\n" );
+    assert_eq!(&output[8..], ";InProgress;Black[1];wL\nok\n");
 }
 #[test]
 pub fn test_game_states_output() {
@@ -1844,4 +1872,3 @@ pub fn test_game_states_input() {
     // TODO: WhiteWins,
     // TODO: Blackwins
 }
-

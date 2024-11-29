@@ -1,177 +1,8 @@
 use crate::hex_grid_dsl::Parser;
-use std::collections::HashMap;
-use thiserror::Error;
+pub use crate::location::*;
+pub use crate::piece::*;
 
-#[derive(Error, Debug)]
-pub enum HexGridError {
-    #[error("String input cannot be converted to piece")]
-    PieceError,
-}
-
-pub type Result<T> = std::result::Result<T, HexGridError>;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PieceType {
-    Queen,
-    Grasshopper,
-    Spider,
-    Beetle,
-    Ant,
-    Pillbug,
-    Ladybug,
-    Mosquito,
-}
-
-impl PieceType {
-    pub fn to_str(&self) -> &str {
-        use PieceType::*;
-        match self {
-            Queen => "Q",
-            Grasshopper => "G",
-            Spider => "S",
-            Beetle => "B",
-            Ant => "A",
-            Pillbug => "P",
-            Ladybug => "L",
-            Mosquito => "M",
-        }
-    }
-
-    pub fn try_from_char(c: &char) -> Result<PieceType> {
-        let string = c.to_string();
-        PieceType::try_from_str(&string)
-    }
-    pub fn try_from_str(string: &str) -> Result<PieceType> {
-        use PieceType::*;
-        match string.to_uppercase().as_str() {
-            "Q" => Ok(Queen),
-            "G" => Ok(Grasshopper),
-            "S" => Ok(Spider),
-            "B" => Ok(Beetle),
-            "A" => Ok(Ant),
-            "P" => Ok(Pillbug),
-            "L" => Ok(Ladybug),
-            "M" => Ok(Mosquito),
-            _ => Err(HexGridError::PieceError),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum PieceColor {
-    Black,
-    White,
-}
-
-impl PieceColor {
-    pub fn opposite(&self) -> PieceColor {
-        match self {
-            PieceColor::White => PieceColor::Black,
-            PieceColor::Black => PieceColor::White,
-        }
-    }
-
-    pub fn to_str(&self) -> &str {
-        match self {
-            PieceColor::White => "White",
-            PieceColor::Black => "Black",
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Piece {
-    pub piece: PieceType,
-    pub color: PieceColor,
-}
-
-impl Piece {
-    pub fn new(piece: PieceType, color: PieceColor) -> Piece {
-        Piece { piece, color }
-    }
-
-    /// Uppercase letter for white, lowercase for black
-    pub fn to_str(&self) -> String {
-        let piece_str = match self.color {
-            PieceColor::White => self.piece.to_str().to_uppercase(),
-            PieceColor::Black => self.piece.to_str().to_lowercase(),
-        };
-
-        piece_str
-    }
-
-    pub fn to_uhp(&self, id: u8) -> String {
-        match self.color {
-            PieceColor::White => format!("w{}{}", self.piece.to_str(), id),
-            PieceColor::Black => format!("b{}{}", self.piece.to_str(), id),
-        }
-    }
-
-    pub fn from_uhp(uhp: &str) -> Result<Piece> {
-        let color = match &uhp[0..1] {
-            "w" => PieceColor::White,
-            "b" => PieceColor::Black,
-            _ => return Err(HexGridError::PieceError),
-        };
-
-        let piece = PieceType::try_from_char(&uhp.chars().nth(1).unwrap())?;
-        Ok(Piece::new(piece, color))
-    }
-}
-
-impl std::hash::Hash for Piece {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.piece.hash(state);
-        self.color.hash(state);
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum Direction {
-    NW,
-    NE,
-    E,
-    SE,
-    SW,
-    W,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct HexLocation {
-    pub x: i8,
-    pub y: i8,
-}
-
-impl HexLocation {
-    pub fn new(x: i8, y: i8) -> HexLocation {
-        HexLocation { x, y }
-    }
-
-    pub fn apply(&self, direction: Direction) -> Self {
-        use Direction::*;
-        let (mut x, mut y) = (self.x, self.y);
-        match direction {
-            NW => y -= 1,
-            E => x += 1,
-            W => x -= 1,
-            SE => y += 1,
-            NE => {
-                x += 1;
-                y -= 1
-            }
-            SW => {
-                x -= 1;
-                y += 1
-            }
-        }
-        HexLocation::new(x, y)
-    }
-
-    pub fn add(&self, other: HexLocation) -> HexLocation {
-        HexLocation::new(self.x + other.x, self.y + other.y)
-    }
-}
-
+pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
 pub const HEX_GRID_CENTER: (usize, usize) = (HEX_GRID_SIZE / 2, HEX_GRID_SIZE / 2);
 pub const MAX_HEIGHT: usize = 7;
@@ -200,6 +31,33 @@ impl HexGrid {
         HexGrid {
             grid: vec![vec![vec![None; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
         }
+    }
+
+    /// Returns the stack of pieces surronding a given location
+    /// grouped together by respected stacks
+    pub fn get_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
+        let mut neighbors = vec![];
+        for direction in Direction::all().iter() {
+            let loc = location.apply(*direction);
+            if self.peek(loc).len() > 0 {
+                neighbors.push(loc);
+            }
+        }
+        neighbors
+    }
+
+    /// Returns the first occurrence of a specified piece in the grid.
+    /// The search occurs in board order, that is, from top to bottom, then left to right.
+    /// If the piece is not found, None is returned.
+    pub fn find(&self, piece: Piece) -> Option<(HexLocation, Height)> {
+        for (stack, location) in self.pieces() {
+            for (height, &stack_piece) in stack.iter().enumerate() {
+                if piece == stack_piece {
+                    return Some((location, height));
+                }
+            }
+        }
+        None
     }
 
     /// Return piece stacks on the board in "board order", that is,
@@ -733,8 +591,6 @@ fn test_start_string2() {
     grid.add(white_queen, start);
     grid.add(white_queen, nw);
     grid.add(white_queen, sw);
-
-    let board = grid.board_string();
 
     let start_string = grid.start_string();
     let expected = "start - [ 4 -8 ]";

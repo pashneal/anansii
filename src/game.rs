@@ -48,7 +48,6 @@ impl GameResult {
 }
 
 impl GameDebugger {
-
     /// Makes a legal UHP move from the UHP-compatible string passed in
     pub fn make_move(&mut self, move_string: &str) -> Result<()> {
         let mut annotator = self.annotations.last().unwrap().clone();
@@ -194,7 +193,6 @@ pub fn test_win() {
         String::from(r"wA2 wQ\"),
     ];
 
-    
     let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
     for move_ in black_wins.iter() {
         assert!(game.game_result().is_none());
@@ -205,7 +203,6 @@ pub fn test_win() {
 
 #[test]
 pub fn test_draw() {
-
     let draw = [
         String::from(r"wA1"),
         String::from(r"bA1 wA1-"),

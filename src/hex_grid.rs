@@ -1,7 +1,7 @@
+use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
 pub use crate::piece::*;
-use crate::game::Position;
 
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
@@ -24,8 +24,7 @@ pub struct HexGrid {
 }
 
 impl HexGrid {
-
-    /// Translates a DSL string with "*" characters and reports the 
+    /// Translates a DSL string with "*" characters and reports the
     /// locations of each * on the resulting board
     pub fn selector(input: &str) -> Vec<HexLocation> {
         Parser::parse_selector(input).expect("Failed to parse selector")

@@ -1,8 +1,8 @@
 use crate::constants::*;
+use crate::game::*;
 use crate::hex_grid::*;
 use std::collections::HashMap;
 use thiserror::Error;
-use crate::game::*;
 
 #[derive(Error, Debug)]
 pub enum UHPError {
@@ -485,10 +485,7 @@ impl Annotator {
             let mut moves = annotator.moves.clone();
             moves.pop();
             moves.push(move_string.to_string());
-            Annotator {
-                moves,
-                ..annotator
-            }
+            Annotator { moves, ..annotator }
         })
     }
 
@@ -720,7 +717,7 @@ impl UHPInterface {
         }
         format!(
             "{};{};{}[{}];{}",
-            game_type, game_result , color, turn_number, moves
+            game_type, game_result, color, turn_number, moves
         )
     }
 
@@ -1911,13 +1908,15 @@ pub fn test_game_states_output() {
     println!("{}", format!("{}\nok\n", draw_complete));
     assert!(output == format!("{}\nok\n", draw_complete));
 
-
     uhp.command(&format!("newgame {}", black_wins_before));
     let output = uhp.command(&format!("play {}", black_wins_last_move));
     let output = output.to_string();
     let black_wins_complete = black_wins_complete.to_string();
     println!("{}", output[8..].to_string());
-    println!("{}", format!("{}\nok\n", black_wins_complete)[8..].to_string());
+    println!(
+        "{}",
+        format!("{}\nok\n", black_wins_complete)[8..].to_string()
+    );
     assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
 
     uhp.command(&format!("newgame {}", white_wins_before));
@@ -1935,7 +1934,6 @@ pub fn test_game_states_input() {
     println!("{}", output);
     println!("{}", format!("{}\nok\n", draw_game_string));
     assert!(output == format!("{}\nok\n", draw_game_string));
-
 
     let black_wins = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
     let output = uhp.command(&format!("newgame {}", black_wins));

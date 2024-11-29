@@ -37,7 +37,7 @@ pub enum ParserError {
 ///
 /// ```
 ///
-/// The above string can also be used not to create a HexGrid, but instead to 
+/// The above string can also be used not to create a HexGrid, but instead to
 /// produce locations at certain marked spots in the grid with the following format:
 ///
 /// ```
@@ -76,19 +76,21 @@ pub enum Alignment {
 }
 
 impl Parser {
-
     /// Parses selector locations from the grid according to the DSL specification
     /// and returns a vector of corresponding HexLocations in board order referring
     /// to the "*" characters found.
     pub fn parse_selector(input: &str) -> Result<Vec<HexLocation>> {
         let (board_inputs, _) = Parser::parse_head(input)?;
-        let selector_locations = board_inputs.iter().filter_map(|(input, loc)| {
-            if let BoardInput::Star = input {
-                Some(*loc)
-            } else {
-                None
-            }
-        }).collect();
+        let selector_locations = board_inputs
+            .iter()
+            .filter_map(|(input, loc)| {
+                if let BoardInput::Star = input {
+                    Some(*loc)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         Ok(selector_locations)
     }
@@ -117,7 +119,7 @@ impl Parser {
         Ok(grid)
     }
 
-    /// Parses the "head", that is, the "board" and "start" parts of the DSL 
+    /// Parses the "head", that is, the "board" and "start" parts of the DSL
     /// specification and returns inputs found in "board order" -
     /// first by top to bottom, then by left to right.
     ///
@@ -871,7 +873,6 @@ pub fn test_conversion_larger() {
     assert_eq!(grid.num_pieces(), 10);
 }
 
-
 #[test]
 pub fn test_parse_selector() {
     let expected = concat!(
@@ -891,7 +892,7 @@ pub fn test_parse_selector() {
         HexLocation::new(1, 2),
         HexLocation::new(2, 2),
         HexLocation::new(0, 3),
-        HexLocation::new(2, 3)
+        HexLocation::new(2, 3),
     ];
 
     assert_eq!(selectors, expected);

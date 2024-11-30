@@ -45,7 +45,7 @@ impl MoveGeneratorDebugger{
 }
 
 
-fn compare_positions(start_location: HexLocation, expected: &str, original_position: &HexGrid, test_positions: &Vec<HexGrid>) {
+fn compare_moves(start_location: HexLocation, expected: &str, original_position: &HexGrid, test_positions: &Vec<HexGrid>) {
     let expected_locations = HexGrid::selector(expected);
     let mut original_position = original_position.clone();
     let piece = original_position.remove(start_location).expect("Expected piece at start location");
@@ -58,8 +58,8 @@ fn compare_positions(start_location: HexLocation, expected: &str, original_posit
     }
 
     assert_eq!(expected_positions.len(), test_positions.len());
-    for position in test_positions {
-        assert!(expected_positions.contains(position));
+    for position in expected_positions {
+        assert!(test_positions.contains(&position));
     }
 }
 
@@ -167,7 +167,7 @@ pub fn test_spider_door(){
     let generator = MoveGeneratorDebugger::from_grid(&grid);
     let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider, height);
-    compare_positions(spider, selector, &grid, &spider_moves);
+    compare_moves(spider, selector, &grid, &spider_moves);
 
     let grid = HexGrid::from_dsl(concat!( 
         " . . . . . . .\n",
@@ -192,7 +192,7 @@ pub fn test_spider_door(){
     let generator = MoveGeneratorDebugger::from_grid(&grid);
     let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider, height);
-    compare_positions(spider, selector, &grid, &spider_moves);
+    compare_moves(spider, selector, &grid, &spider_moves);
 }
 
 #[test] 
@@ -221,5 +221,5 @@ pub fn test_spider_typical_boards() {
     let generator = MoveGeneratorDebugger::from_grid(&grid);
     let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider, height);
-    compare_positions(spider, selector, &grid, &spider_moves);
+    compare_moves(spider, selector, &grid, &spider_moves);
 }

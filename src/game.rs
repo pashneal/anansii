@@ -1,4 +1,4 @@
-use crate::hex_grid::HexGrid;
+use crate::hex_grid::*;
 use crate::piece::*;
 use crate::uhp::*;
 use std::marker::PhantomData;
@@ -22,6 +22,7 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 /// simplicity, visual representation, slow debugging methods,
 /// or extremely complicated testing harnesses - a hard lesson learned
 /// from the first version of this project. It leaves optimized code to more easily
+/// be iterated on.
 pub struct GameDebugger {
     /// All Hive positions in order arrived through the game but
     /// through the lens of the Annotator which translates
@@ -138,6 +139,15 @@ impl GameDebugger {
         None
     }
 
+    /// Returns the locations in the hive that are "pinned",
+    /// in other words, removing the pieces in that stack would violate the One Hive rule
+    ///
+    /// returns in board order, that is, first top-to-bottom then left-to-right
+    pub fn pinned(&self) -> Vec<HexLocation> {
+        todo!()
+    }
+
+
     /// Get the latest position in the game
     pub fn position(&self) -> &HexGrid {
         self.annotations.last().unwrap().position()
@@ -148,6 +158,11 @@ pub trait Position {
     fn new() -> Self;
     fn to_hex_grid(&self) -> HexGrid;
     fn from_hex_grid(grid: &HexGrid) -> Self;
+}
+
+#[test]
+pub fn pinned_pieces() {
+
 }
 
 #[test]

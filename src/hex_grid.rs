@@ -1,6 +1,7 @@
 use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
+use std::collections::HashSet;
 pub use crate::piece::*;
 
 pub type Height = usize;
@@ -18,7 +19,7 @@ pub const MAX_HEIGHT: usize = 7;
 ///
 /// HexLocation 0,0 is in the center of the grid to make
 /// the grid easier to reason about as Hive is a boardless "floating" game
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct HexGrid {
     grid: Vec<Vec<Vec<Option<Piece>>>>,
 }
@@ -40,7 +41,48 @@ impl HexGrid {
         }
     }
 
-    /// Returns the stack of pieces surronding a given location
+    /// Depth first search on the stack with a location not allowed to be visited
+    /// to determine if the location contains a pinned piece
+    fn dfs(&self, visited : &mut HashSet<HexLocation>, disallowed : HexLocation, current_location: HexLocation) {
+        if visited.contains(&current_location) {
+            return;
+        }
+        if current_location == disallowed {
+            return;
+        }
+        visited.insert(current_location);
+        for neighbor in self.get_neighbors(current_location){
+            if self.peek(neighbor).len() > 0 {
+                self.dfs(visited, disallowed, neighbor);
+            }
+        }
+        
+    }
+    /// Returns the locations in the hive that are "pinned",
+    /// in other words, removing the pieces in that stack would violate the One Hive rule
+    ///
+    /// returns in board order, that is, first top-to-bottom then left-to-right
+    /// Assumes that the pieces on the board already form "One Hive"
+    pub fn pinned(&self) -> Vec<HexLocation> {
+        let mut pinned = vec![];
+        let hive = self.pieces().into_iter().map(|(_, location)| location).collect::<Vec<_>>();
+
+        for &candidate in hive.iter() {
+            let mut visited = HashSet::new();
+            let neighbors = self.get_neighbors(candidate);
+            if neighbors.len() >= 1 {
+                self.dfs(&mut visited, candidate, neighbors[0])
+            }
+
+            visited.insert(candidate);
+            if visited.len() != hive.len() {
+                pinned.push(candidate);
+            }
+        }
+        pinned
+    }
+
+    /// Returns the stack of pieces surrounding a given location
     /// grouped together by respected stacks
     pub fn get_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut neighbors = vec![];
@@ -611,4 +653,147 @@ fn test_start_string2() {
     let start_string = grid.start_string();
     let expected = "start - [ 4 -8 ]";
     assert_eq!(start_string, expected);
+}
+
+#[test]
+fn test_pinned_pieces_single() {
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". . a . . .\n",
+        " . . a a . .\n",
+        ". . a . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . * . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    assert_eq!(grid.pinned(), answer);
+}
+
+#[test]
+pub fn test_piece_pinned_boundary_conditions(){
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . a . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    assert_eq!(grid.pinned(), answer);
+
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    // Vacuously true
+    assert_eq!(grid.pinned(), answer);
+}
+
+#[test]
+pub fn test_no_existing_pieces_pinned() {
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". a a a . .\n",
+        " . a . a . .\n",
+        ". . a a a .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    assert_eq!(grid.pinned(), answer);
+
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". a . . . .\n",
+        " . a . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    assert_eq!(grid.pinned(), answer);
+}
+
+#[test]
+pub fn test_long_pins() {
+    let grid = HexGrid::from_dsl(concat!(
+        " . . a . . .\n",
+        ". a a . a .\n",
+        " . . a a . .\n",
+        ". . a . a .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". . * . . .\n",
+        " . . * * . .\n",
+        ". . . . . .\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    assert_eq!(grid.pinned(), answer);
+
+    let grid = HexGrid::from_dsl(concat!(
+        " a . . . . .\n",
+        ". a a . . .\n",
+        " a . a a . .\n",
+        ". . . . a a\n",
+        " . . . . . a\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let answer = HexGrid::selector(concat!(
+        " . . . . . .\n",
+        ". * * . . .\n",
+        " . . * * . .\n",
+        ". . . . * *\n",
+        " . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    assert_eq!(grid.pinned(), answer);
 }

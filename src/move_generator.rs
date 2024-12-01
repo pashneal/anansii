@@ -50,7 +50,7 @@ impl MoveGeneratorDebugger {
 
         let mut result = vec![];
 
-        for slidable_location in spider_removed.slidable_locations(location).iter() {
+        for slidable_location in spider_removed.slidable_locations_2D(location).iter() {
             let found = self.spider_dfs(
                 *slidable_location,
                 visited.clone(),
@@ -146,7 +146,7 @@ impl MoveGeneratorDebugger {
         queen_removed.remove(location);
         let outside = queen_removed.outside();
 
-        for slidable_location in self.grid.slidable_locations(location).iter() {
+        for slidable_location in self.grid.slidable_locations_2D(location).iter() {
             if outside.contains(slidable_location) {
                 let mut new_grid = self.grid.clone();
                 new_grid.remove(location);
@@ -175,7 +175,7 @@ impl MoveGeneratorDebugger {
             }
             visited.insert(location);
 
-            for slidable_location in grid.slidable_locations(location).iter() {
+            for slidable_location in grid.slidable_locations_2D(location).iter() {
                 // In contact with the hive
                 if grid.get_neighbors(*slidable_location).len() > 0 {
                     dfs(*slidable_location, visited, &grid);

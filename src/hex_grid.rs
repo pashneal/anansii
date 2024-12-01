@@ -111,7 +111,7 @@ impl HexGrid {
     }
 
     /// Returns the stack of pieces surrounding a given location
-    /// grouped together by respected stacks
+    /// grouped together by respective stacks
     pub fn get_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut neighbors = vec![];
         for direction in Direction::all().iter() {
@@ -125,7 +125,9 @@ impl HexGrid {
     /// Returns locations that are neighbors of an given location but are
     /// "slidable", that is, they do not form gates that are inaccessible for
     /// sliding pieces and maintains contact with at least one of it's original neighbors
-    pub fn slidable_locations(&self, location: HexLocation) -> Vec<HexLocation> {
+    ///
+    /// "2D" because it ignores the height of the pieces
+    pub fn slidable_locations_2d(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);
         for direction in Direction::all().iter() {

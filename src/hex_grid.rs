@@ -122,11 +122,55 @@ impl HexGrid {
         }
         neighbors
     }
+
+
     /// Returns locations that are neighbors of an given location but are
     /// "slidable", that is, they do not form gates that are inaccessible for
-    /// sliding pieces and maintains contact with at least one of it's original neighbors
+    /// sliding pieces and maintains contact with at least one of its original neighbors
+    ///
+    /// "3D" because it also considers the height of the pieces
+    /// TODO: clarify + reword + 2d is a special case of 3d
+    pub fn slidable_locations_3d(&self, location: HexLocation) -> Vec<HexLocation> {
+        let mut slidable = vec![];
+        let original_neighbors = self.get_neighbors(location);
+        let height = self.peek(location).len();
+
+        for direction in Direction::all().iter() {
+            let destination = location.apply(*direction);
+
+            let (left_dir, right_dir) = direction.adjacent();
+            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
+            let (left_stack, right_stack) = (self.peek(left), self.peek(right));
+
+            // Must be high enough to step over and through gate
+            let gate_requirement = left_stack.len().min(right_stack.len());
+            if height <= gate_requirement {
+                continue;
+            }
+
+            let destination_neighbors = self.get_neighbors(destination);
+            let mut maintains_contact = false;
+
+            for destination_neighbor in destination_neighbors.iter() {
+                if original_neighbors.contains(destination_neighbor) {
+                    maintains_contact = true;
+                    break;
+                }
+            }
+
+            if maintains_contact {
+                slidable.push(destination);
+            }
+        }
+        slidable
+    }
+
+    /// Returns locations that are neighbors of an given location but are
+    /// "slidable", that is, they do not form gates that are inaccessible for
+    /// sliding pieces and maintains contact with at least one of its original neighbors
     ///
     /// "2D" because it ignores the height of the pieces
+    /// TODO: clarify + reword
     pub fn slidable_locations_2d(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);

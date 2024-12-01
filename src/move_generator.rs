@@ -200,6 +200,13 @@ impl MoveGeneratorDebugger {
 
         result
     }
+
+    /// Returns a list of all possible moves for an ant at a given location
+    /// if the ant is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn beetle_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        todo!()
+    }
 }
 
 fn compare_moves(
@@ -554,11 +561,37 @@ pub fn test_queen_moves() {
     let queen_moves = generator.queen_moves(queen);
     compare_moves(queen, selector, &grid, &queen_moves);
 }
+#[test]
+fn test_queen_slide() {
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a a . .\n",
+        ". a . Q . a .\n",
+        " a . . a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . * a a . .\n",
+        ". a . Q . a .\n",
+        " a . * a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+    let queen_moves = generator.queen_moves(queen);
+    compare_moves(queen, selector, &grid, &queen_moves);
+}
+
 
 #[test]
 pub fn test_ant_moves() {
     //TODO: there may be some weird edge cases with
-    //ant inside the hive??
+    //the one hive move that necessitates it checking if 
+    //it is still in contact with its original neighbors?
     use PieceColor::*;
     use PieceType::*;
     // Test with doors, gates, and typical moves
@@ -610,4 +643,191 @@ fn test_ant_pinned() {
     let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
     let ant_moves = generator.ant_moves(ant);
     assert!(ant_moves.is_empty());
+}
+
+#[test]
+fn test_beetle_gate_lower_level() {
+    use PieceColor::*; use PieceType::*;
+    // Tests slide, climb up (always unblocked if only lower level gates exist), down
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a a . .\n",
+        ". a . B . a .\n",
+        " a . . a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . * * a . .\n",
+        ". a . B . a .\n",
+        " a . * * a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
+
+    // Can ignore lower level gate when climbing up
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a a . .\n",
+        ". a . B a a .\n",
+        " a . . a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . * * a . .\n",
+        ". a . B * a .\n",
+        " a . * * a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
+
+    // Can ignore lower level gate when climbing down
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a . . .\n",
+        ". a . . 2 . .\n",
+        " a . . a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a B]\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . . * * . .\n",
+        ". a . * 2 * .\n",
+        " a . . * * . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a B]\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
+}
+
+#[test]
+fn test_beetle_gate_upper_level() {
+    // Test when the beetle is on top of the hive with these situations:
+    // slide (blocked/unblocked), up (blocked/unblocked), down(blocked/unblocked)
+    use PieceColor::*; use PieceType::*;
+
+
+    // slide unblocked
+    // climb up blocked
+    // climb up unblocked
+    // climb down unblocked
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . 5 a . .\n",
+        ". . . 4 2 a .\n",
+        " . . . 5 . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "5 - [a b b b b]\n",
+        "4 - [a b b b]\n",
+        "2 - [a B]\n",
+        "5 - [a b b b b]\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " . . . * * . .\n",
+        ". . . 4 2 * .\n",
+        " . . . * * . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
+
+    // slide blocked
+    // climb down blocked
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . 2 . . .\n",
+        ". . . a 2 2 .\n",
+        " . . . 5 a . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a B]\n",
+        "2 - [a b]\n",
+        "5 - [a b b b b]\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " . . . * . . .\n",
+        ". . . a 2 * .\n",
+        " . . . * a . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
+
+}
+
+
+#[test]
+fn test_beetle_pinned() {
+    // Test with a beetle that is pinned
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . a . . .\n",
+        ". . . . B . .\n",
+        " . . . a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    assert!(beetle_moves.is_empty());
+}
+
+#[test]
+fn test_beetle_pinned_top() {
+    // Test with a beetle that is on top of a pinned piece,
+    // but is not pinned itself
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . a . . .\n",
+        ". . . 2 . . .\n",
+        " . . . a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a B]\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " . . * * . . .\n",
+        ". . . 2 * . .\n",
+        " . . * * . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+    let beetle_moves = generator.beetle_moves(beetle);
+    compare_moves(beetle, selector, &grid, &beetle_moves);
 }

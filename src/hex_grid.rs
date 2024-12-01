@@ -233,6 +233,11 @@ impl HexGrid {
         self.axial(x, y)
     }
 
+    /// Acces the top most piece at a given location
+    pub fn top(&self, location: HexLocation) -> Option<Piece> {
+        self.peek(location).last().cloned()
+    }
+
     /// Access the grid using the axial coordinate system,
     /// with only the pieces that are present at the location
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube

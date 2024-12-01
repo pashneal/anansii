@@ -33,7 +33,7 @@ impl MoveGeneratorDebugger{
         }
     }
 
-    pub fn spider_dfs(&self, location: HexLocation, mut visited: Vec<HexLocation>, depth : usize, spider_removed : &HexGrid) -> Vec<HexLocation>  {
+    fn spider_dfs(&self, location: HexLocation, mut visited: Vec<HexLocation>, depth : usize, spider_removed : &HexGrid) -> Vec<HexLocation>  {
         if visited.contains(&location) {
             return vec![] 
         }
@@ -141,6 +141,49 @@ impl MoveGeneratorDebugger{
                 new_grid.add(queen, *slidable_location);
                 result.push(new_grid);
             }
+        }
+
+        result
+    }
+
+    /// Returns a list of all possible moves for an ant at a given location
+    /// if the ant is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn ant_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        debug_assert!(self.grid.peek(location).len() == 1);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Ant);
+
+        if self.pinned.contains(&location) {
+            return vec![]
+        }
+
+        fn dfs(location: HexLocation, visited: &mut HashSet<HexLocation>, grid: &HexGrid) {
+            if visited.contains(&location) {
+                return;
+            }
+            visited.insert(location);
+
+            for slidable_location in grid.slidable_locations(location).iter() {
+                // In contact with the hive
+                if grid.get_neighbors(*slidable_location).len() > 0 {
+                    dfs(*slidable_location, visited, &grid);
+                }
+            }
+        }
+
+        let mut ant_removed = self.grid.clone();
+        let ant = ant_removed.remove(location).unwrap();
+        let mut visited = HashSet::new(); 
+        dfs(location, &mut visited, &ant_removed);
+        
+        visited.remove(&location);
+
+        let mut result = vec![];
+        for location in visited.iter() {
+            debug_assert!(self.outside.contains(location));
+            let mut new_grid = ant_removed.clone();
+            new_grid.add(ant, *location);
+            result.push(new_grid);
         }
 
         result
@@ -481,4 +524,61 @@ pub fn test_queen_moves() {
     let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
     let queen_moves = generator.queen_moves(queen);
     compare_moves(queen, selector, &grid, &queen_moves);
+}
+
+#[test]
+pub fn test_ant_moves() {
+    //TODO: there may be some weird edge cases with 
+    //ant inside the hive??
+    use PieceType::*; use PieceColor::*;
+    // Test with doors, gates, and typical moves
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . . . .\n",
+        ". . . g g g . . .\n",
+        " . . g . . g g . .\n",
+        ". . . . . g . g .\n",
+        " . . g g g . g . .\n",
+        ". . . . A . . . .\n",
+        " . . . . . . . . .\n",
+        ". . . . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!( 
+        " . . * * * * . . .\n",
+        ". . * g g g * * .\n",
+        " . * g . . g g * .\n",
+        ". . * . . g . g *\n",
+        " . * g g g * g * .\n",
+        ". . * * A * * * .\n",
+        " . . . . . . . . .\n",
+        ". . . . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
+    let ant_moves = generator.ant_moves(ant);
+    compare_moves(ant, selector, &grid, &ant_moves);
+}
+
+
+#[test] 
+fn test_ant_pinned() {
+    use PieceType::*; use PieceColor::*;
+
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . . . .\n",
+        ". . . g g g . . .\n",
+        " . . g . . g g . .\n",
+        ". . . . . g . g .\n",
+        " . . g A g . g . .\n",
+        ". . . . . . . . .\n",
+        " . . . . . . . . .\n",
+        ". . . . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
+    let ant_moves = generator.ant_moves(ant);
+    assert!(ant_moves.is_empty());
+
 }

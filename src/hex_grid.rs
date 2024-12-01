@@ -112,12 +112,12 @@ impl HexGrid {
         }
         neighbors
     }
-    /// Returns locations that are neighbors of a given location but are
+    /// Returns locations that are neighbors of an given location but are
     /// "slidable", that is, they do not form gates that are inaccessible for
-    /// sliding pieces
+    /// sliding pieces and maintains contact with at least one of it's original neighbors
     pub fn slidable_locations(&self, location: HexLocation) -> Vec<HexLocation> {
-        debug_assert!(self.peek(location).len() == 0);
         let mut slidable = vec![];
+        let original_neighbors = self.get_neighbors(location);
         for direction in Direction::all().iter() {
 
             let destination = location.apply(*direction);
@@ -131,7 +131,18 @@ impl HexGrid {
                 continue;
             }
 
-            slidable.push(destination);
+            let destination_neighbors = self.get_neighbors(destination);
+            let mut maintains_contact = false;
+            for destination_neighbor in destination_neighbors.iter() {
+                if original_neighbors.contains(destination_neighbor) {
+                    maintains_contact = true;
+                    break;
+                }
+            }
+
+            if maintains_contact {
+                slidable.push(destination);
+            }
         }
         slidable
     }

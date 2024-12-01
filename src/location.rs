@@ -14,10 +14,26 @@ pub struct HexLocation {
     pub y: i8,
 }
 
+  //NW NE
+//W       E
+  //SW SE
+
 impl Direction {
     pub fn all() -> Vec<Direction> {
         use Direction::*;
         vec![NW, NE, E, SE, SW, W]
+    }
+
+    pub fn adjacent(&self) -> (Direction, Direction) {
+        use Direction::*;
+        match self {
+            NW => (W, NE),
+            NE => (NW, E),
+            E => (NE, SE),
+            SE => (E, SW),
+            SW => (SE, W),
+            W => (SW, NW),
+        }
     }
 }
 
@@ -49,6 +65,7 @@ impl HexLocation {
     pub fn add(&self, other: HexLocation) -> HexLocation {
         HexLocation::new(self.x + other.x, self.y + other.y)
     }
+
 }
 
 impl Location for HexLocation {

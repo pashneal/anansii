@@ -12,6 +12,7 @@ use std::collections::HashSet;
 pub struct MoveGeneratorDebugger{
     grid : HexGrid,
     pinned : Vec<HexLocation>,
+    outside : HashSet<HexLocation>,
 }
 
 
@@ -20,6 +21,7 @@ impl MoveGeneratorDebugger{
         MoveGeneratorDebugger{
             grid : HexGrid::new(),
             pinned : Vec::new(),
+            outside : HashSet::new(),
         }
     }
 
@@ -27,20 +29,58 @@ impl MoveGeneratorDebugger{
         MoveGeneratorDebugger{
             grid: grid.clone(),
             pinned : grid.pinned(),
+            outside : grid.outside(),
         }
     }
 
-    pub fn spider_moves(&self, location : HexLocation, height : usize) -> Vec<HexGrid> {
-        let stack = self.grid.peek(location);
-        debug_assert!(stack.len() > height as usize);
-        debug_assert!(stack[height as usize].piece == PieceType::Spider);
+    pub fn spider_dfs(&self, location: HexLocation, mut visited: Vec<HexLocation>, depth : usize, spider_removed : &HexGrid) -> Vec<HexLocation>  {
+        if visited.contains(&location) {
+            return vec![] 
+        }
+        visited.push(location);
 
-        if location == HexLocation::new(0, 0) {
-            return Vec::new();
+        if depth == 3 {
+            return vec![location]
         }
 
-        todo!()
 
+        let mut result = vec![];
+
+        for slidable_location in spider_removed.slidable_locations(location).iter() {
+            let found = self.spider_dfs(*slidable_location, visited.clone(), depth + 1, spider_removed);
+            result.extend(found);
+        }
+
+        result
+    }
+
+    /// Returns a list of all possible moves for a spider at a given location
+    /// if the spider is not covered by any other pieces.
+    pub fn spider_moves(&self, location : HexLocation) -> Vec<HexGrid> {
+        let stack = self.grid.peek(location);
+        debug_assert!(stack.len() == 1 as usize);
+        debug_assert!(stack[0].piece == PieceType::Spider);
+
+        if self.pinned.contains(&location) {
+            return vec![]
+        }
+
+        let mut spider_removed = self.grid.clone();
+        spider_removed.remove(location);
+
+        let new_locations = self.spider_dfs(location, vec![], 0, &spider_removed);
+        let deduplicated = new_locations.iter().cloned().collect::<HashSet<HexLocation>>();
+
+        let mut result = vec![];
+
+        for new_location in deduplicated.iter() {
+            let mut new_grid = self.grid.clone();
+            new_grid.remove(location);
+            new_grid.add(stack[0], *new_location);
+            result.push(new_grid);
+        }
+        
+        result
     }
 }
 
@@ -55,6 +95,13 @@ fn compare_moves(start_location: HexLocation, expected: &str, original_position:
         let mut new_position = original_position.clone();
         new_position.add(piece, location);
         expected_positions.push(new_position);
+    }
+
+    for position in test_positions {
+        println!("test_position:\n{}\n", position.to_dsl());
+    }
+    for position in expected_positions.iter() {
+        println!("expected_position:\n{}\n", position.to_dsl());
     }
 
     assert_eq!(expected_positions.len(), test_positions.len());
@@ -80,9 +127,10 @@ pub fn test_spider_gate(){
     let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
+    let (spider, _) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
 
+    assert!(spider_moves.is_empty());
     assert_eq!(spider_moves, legal_moves);
 
     let grid = HexGrid::from_dsl(concat!( 
@@ -97,9 +145,10 @@ pub fn test_spider_gate(){
     let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
+    let (spider, _) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
 
+    assert!(spider_moves.is_empty());
     assert_eq!(spider_moves, legal_moves);
 }
 
@@ -115,12 +164,11 @@ pub fn test_spider_pinned(){
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
-    assert_eq!(spider_moves, legal_moves);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
+    assert!(spider_moves.is_empty());
 
     let grid = HexGrid::from_dsl(concat!( 
         " . . . . . . .\n",
@@ -131,12 +179,11 @@ pub fn test_spider_pinned(){
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
-    assert_eq!(spider_moves, legal_moves);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
+    assert!(spider_moves.is_empty());
 }
 
 
@@ -165,8 +212,8 @@ pub fn test_spider_door(){
     );
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
 
     let grid = HexGrid::from_dsl(concat!( 
@@ -190,8 +237,8 @@ pub fn test_spider_door(){
     );
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
 }
 
@@ -219,7 +266,7 @@ pub fn test_spider_typical_boards() {
 
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, height) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider, height);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
 }

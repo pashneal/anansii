@@ -116,6 +116,35 @@ impl MoveGeneratorDebugger{
 
         result
     }
+
+    /// Returns a list of all possible moves for a queen at a given location
+    /// if the queen is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn queen_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        debug_assert!(self.grid.peek(location).len() == 1);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Queen);
+
+        if self.pinned.contains(&location) {
+            return vec![]
+        }
+        let queen = self.grid.peek(location)[0];
+        let mut result = vec![];
+
+        let mut queen_removed = self.grid.clone();
+        queen_removed.remove(location);
+        let outside = queen_removed.outside();
+
+        for slidable_location in self.grid.slidable_locations(location).iter() {
+            if outside.contains(slidable_location) {
+                let mut new_grid = self.grid.clone();
+                new_grid.remove(location);
+                new_grid.add(queen, *slidable_location);
+                result.push(new_grid);
+            }
+        }
+
+        result
+    }
 }
 
 
@@ -358,4 +387,98 @@ pub fn test_grasshopper_pinned(){
     let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
     let grasshopper_moves = generator.grasshopper_moves(grasshopper);
     assert!(grasshopper_moves.is_empty());
+}
+
+#[test]
+pub fn test_queen_pinned() {
+    use PieceType::*; use PieceColor::*;
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . .\n",
+        ". . a . . . .\n",
+        " . a . a . . .\n",
+        ". a . . Q . .\n",
+        " . a a a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+    let queen_moves = generator.queen_moves(queen);
+    assert!(queen_moves.is_empty());
+}
+
+#[test]
+pub fn test_queen_moves() {
+    use PieceType::*; use PieceColor::*;
+    // Test gate structure
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a . a . . .\n",
+        ". a . . Q . .\n",
+        " . a a a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a . a * . .\n",
+        ". a . . Q . .\n",
+        " . a a a * . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+    let queen_moves = generator.queen_moves(queen);
+    compare_moves(queen, selector, &grid, &queen_moves);
+
+    // Testing typical # of moves
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a . a . . .\n",
+        ". a . . Q . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a . a * . .\n",
+        ". a . * Q . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+    let queen_moves = generator.queen_moves(queen);
+    compare_moves(queen, selector, &grid, &queen_moves);
+
+    // Testing "door" structure
+    let grid = HexGrid::from_dsl(concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a . a . . .\n",
+        ". a . Q . . .\n",
+        " . a a . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!( 
+        " . . . . . . .\n",
+        ". . a a . . .\n",
+        " . a * a . . .\n",
+        ". a * Q * . .\n",
+        " . a a * . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+    let queen_moves = generator.queen_moves(queen);
+    compare_moves(queen, selector, &grid, &queen_moves);
 }

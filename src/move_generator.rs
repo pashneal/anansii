@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 /// Represents a HexGrid wrapper that can generate new positions
 /// for a selected piece at a given height. It will create new boards according to the 
-/// rules that govern that piece as if the game contained no Pillbug. 
+/// rules that govern that piece as if the game state could not be changed by the Pillbug. 
 ///
 /// For the pillbug, see the difference between pillbug_swaps() and pillbug_moves() TODO
 ///

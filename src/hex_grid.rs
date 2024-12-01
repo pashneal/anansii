@@ -31,6 +31,8 @@ impl HexGrid {
         Parser::parse_selector(input).expect("Failed to parse selector")
     }
 
+    /// Translates a typical DSL string into a HexGrid, ignoring the
+    /// "*" characters
     pub fn from_dsl(input: &str) -> Self {
         Parser::parse_hex_grid(input).expect("Failed to parse input into HexGrid")
     }

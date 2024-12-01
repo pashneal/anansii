@@ -14,16 +14,24 @@ pub struct HexLocation {
     pub y: i8,
 }
 
-  //NW NE
-//W       E
-  //SW SE
-
 impl Direction {
     pub fn all() -> Vec<Direction> {
         use Direction::*;
         vec![NW, NE, E, SE, SW, W]
     }
 
+    /// Returns the two directions that are adjacent to this one.
+    /// These directions "gates" that pieces are not allowed to squeeze
+    /// between if both gates are occupied
+    ///
+    /// Edges are labeled as follows:
+    ///
+    ///   NW - NE
+    ///   /     \
+    ///  W       E
+    ///   \     /
+    ///   SW - SE
+    ///
     pub fn adjacent(&self) -> (Direction, Direction) {
         use Direction::*;
         match self {

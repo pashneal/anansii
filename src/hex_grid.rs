@@ -58,6 +58,24 @@ impl HexGrid {
         }
         
     }
+
+    /// Returns the locations that are neighbors of the current pieces of hive, but 
+    /// that location contains no pieces
+    pub fn outside(&self) -> HashSet<HexLocation> {
+        let mut outside = HashSet::new();
+        for (_, location) in self.pieces() {
+            for direction in Direction::all().iter() {
+                let neighbor = location.apply(*direction);
+                let stack = self.peek(neighbor);
+                if stack.len() == 0 {
+                    outside.insert(neighbor);
+                }
+            }
+        }
+
+        outside
+    }
+
     /// Returns the locations in the hive that are "pinned",
     /// in other words, removing the pieces in that stack would violate the One Hive rule
     ///
@@ -93,6 +111,29 @@ impl HexGrid {
             }
         }
         neighbors
+    }
+    /// Returns locations that are neighbors of a given location but are
+    /// "slidable", that is, they do not form gates that are inaccessible for
+    /// sliding pieces
+    pub fn slidable_locations(&self, location: HexLocation) -> Vec<HexLocation> {
+        debug_assert!(self.peek(location).len() == 0);
+        let mut slidable = vec![];
+        for direction in Direction::all().iter() {
+
+            let destination = location.apply(*direction);
+            if self.peek(destination).len() > 0 { continue; }
+
+            let (left_dir, right_dir) = direction.adjacent();
+            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
+            let (left_stack, right_stack) = (self.peek(left), self.peek(right));
+
+            if left_stack.len() > 0 && right_stack.len() > 0 {
+                continue;
+            }
+
+            slidable.push(destination);
+        }
+        slidable
     }
 
     /// Returns the first occurrence of a specified piece in the grid.
@@ -796,4 +837,34 @@ pub fn test_long_pins() {
         "start - [0 0]\n\n",
     ));
     assert_eq!(grid.pinned(), answer);
+}
+
+
+#[test]
+pub fn test_outside() {
+    let board = HexGrid::from_dsl(concat!(
+        " . . . . . .\n",
+        ". . a . a .\n",
+        " . a a a . .\n",
+        ". . a . . .\n",
+        " . . a a . .\n",
+        ". . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    let expected = HexGrid::selector(concat!(
+        " . * * * * .\n",
+        ". * a * a *\n",
+        " * a a a * .\n",
+        ". * a * * .\n",
+        " . * a a * .\n",
+        ". . * * * .\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    let set_expected = expected.iter().cloned().collect::<HashSet<_>>();
+    assert_eq!(board.outside().len(), set_expected.len());
+    for location in board.outside() {
+        assert!(set_expected.contains(&location), "Location {:?} not found in expected", location);
+    }
 }

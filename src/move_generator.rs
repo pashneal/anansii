@@ -201,11 +201,37 @@ impl MoveGeneratorDebugger {
         result
     }
 
-    /// Returns a list of all possible moves for an ant at a given location
-    /// if the ant is not covered by any other pieces.
+    /// Returns a list of all possible moves for a beetle at a given location
+    /// if the beetle is not covered by any other pieces.
     /// (ignores pillbug swaps)
     pub fn beetle_moves(&self, location: HexLocation) -> Vec<HexGrid> {
-        todo!()
+        let height = self.grid.peek(location).len();
+        debug_assert!(height >= 1);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Beetle);
+
+        let hive = self.grid.pieces().into_iter().map(|(_, loc)| loc).collect::<HashSet<HexLocation>>();
+
+        if self.pinned.contains(&location) && height == 1 {
+            return vec![];
+        }
+
+        let beetle = self.grid.top(location).unwrap();
+        let mut result = vec![];
+
+        let mut beetle_removed = self.grid.clone();
+        beetle_removed.remove(location);
+        let outside = beetle_removed.outside();
+
+        for slidable_location in self.grid.slidable_locations_3d(location).iter() {
+            if outside.contains(slidable_location) || hive.contains(slidable_location) {
+                let mut new_grid = self.grid.clone();
+                new_grid.remove(location);
+                new_grid.add(beetle, *slidable_location);
+                result.push(new_grid);
+            }
+        }
+
+        result
     }
 }
 
@@ -820,7 +846,7 @@ fn test_beetle_pinned_top() {
     let selector = concat!(
         ". . . . . . .\n",
         " . . * * . . .\n",
-        ". . . 2 * . .\n",
+        ". . * 2 * . .\n",
         " . . * * . . .\n",
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",

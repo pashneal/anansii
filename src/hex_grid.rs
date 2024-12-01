@@ -133,10 +133,13 @@ impl HexGrid {
     pub fn slidable_locations_3d(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);
-        let height = self.peek(location).len();
+        let initial_height = self.peek(location).len();
 
         for direction in Direction::all().iter() {
             let destination = location.apply(*direction);
+            let destination_height = self.peek(destination).len();
+            let final_height =  destination_height + 1;
+            let effective_height = final_height.max(initial_height);
 
             let (left_dir, right_dir) = direction.adjacent();
             let (left, right) = (location.apply(left_dir), location.apply(right_dir));
@@ -144,12 +147,15 @@ impl HexGrid {
 
             // Must be high enough to step over and through gate
             let gate_requirement = left_stack.len().min(right_stack.len());
-            if height <= gate_requirement {
+            if effective_height <= gate_requirement {
                 continue;
             }
 
             let destination_neighbors = self.get_neighbors(destination);
-            let mut maintains_contact = false;
+            // maintains contact if the destination has a piece
+            // or if the location has a piece under it
+            let mut maintains_contact = self.peek(destination).len() > 0;
+            maintains_contact =  maintains_contact || initial_height > 1;
 
             for destination_neighbor in destination_neighbors.iter() {
                 if original_neighbors.contains(destination_neighbor) {
@@ -157,6 +163,7 @@ impl HexGrid {
                     break;
                 }
             }
+
 
             if maintains_contact {
                 slidable.push(destination);

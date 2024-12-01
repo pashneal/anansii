@@ -73,7 +73,6 @@ impl HexLocation {
     pub fn add(&self, other: HexLocation) -> HexLocation {
         HexLocation::new(self.x + other.x, self.y + other.y)
     }
-
 }
 
 impl Location for HexLocation {

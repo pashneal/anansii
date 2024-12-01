@@ -147,7 +147,6 @@ impl GameDebugger {
         todo!()
     }
 
-
     /// Get the latest position in the game
     pub fn position(&self) -> &HexGrid {
         self.annotations.last().unwrap().position()
@@ -161,9 +160,7 @@ pub trait Position {
 }
 
 #[test]
-pub fn pinned_pieces() {
-
-}
+pub fn pinned_pieces() {}
 
 #[test]
 pub fn test_win() {

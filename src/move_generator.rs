@@ -2,52 +2,61 @@ use crate::hex_grid::*;
 use std::collections::HashSet;
 
 /// Represents a HexGrid wrapper that can generate new positions
-/// for a selected piece at a given height. It will create new boards according to the 
-/// rules that govern that piece as if the game state could not be changed by the Pillbug. 
+/// for a selected piece at a given height. It will create new boards according to the
+/// rules that govern that piece as if the game state could not be changed by the Pillbug.
 ///
 /// For the pillbug, see the difference between pillbug_swaps() and pillbug_moves() TODO
 ///
 /// The move generator is only guaranteed to generate moves correctly
 /// for positions that follow the One Hive Rule
-pub struct MoveGeneratorDebugger{
-    grid : HexGrid,
-    pinned : Vec<HexLocation>,
-    outside : HashSet<HexLocation>,
+pub struct MoveGeneratorDebugger {
+    grid: HexGrid,
+    pinned: Vec<HexLocation>,
+    outside: HashSet<HexLocation>,
 }
 
-
-impl MoveGeneratorDebugger{
-    pub fn new() -> MoveGeneratorDebugger{
-        MoveGeneratorDebugger{
-            grid : HexGrid::new(),
-            pinned : Vec::new(),
-            outside : HashSet::new(),
+impl MoveGeneratorDebugger {
+    pub fn new() -> MoveGeneratorDebugger {
+        MoveGeneratorDebugger {
+            grid: HexGrid::new(),
+            pinned: Vec::new(),
+            outside: HashSet::new(),
         }
     }
 
-    pub fn from_grid(grid : &HexGrid) -> MoveGeneratorDebugger{
-        MoveGeneratorDebugger{
+    pub fn from_grid(grid: &HexGrid) -> MoveGeneratorDebugger {
+        MoveGeneratorDebugger {
             grid: grid.clone(),
-            pinned : grid.pinned(),
-            outside : grid.outside(),
+            pinned: grid.pinned(),
+            outside: grid.outside(),
         }
     }
 
-    fn spider_dfs(&self, location: HexLocation, mut visited: Vec<HexLocation>, depth : usize, spider_removed : &HexGrid) -> Vec<HexLocation>  {
+    fn spider_dfs(
+        &self,
+        location: HexLocation,
+        mut visited: Vec<HexLocation>,
+        depth: usize,
+        spider_removed: &HexGrid,
+    ) -> Vec<HexLocation> {
         if visited.contains(&location) {
-            return vec![] 
+            return vec![];
         }
         visited.push(location);
 
         if depth == 3 {
-            return vec![location]
+            return vec![location];
         }
-
 
         let mut result = vec![];
 
         for slidable_location in spider_removed.slidable_locations(location).iter() {
-            let found = self.spider_dfs(*slidable_location, visited.clone(), depth + 1, spider_removed);
+            let found = self.spider_dfs(
+                *slidable_location,
+                visited.clone(),
+                depth + 1,
+                spider_removed,
+            );
             result.extend(found);
         }
 
@@ -57,20 +66,23 @@ impl MoveGeneratorDebugger{
     /// Returns a list of all possible moves for a spider at a given location
     /// if the spider is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    pub fn spider_moves(&self, location : HexLocation) -> Vec<HexGrid> {
+    pub fn spider_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1 as usize);
         debug_assert!(stack[0].piece == PieceType::Spider);
 
         if self.pinned.contains(&location) {
-            return vec![]
+            return vec![];
         }
 
         let mut spider_removed = self.grid.clone();
         spider_removed.remove(location);
 
         let new_locations = self.spider_dfs(location, vec![], 0, &spider_removed);
-        let deduplicated = new_locations.iter().cloned().collect::<HashSet<HexLocation>>();
+        let deduplicated = new_locations
+            .iter()
+            .cloned()
+            .collect::<HashSet<HexLocation>>();
 
         let mut result = vec![];
 
@@ -80,7 +92,7 @@ impl MoveGeneratorDebugger{
             new_grid.add(stack[0], *new_location);
             result.push(new_grid);
         }
-        
+
         result
     }
 
@@ -92,7 +104,7 @@ impl MoveGeneratorDebugger{
         debug_assert!(self.grid.peek(location)[0].piece == PieceType::Grasshopper);
 
         if self.pinned.contains(&location) {
-            return vec![]
+            return vec![];
         }
         let grasshopper = self.grid.peek(location)[0];
 
@@ -102,7 +114,7 @@ impl MoveGeneratorDebugger{
 
             // No piece to jump over, don't bother searching
             if self.outside.contains(&search_location) {
-                continue
+                continue;
             }
             while !self.outside.contains(&search_location) {
                 search_location = search_location.apply(*direction);
@@ -125,7 +137,7 @@ impl MoveGeneratorDebugger{
         debug_assert!(self.grid.peek(location)[0].piece == PieceType::Queen);
 
         if self.pinned.contains(&location) {
-            return vec![]
+            return vec![];
         }
         let queen = self.grid.peek(location)[0];
         let mut result = vec![];
@@ -154,7 +166,7 @@ impl MoveGeneratorDebugger{
         debug_assert!(self.grid.peek(location)[0].piece == PieceType::Ant);
 
         if self.pinned.contains(&location) {
-            return vec![]
+            return vec![];
         }
 
         fn dfs(location: HexLocation, visited: &mut HashSet<HexLocation>, grid: &HexGrid) {
@@ -173,9 +185,9 @@ impl MoveGeneratorDebugger{
 
         let mut ant_removed = self.grid.clone();
         let ant = ant_removed.remove(location).unwrap();
-        let mut visited = HashSet::new(); 
+        let mut visited = HashSet::new();
         dfs(location, &mut visited, &ant_removed);
-        
+
         visited.remove(&location);
 
         let mut result = vec![];
@@ -190,11 +202,17 @@ impl MoveGeneratorDebugger{
     }
 }
 
-
-fn compare_moves(start_location: HexLocation, expected: &str, original_position: &HexGrid, test_positions: &Vec<HexGrid>) {
+fn compare_moves(
+    start_location: HexLocation,
+    expected: &str,
+    original_position: &HexGrid,
+    test_positions: &Vec<HexGrid>,
+) {
     let expected_locations = HexGrid::selector(expected);
     let mut original_position = original_position.clone();
-    let piece = original_position.remove(start_location).expect("Expected piece at start location");
+    let piece = original_position
+        .remove(start_location)
+        .expect("Expected piece at start location");
     let mut expected_positions = Vec::new();
 
     for location in expected_locations {
@@ -216,12 +234,13 @@ fn compare_moves(start_location: HexLocation, expected: &str, original_position:
     }
 }
 
-#[test] 
-pub fn test_spider_gate(){
-    use PieceType::*; use PieceColor::*;
+#[test]
+pub fn test_spider_gate() {
+    use PieceColor::*;
+    use PieceType::*;
     // Testing with the "gate" structure that disallows free movement
     // between adjacent locations
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . . a . . .\n",
         " . a S a . . .\n",
@@ -233,13 +252,15 @@ pub fn test_spider_gate(){
     let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
+    let (spider, _) = grid
+        .find(Piece::new(PieceType::Spider, PieceColor::White))
+        .unwrap();
     let spider_moves = generator.spider_moves(spider);
 
     assert!(spider_moves.is_empty());
     assert_eq!(spider_moves, legal_moves);
 
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . . a a . .\n",
         " . a . . a . .\n",
@@ -251,17 +272,20 @@ pub fn test_spider_gate(){
     let legal_moves = vec![];
 
     let generator = MoveGeneratorDebugger::from_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(PieceType::Spider, PieceColor::White)).unwrap();
+    let (spider, _) = grid
+        .find(Piece::new(PieceType::Spider, PieceColor::White))
+        .unwrap();
     let spider_moves = generator.spider_moves(spider);
 
     assert!(spider_moves.is_empty());
     assert_eq!(spider_moves, legal_moves);
 }
 
-#[test] 
-pub fn test_spider_pinned(){
-    use PieceType::*; use PieceColor::*;
-    let grid = HexGrid::from_dsl(concat!( 
+#[test]
+pub fn test_spider_pinned() {
+    use PieceColor::*;
+    use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . . a . . .\n",
         " . a S a . . .\n",
@@ -276,7 +300,7 @@ pub fn test_spider_pinned(){
     let spider_moves = generator.spider_moves(spider);
     assert!(spider_moves.is_empty());
 
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a . . . .\n",
         " . a S . . . .\n",
@@ -292,11 +316,12 @@ pub fn test_spider_pinned(){
     assert!(spider_moves.is_empty());
 }
 
-#[test] 
-pub fn test_spider_door(){
+#[test]
+pub fn test_spider_door() {
     // Testing with the "door" structure that allows spiders extra mobility than typical
-    use PieceType::*; use PieceColor::*;
-    let grid = HexGrid::from_dsl(concat!( 
+    use PieceColor::*;
+    use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a S . .\n",
@@ -306,7 +331,7 @@ pub fn test_spider_door(){
         "start - [0 0]\n\n"
     ));
 
-    let selector = concat!( 
+    let selector = concat!(
         " . . * . . . .\n",
         ". . a a . . .\n",
         " . a * a S . .\n",
@@ -321,7 +346,7 @@ pub fn test_spider_door(){
     let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
 
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -331,7 +356,7 @@ pub fn test_spider_door(){
         "start - [0 0]\n\n"
     ));
 
-    let selector = concat!( 
+    let selector = concat!(
         " . . . * . . .\n",
         ". . a a . . .\n",
         " . a * a . . .\n",
@@ -347,10 +372,11 @@ pub fn test_spider_door(){
     compare_moves(spider, selector, &grid, &spider_moves);
 }
 
-#[test] 
+#[test]
 pub fn test_spider_typical_boards() {
-    use PieceType::*; use PieceColor::*;
-    let grid = HexGrid::from_dsl(concat!( 
+    use PieceColor::*;
+    use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -359,7 +385,7 @@ pub fn test_spider_typical_boards() {
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let selector = concat!( 
+    let selector = concat!(
         " . . . * . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -369,23 +395,23 @@ pub fn test_spider_typical_boards() {
         "start - [0 0]\n\n"
     );
 
-
     let generator = MoveGeneratorDebugger::from_grid(&grid);
     let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
 }
 
-#[test] 
-pub fn test_grasshopper(){
-    use PieceType::*; use PieceColor::*;
+#[test]
+pub fn test_grasshopper() {
+    use PieceColor::*;
+    use PieceType::*;
     // Tests:
     //  gaps,
     //  multiple directions
     //  0 pieces to jump over
     //  1 piece to jump over
     //  >1 pieces to jump over
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         ". a a a . . .\n",
         " . . . a . . .\n",
         ". . a a . . .\n",
@@ -396,7 +422,7 @@ pub fn test_grasshopper(){
         "start - [0 0]\n\n"
     ));
 
-    let selector = concat!( 
+    let selector = concat!(
         ". a a a * . .\n",
         " . * . a . . .\n",
         ". . a a . . .\n",
@@ -414,9 +440,10 @@ pub fn test_grasshopper(){
 }
 
 #[test]
-pub fn test_grasshopper_pinned(){
-    use PieceType::*; use PieceColor::*;
-    let grid = HexGrid::from_dsl(concat!( 
+pub fn test_grasshopper_pinned() {
+    use PieceColor::*;
+    use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
         ". . . a . . .\n",
         " . . a a . . .\n",
         ". . a . . . .\n",
@@ -434,8 +461,9 @@ pub fn test_grasshopper_pinned(){
 
 #[test]
 pub fn test_queen_pinned() {
-    use PieceType::*; use PieceColor::*;
-    let grid = HexGrid::from_dsl(concat!( 
+    use PieceColor::*;
+    use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a . . . .\n",
         " . a . a . . .\n",
@@ -452,9 +480,10 @@ pub fn test_queen_pinned() {
 
 #[test]
 pub fn test_queen_moves() {
-    use PieceType::*; use PieceColor::*;
+    use PieceColor::*;
+    use PieceType::*;
     // Test gate structure
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -463,7 +492,7 @@ pub fn test_queen_moves() {
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let selector = concat!( 
+    let selector = concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a * . .\n",
@@ -478,7 +507,7 @@ pub fn test_queen_moves() {
     compare_moves(queen, selector, &grid, &queen_moves);
 
     // Testing typical # of moves
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -487,7 +516,7 @@ pub fn test_queen_moves() {
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let selector = concat!( 
+    let selector = concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a * . .\n",
@@ -502,7 +531,7 @@ pub fn test_queen_moves() {
     compare_moves(queen, selector, &grid, &queen_moves);
 
     // Testing "door" structure
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a . a . . .\n",
@@ -511,7 +540,7 @@ pub fn test_queen_moves() {
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let selector = concat!( 
+    let selector = concat!(
         " . . . . . . .\n",
         ". . a a . . .\n",
         " . a * a . . .\n",
@@ -528,11 +557,12 @@ pub fn test_queen_moves() {
 
 #[test]
 pub fn test_ant_moves() {
-    //TODO: there may be some weird edge cases with 
+    //TODO: there may be some weird edge cases with
     //ant inside the hive??
-    use PieceType::*; use PieceColor::*;
+    use PieceColor::*;
+    use PieceType::*;
     // Test with doors, gates, and typical moves
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . . . .\n",
         ". . . g g g . . .\n",
         " . . g . . g g . .\n",
@@ -543,7 +573,7 @@ pub fn test_ant_moves() {
         ". . . . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let selector = concat!( 
+    let selector = concat!(
         " . . * * * * . . .\n",
         ". . * g g g * * .\n",
         " . * g . . g g * .\n",
@@ -560,12 +590,12 @@ pub fn test_ant_moves() {
     compare_moves(ant, selector, &grid, &ant_moves);
 }
 
-
-#[test] 
+#[test]
 fn test_ant_pinned() {
-    use PieceType::*; use PieceColor::*;
+    use PieceColor::*;
+    use PieceType::*;
 
-    let grid = HexGrid::from_dsl(concat!( 
+    let grid = HexGrid::from_dsl(concat!(
         " . . . . . . . . .\n",
         ". . . g g g . . .\n",
         " . . g . . g g . .\n",
@@ -580,5 +610,4 @@ fn test_ant_pinned() {
     let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
     let ant_moves = generator.ant_moves(ant);
     assert!(ant_moves.is_empty());
-
 }

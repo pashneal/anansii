@@ -1,8 +1,8 @@
 use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
-use std::collections::HashSet;
 pub use crate::piece::*;
+use std::collections::HashSet;
 
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
@@ -45,7 +45,12 @@ impl HexGrid {
 
     /// Depth first search on the stack with a location not allowed to be visited
     /// to determine if the location contains a pinned piece
-    fn dfs(&self, visited : &mut HashSet<HexLocation>, disallowed : HexLocation, current_location: HexLocation) {
+    fn dfs(
+        &self,
+        visited: &mut HashSet<HexLocation>,
+        disallowed: HexLocation,
+        current_location: HexLocation,
+    ) {
         if visited.contains(&current_location) {
             return;
         }
@@ -53,15 +58,14 @@ impl HexGrid {
             return;
         }
         visited.insert(current_location);
-        for neighbor in self.get_neighbors(current_location){
+        for neighbor in self.get_neighbors(current_location) {
             if self.peek(neighbor).len() > 0 {
                 self.dfs(visited, disallowed, neighbor);
             }
         }
-        
     }
 
-    /// Returns the locations that are neighbors of the current pieces of hive, but 
+    /// Returns the locations that are neighbors of the current pieces of hive, but
     /// that location contains no pieces
     pub fn outside(&self) -> HashSet<HexLocation> {
         let mut outside = HashSet::new();
@@ -85,7 +89,11 @@ impl HexGrid {
     /// Assumes that the pieces on the board already form "One Hive"
     pub fn pinned(&self) -> Vec<HexLocation> {
         let mut pinned = vec![];
-        let hive = self.pieces().into_iter().map(|(_, location)| location).collect::<Vec<_>>();
+        let hive = self
+            .pieces()
+            .into_iter()
+            .map(|(_, location)| location)
+            .collect::<Vec<_>>();
 
         for &candidate in hive.iter() {
             let mut visited = HashSet::new();
@@ -121,9 +129,10 @@ impl HexGrid {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);
         for direction in Direction::all().iter() {
-
             let destination = location.apply(*direction);
-            if self.peek(destination).len() > 0 { continue; }
+            if self.peek(destination).len() > 0 {
+                continue;
+            }
 
             let (left_dir, right_dir) = direction.adjacent();
             let (left, right) = (location.apply(left_dir), location.apply(right_dir));
@@ -732,7 +741,7 @@ fn test_pinned_pieces_single() {
 }
 
 #[test]
-pub fn test_piece_pinned_boundary_conditions(){
+pub fn test_piece_pinned_boundary_conditions() {
     let grid = HexGrid::from_dsl(concat!(
         " . . . . . .\n",
         ". . . . . .\n",
@@ -852,7 +861,6 @@ pub fn test_long_pins() {
     assert_eq!(grid.pinned(), answer);
 }
 
-
 #[test]
 pub fn test_outside() {
     let board = HexGrid::from_dsl(concat!(
@@ -878,6 +886,10 @@ pub fn test_outside() {
     let set_expected = expected.iter().cloned().collect::<HashSet<_>>();
     assert_eq!(board.outside().len(), set_expected.len());
     for location in board.outside() {
-        assert!(set_expected.contains(&location), "Location {:?} not found in expected", location);
+        assert!(
+            set_expected.contains(&location),
+            "Location {:?} not found in expected",
+            location
+        );
     }
 }

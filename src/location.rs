@@ -21,7 +21,7 @@ impl Direction {
     }
 
     /// Returns the two directions that are adjacent to this one.
-    /// These directions "gates" that pieces are not allowed to squeeze
+    /// These directions are "gates" that pieces are not allowed to squeeze
     /// between if both gates are occupied
     ///
     /// Edges are labeled as follows:

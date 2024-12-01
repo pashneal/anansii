@@ -56,6 +56,7 @@ impl MoveGeneratorDebugger{
 
     /// Returns a list of all possible moves for a spider at a given location
     /// if the spider is not covered by any other pieces.
+    /// (ignores pillbug swaps)
     pub fn spider_moves(&self, location : HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1 as usize);
@@ -80,6 +81,39 @@ impl MoveGeneratorDebugger{
             result.push(new_grid);
         }
         
+        result
+    }
+
+    /// Returns a list of all possible moves for a grasshopper at a given location
+    /// if the grasshopper is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn grasshopper_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        debug_assert!(self.grid.peek(location).len() == 1);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Grasshopper);
+
+        if self.pinned.contains(&location) {
+            return vec![]
+        }
+        let grasshopper = self.grid.peek(location)[0];
+
+        let mut result = vec![];
+        for direction in Direction::all().iter() {
+            let mut search_location = location.apply(*direction);
+
+            // No piece to jump over, don't bother searching
+            if self.outside.contains(&search_location) {
+                continue
+            }
+            while !self.outside.contains(&search_location) {
+                search_location = search_location.apply(*direction);
+            }
+
+            let mut new_grid = self.grid.clone();
+            new_grid.remove(location);
+            new_grid.add(grasshopper, search_location);
+            result.push(new_grid);
+        }
+
         result
     }
 }
@@ -186,7 +220,6 @@ pub fn test_spider_pinned(){
     assert!(spider_moves.is_empty());
 }
 
-
 #[test] 
 pub fn test_spider_door(){
     // Testing with the "door" structure that allows spiders extra mobility than typical
@@ -269,4 +302,60 @@ pub fn test_spider_typical_boards() {
     let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
+}
+
+#[test] 
+pub fn test_grasshopper(){
+    use PieceType::*; use PieceColor::*;
+    // Tests:
+    //  gaps,
+    //  multiple directions
+    //  0 pieces to jump over
+    //  1 piece to jump over
+    //  >1 pieces to jump over
+    let grid = HexGrid::from_dsl(concat!( 
+        ". a a a . . .\n",
+        " . . . a . . .\n",
+        ". . a a . . .\n",
+        " . a G a a a .\n",
+        ". . . . . . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+
+    let selector = concat!( 
+        ". a a a * . .\n",
+        " . * . a . . .\n",
+        ". . a a . . .\n",
+        " * a G a a a *\n",
+        ". . . . . . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
+    let grasshopper_moves = generator.grasshopper_moves(grasshopper);
+    compare_moves(grasshopper, selector, &grid, &grasshopper_moves);
+}
+
+#[test]
+pub fn test_grasshopper_pinned(){
+    use PieceType::*; use PieceColor::*;
+    let grid = HexGrid::from_dsl(concat!( 
+        ". . . a . . .\n",
+        " . . a a . . .\n",
+        ". . a . . . .\n",
+        " . a G a a a .\n",
+        ". . . a . . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
+    let grasshopper_moves = generator.grasshopper_moves(grasshopper);
+    assert!(grasshopper_moves.is_empty());
 }

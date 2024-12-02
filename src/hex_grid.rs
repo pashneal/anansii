@@ -127,10 +127,7 @@ impl HexGrid {
     /// "slidable", that is, they do not form gates that are inaccessible for
     /// sliding pieces and maintains contact with at least one of its original neighbors
     ///
-    /// Specifies the effective height of the piece
-    ///
-    /// "3D" because it also considers the height of the pieces
-    /// TODO: clarify + reword + 2d is a special case of 3d
+    /// Specifies the effective height of the piece, to see if the piece can jump over the gate
     pub fn slidable_locations_3d_height(&self, location: HexLocation, effective_height : usize) -> Vec<HexLocation> {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);
@@ -194,90 +191,21 @@ impl HexGrid {
     /// "slidable", that is, they do not form gates that are inaccessible for
     /// sliding pieces and maintains contact with at least one of its original neighbors
     ///
-    /// "3D" because it also considers the height of the pieces
-    /// TODO: clarify + reword + 2d is a special case of 3d
+    /// "3D" because it allows climbing up the hive
     pub fn slidable_locations_3d(&self, location: HexLocation) -> Vec<HexLocation> {
-        let mut slidable = vec![];
-        let original_neighbors = self.get_neighbors(location);
-        let initial_height = self.peek(location).len();
-
-        for direction in Direction::all().iter() {
-            let destination = location.apply(*direction);
-            let destination_height = self.peek(destination).len();
-            let final_height =  destination_height + 1;
-            let effective_height = final_height.max(initial_height);
-
-            let (left_dir, right_dir) = direction.adjacent();
-            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
-            let (left_stack, right_stack) = (self.peek(left), self.peek(right));
-
-            // Must be high enough to step over and through gate
-            let gate_requirement = left_stack.len().min(right_stack.len());
-            if effective_height <= gate_requirement {
-                println!("gated!");
-                continue;
-            }
-
-            let destination_neighbors = self.get_neighbors(destination);
-            // maintains contact if the destination has a piece
-            // or if the location has a piece under it
-            let mut maintains_contact = self.peek(destination).len() > 0;
-            maintains_contact =  maintains_contact || initial_height > 1;
-            println!("maintains contact initially: {}", maintains_contact);
-
-            for destination_neighbor in destination_neighbors.iter() {
-                if original_neighbors.contains(destination_neighbor) {
-                    maintains_contact = true;
-                    break;
-                }
-            }
-            println!("maintains contact finally: {}", maintains_contact);
-
-
-            if maintains_contact {
-                slidable.push(destination);
-            }
-        }
-        slidable
+        let effective_height = self.peek(location).len();
+        self.slidable_locations_3d_height(location, effective_height)
     }
 
     /// Returns locations that are neighbors of an given location but are
     /// "slidable", that is, they do not form gates that are inaccessible for
     /// sliding pieces and maintains contact with at least one of its original neighbors
     ///
-    /// "2D" because it ignores the height of the pieces
-    /// TODO: clarify + reword
+    /// "2D" because it ignores the height of the pieces, disallowing climbing up the hive
     pub fn slidable_locations_2d(&self, location: HexLocation) -> Vec<HexLocation> {
-        let mut slidable = vec![];
-        let original_neighbors = self.get_neighbors(location);
-        for direction in Direction::all().iter() {
-            let destination = location.apply(*direction);
-            if self.peek(destination).len() > 0 {
-                continue;
-            }
-
-            let (left_dir, right_dir) = direction.adjacent();
-            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
-            let (left_stack, right_stack) = (self.peek(left), self.peek(right));
-
-            if left_stack.len() > 0 && right_stack.len() > 0 {
-                continue;
-            }
-
-            let destination_neighbors = self.get_neighbors(destination);
-            let mut maintains_contact = false;
-            for destination_neighbor in destination_neighbors.iter() {
-                if original_neighbors.contains(destination_neighbor) {
-                    maintains_contact = true;
-                    break;
-                }
-            }
-
-            if maintains_contact {
-                slidable.push(destination);
-            }
-        }
-        slidable
+        debug_assert!(self.peek(location).len() <= 1); // Cannot climb up the hive
+        let all_locations = self.slidable_locations_3d_height(location, 1);
+        all_locations.into_iter().filter(|&loc| self.peek(loc).len() == 0).collect()
     }
 
     /// Returns the first occurrence of a specified piece in the grid.

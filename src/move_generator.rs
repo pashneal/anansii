@@ -977,8 +977,6 @@ fn test_ladybug_moves() {
     let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
     let ladybug_moves = generator.ladybug_moves(ladybug);
     compare_moves(ladybug, selector, &grid, &ladybug_moves);
-
-    
 }
 
 #[test]

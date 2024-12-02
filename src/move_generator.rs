@@ -335,7 +335,6 @@ impl MoveGeneratorDebugger {
                 }
             }
 
-            // pieces in a stack of height > 1
             let candidate_stack = self.grid.peek(candidate_loc);
             if candidate_stack.len() > 1 {
                 continue;

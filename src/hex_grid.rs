@@ -123,6 +123,72 @@ impl HexGrid {
         neighbors
     }
 
+    /// Returns locations that are neighbors of an given location but are
+    /// "slidable", that is, they do not form gates that are inaccessible for
+    /// sliding pieces and maintains contact with at least one of its original neighbors
+    ///
+    /// Specifies the effective height of the piece
+    ///
+    /// "3D" because it also considers the height of the pieces
+    /// TODO: clarify + reword + 2d is a special case of 3d
+    pub fn slidable_locations_3d_height(&self, location: HexLocation, effective_height : usize) -> Vec<HexLocation> {
+        let mut slidable = vec![];
+        let original_neighbors = self.get_neighbors(location);
+
+        for direction in Direction::all().iter() {
+            let destination = location.apply(*direction);
+            let destination_height = self.peek(destination).len();
+            let final_height =  destination_height + 1;
+            let effective_height = final_height.max(effective_height);
+
+            let (left_dir, right_dir) = direction.adjacent();
+            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
+            let (left_stack, right_stack) = (self.peek(left), self.peek(right));
+
+            let selector = concat!(
+                ". . . . . . .\n",
+                " . . 2 * . . .\n",
+                ". . a a L . .\n",
+                " . . 2 a . . .\n",
+                ". . . . . . .\n\n",
+                " . . . . . a .\n",
+                "start - [0 0]\n\n",
+            );
+            let s = HexGrid::selector(selector)[0];
+
+            if destination == s {
+                println!("FOUND IT!");
+            }
+            // Must be high enough to step over and through gate
+            let gate_requirement = left_stack.len().min(right_stack.len());
+            if effective_height <= gate_requirement {
+                println!("gated!");
+                continue;
+            }
+
+            let destination_neighbors = self.get_neighbors(destination);
+            // maintains contact if the destination has a piece
+            // or if the location has a piece under it
+            let mut maintains_contact = self.peek(destination).len() > 0;
+            maintains_contact =  maintains_contact || effective_height > 1;
+            println!("maintains contact initially: {}", maintains_contact);
+
+            for destination_neighbor in destination_neighbors.iter() {
+                if original_neighbors.contains(destination_neighbor) {
+                    maintains_contact = true;
+                    break;
+                }
+            }
+            println!("maintains contact finally: {}", maintains_contact);
+            println!("done!");
+
+
+            if maintains_contact {
+                slidable.push(destination);
+            }
+        }
+        slidable
+    }
 
     /// Returns locations that are neighbors of an given location but are
     /// "slidable", that is, they do not form gates that are inaccessible for
@@ -148,6 +214,7 @@ impl HexGrid {
             // Must be high enough to step over and through gate
             let gate_requirement = left_stack.len().min(right_stack.len());
             if effective_height <= gate_requirement {
+                println!("gated!");
                 continue;
             }
 
@@ -156,6 +223,7 @@ impl HexGrid {
             // or if the location has a piece under it
             let mut maintains_contact = self.peek(destination).len() > 0;
             maintains_contact =  maintains_contact || initial_height > 1;
+            println!("maintains contact initially: {}", maintains_contact);
 
             for destination_neighbor in destination_neighbors.iter() {
                 if original_neighbors.contains(destination_neighbor) {
@@ -163,6 +231,7 @@ impl HexGrid {
                     break;
                 }
             }
+            println!("maintains contact finally: {}", maintains_contact);
 
 
             if maintains_contact {

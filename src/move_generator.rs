@@ -233,6 +233,57 @@ impl MoveGeneratorDebugger {
 
         result
     }
+
+    /// Returns a list of all possible moves for a beetle at a given location
+    /// if the beetle is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    ///
+    /// TODO: clean up, this is a little jank
+    pub fn ladybug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        let height = self.grid.peek(location).len();
+        debug_assert!(height == 1);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Ladybug);
+
+
+        if self.pinned.contains(&location) {
+            return vec![];
+        }
+
+        let mut ladybug_removed = self.grid.clone();
+        let ladybug = ladybug_removed.remove(location).unwrap();
+        let mut outside = ladybug_removed.outside();
+        outside.remove(&location);
+
+
+        let hive = ladybug_removed.pieces().into_iter().map(|(_, loc)| loc).collect::<HashSet<HexLocation>>();
+
+        let mut result = vec![];
+        // Two moves on the hive
+        let neighbors = ladybug_removed.slidable_locations_3d_height(location, 1);
+        let neighbors = neighbors.iter().filter(|loc| hive.contains(loc));
+        let climb_atop = neighbors.map(|loc| {
+            let height = ladybug_removed.peek(*loc).len() + 1;
+            ladybug_removed.slidable_locations_3d_height(*loc, height)
+        }).flatten();
+        let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
+
+        // One move off it
+        let climb_down = climb_atop.map(|loc| {
+            let height = ladybug_removed.peek(loc).len() + 1;
+            ladybug_removed.slidable_locations_3d_height(loc, height)
+        }).flatten();
+
+        let climb_down = climb_down.filter(|loc| outside.contains(loc));
+        let final_moves = climb_down.collect::<HashSet<HexLocation>>();
+
+        for final_move in final_moves {
+            let mut new_grid = ladybug_removed.clone();
+            new_grid.add(ladybug, final_move);
+            result.push(new_grid);
+        }
+
+        result
+    }
 }
 
 fn compare_moves(
@@ -612,7 +663,6 @@ fn test_queen_slide() {
     compare_moves(queen, selector, &grid, &queen_moves);
 }
 
-
 #[test]
 pub fn test_ant_moves() {
     //TODO: there may be some weird edge cases with
@@ -807,9 +857,7 @@ fn test_beetle_gate_upper_level() {
     let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
     let beetle_moves = generator.beetle_moves(beetle);
     compare_moves(beetle, selector, &grid, &beetle_moves);
-
 }
-
 
 #[test]
 fn test_beetle_pinned() {
@@ -856,4 +904,101 @@ fn test_beetle_pinned_top() {
     let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
     let beetle_moves = generator.beetle_moves(beetle);
     compare_moves(beetle, selector, &grid, &beetle_moves);
+}
+
+#[test]
+fn test_ladybug_moves() {
+    //  Test when ladybug moves across the hive with several situations:
+    //  blocked climb up, blocked slide on upper level, blocked climb down
+    //  unblocked climb up, unblocked slide on upper level, unblocked climb down
+    use PieceColor::*; use PieceType::*;
+
+    // unblocked slide
+    // blocked slide
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . 2 2 . . .\n",
+        ". . a a L . .\n",
+        " . . 2 a . . .\n",
+        ". . . . . . .\n\n",
+        " . . . . . a .\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+    ));
+    let selector = concat!(
+        ". . * * * . .\n",
+        " . * 2 2 * . .\n",
+        ". . a a L . .\n",
+        " . * 2 a * . .\n",
+        ". . * * * . .\n\n",
+        " . . . . . a .\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+    let ladybug_moves = generator.ladybug_moves(ladybug);
+    compare_moves(ladybug, selector, &grid, &ladybug_moves);
+
+
+    // climb up blocked
+    // climb up unblocked
+    // climb down blocked
+    // climb down unblocked
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . a .\n",
+        " . . . 5 a . .\n",
+        ". . . . L 4 .\n",
+        " . . . 5 a . .\n",
+        ". . . . a 2 .\n",
+        " . . . . . a .\n\n",
+        "start - [0 0]\n\n",
+        "5 - [a b b b b]\n",
+        "4 - [a b b b]\n",
+        "5 - [a b b b b]\n",
+        "2 - [a b]\n"
+    ));
+    let selector = concat!(
+        ". . . . * a .\n",
+        " . . . 5 a * .\n",
+        ". . . . L 4 .\n",
+        " . . . 5 a . .\n",
+        ". . . * a 2 .\n",
+        " . . . * * a .\n\n",
+        "start - [0 0]\n\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+    let ladybug_moves = generator.ladybug_moves(ladybug);
+    compare_moves(ladybug, selector, &grid, &ladybug_moves);
+
+    
+}
+
+#[test]
+fn test_ladybug_pinned() {
+    use PieceColor::*; use PieceType::*;
+    // unblocked slide
+    // blocked slide
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . 2 . . .\n",
+        ". . a . L . .\n",
+        " . . 2 a . . .\n",
+        ". . . . . . .\n\n",
+        " . . . . . a .\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+    let ladybug_moves = generator.ladybug_moves(ladybug);
+    assert!(ladybug_moves.is_empty());
 }

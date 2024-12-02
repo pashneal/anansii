@@ -1,11 +1,11 @@
 use crate::hex_grid::*;
 use std::collections::HashSet;
 
-/// Represents a HexGrid wrapper that can generate new positions
-/// for a selected piece at a given height. It will create new boards according to the
-/// rules that govern that piece as if the game state could not be changed by the Pillbug.
+/// Represents a HexGrid wrapper that can generate new positions. 
+/// It will create new boards according to the rules that govern pieces as if the 
+/// game state could not be swapped by the Pillbug.
 ///
-/// For the pillbug, see the difference between pillbug_swaps() and pillbug_moves() TODO
+/// For moves of the pillbug and pillbug adjacent pieces, see pillbug_swaps() and pillbug_moves()
 ///
 /// The move generator is only guaranteed to generate moves correctly
 /// for positions that follow the One Hive Rule
@@ -370,6 +370,28 @@ impl MoveGeneratorDebugger {
         }).collect();
 
         result
+    }
+
+
+    /// Returns locations that follow the typical placement rules for a given
+    /// color. These are all locations which are:
+    ///  - adjacent to some piece on the hive
+    ///  - not adjacent to a piece of the opposite color
+    ///  - unoccupied
+    pub fn placements(&self, placing_color: PieceColor) -> Vec<HexLocation> {
+        let mut placements = self.outside.clone();
+        for (_, loc) in self.grid.pieces() {
+            let Some(piece) = self.grid.top(loc) else {
+                continue;
+            };
+            if piece.color == placing_color {
+                continue;
+            }
+            for neighbor in self.grid.get_empty_neighbors(loc) {
+                placements.remove(&neighbor);
+            }
+        }
+        placements.into_iter().collect()
     }
 }
 
@@ -1336,4 +1358,57 @@ fn test_pillbug_pinned_moves() {
     let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
     let pillbug_moves = generator.pillbug_moves(pillbug);
     assert!(pillbug_moves.is_empty());
+}
+
+#[test] 
+fn test_placements() {
+    use PieceColor::*;
+    // Tests interesting interactions with enemy pieces
+    // including stacks effectively change the color
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . A . A . . .\n",
+        ". 2 b a A . .\n",
+        " . b . 2 . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [A b]\n",
+        "2 - [m B]\n",
+    ));
+    let expected_black_placements = HexGrid::selector(concat!(
+        ". . . . . . .\n",
+        " . A . A . . .\n",
+        "* 2 b a A . .\n",
+        " * b . 2 . . .\n",
+        ". * * . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [A b]\n",
+        "2 - [m B]\n",
+    ));
+    let expected_white_placements = HexGrid::selector(concat!(
+        ". * * * * . .\n",
+        " . A . A * . .\n",
+        ". 2 b a A * .\n",
+        " . b . 2 * . .\n",
+        ". . . * * . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [A b]\n",
+        "2 - [m B]\n",
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);    
+    let white_placements = generator.placements(White);
+    let black_placements = generator.placements(Black);
+
+    assert_eq!(black_placements.len(), expected_black_placements.len());
+    assert_eq!(white_placements.len(), expected_white_placements.len());
+
+    for placement in expected_white_placements {
+        assert!(white_placements.contains(&placement), 
+                "Expected place not found in white_placements: \n{:?}", placement);
+    }
+
+    for placement in expected_black_placements {
+        assert!(black_placements.contains(&placement), 
+                "Expected place not found in black_placements: \n{:?}", placement);
+    }
 }

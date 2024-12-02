@@ -110,6 +110,17 @@ impl HexGrid {
         pinned
     }
 
+    /// Returns the empty locations surrounding a given location
+    pub fn get_empty_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
+        let mut neighbors = vec![];
+        for direction in Direction::all().iter() {
+            let loc = location.apply(*direction);
+            if self.peek(loc).len() == 0 {
+                neighbors.push(loc);
+            }
+        }
+        neighbors
+    }
     /// Returns the non-empty locations surrounding a given location
     pub fn get_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut neighbors = vec![];

@@ -398,10 +398,56 @@ impl MoveGeneratorDebugger {
     /// if the mosquito is not covered by any other pieces.
     /// (ignores pillbug swaps)
     pub fn mosquito_moves(&self, location: HexLocation) -> Vec<HexGrid> {
-        debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Mosquito);
+        use PieceType::*;
+        let height = self.grid.peek(location).len();
+        debug_assert!(height >= 1);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Mosquito);
 
-        todo!();
+        if self.pinned.contains(&location) && height == 1 {
+            return vec![];
+        }
+
+        if height > 1 {
+            return self.beetle_moves(location);
+        }
+
+        let mut adjacent_pieces = Vec::new();
+        for neighbor in self.grid.get_neighbors(location) {
+            let piece = self.grid.top(neighbor).unwrap().piece;
+            adjacent_pieces.push(piece);
+        }
+
+        let mut grids = HashSet::new();
+        for piece in adjacent_pieces {
+            match piece {
+                Mosquito => {}
+                Spider => {
+                    grids.extend(self.spider_moves(location).into_iter());
+                }
+                Grasshopper => {
+                    grids.extend(self.grasshopper_moves(location).into_iter());
+                }
+                Queen => {
+                    grids.extend(self.queen_moves(location).into_iter());
+                }
+                Ant => {
+                    grids.extend(self.ant_moves(location).into_iter());
+                }
+                Beetle => {
+                    grids.extend(self.beetle_moves(location).into_iter());
+                }
+                Ladybug => {
+                    grids.extend(self.ladybug_moves(location).into_iter());
+                }
+                Pillbug => {
+                    grids.extend(self.pillbug_moves(location).into_iter());
+                }
+                _ => unreachable!(),
+            }
+        }
+
+
+        grids.into_iter().collect()
     }
 }
 

@@ -110,8 +110,7 @@ impl HexGrid {
         pinned
     }
 
-    /// Returns the stack of pieces surrounding a given location
-    /// grouped together by respective stacks
+    /// Returns the non-empty locations surrounding a given location
     pub fn get_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
         let mut neighbors = vec![];
         for direction in Direction::all().iter() {

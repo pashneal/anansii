@@ -284,6 +284,94 @@ impl MoveGeneratorDebugger {
 
         result
     }
+
+    /// Returns a list of all possible moves for a pillbug at a given location
+    /// if the pillbug is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn pillbug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        let height = self.grid.peek(location).len();
+        debug_assert!(height == 1);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Pillbug);
+
+        if self.pinned.contains(&location) {
+            return vec![];
+        }
+
+        let mut pillbug_removed = self.grid.clone();
+        let pillbug = pillbug_removed.remove(location).unwrap();
+
+        let mut result = vec![];
+        for slidable_location in pillbug_removed.slidable_locations_2d(location).iter() {
+            let mut new_grid = self.grid.clone();
+            new_grid.remove(location);
+            new_grid.add(pillbug, *slidable_location);
+            result.push(new_grid);
+        }
+
+        result
+    }
+
+    /// Returns a list of all positions with each possible swap applied to adjacent pieces by
+    /// the top-facing pillbug at a given *location*. 
+    ///
+    /// Adjacent pieces that are not allowed to be swapped are:
+    ///
+    /// - a piece at the specified *disallowed* location
+    /// - pieces in a stack of height > 1
+    /// - pieces whose movement would violate the One Hive Rule
+    /// - pieces that must pass through a gate of height > 1 to slide on top of the pillbug
+    pub fn pillbug_swaps(&self, pillbug_location: HexLocation, disallowed : Option<HexLocation>) -> Vec<HexGrid> {
+        let height = self.grid.peek(pillbug_location).len();
+        debug_assert!(height == 1, "The stack must only contain the pillbug");
+        debug_assert!(self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug);
+
+
+        let mut swappable = Vec::new();
+        for &candidate_loc in self.grid.get_neighbors(pillbug_location).iter() {
+
+            if let Some(disallowed) = disallowed {
+                if candidate_loc == disallowed {
+                    continue;
+                }
+            }
+
+            // pieces in a stack of height > 1
+            let candidate_stack = self.grid.peek(candidate_loc);
+            if candidate_stack.len() > 1 {
+                continue;
+            }
+
+            if self.pinned.contains(&candidate_loc) {
+                continue;
+            }
+
+            // Pretend the candidate moved to height 2 and attempted to slide to
+            // the pillbug
+            let slidable = self.grid.slidable_locations_3d_height(candidate_loc, 2);
+            if !slidable.contains(&pillbug_location) {
+                continue;
+            }
+
+            swappable.push(candidate_loc);
+        }
+
+        let mut empty_neighbors = Vec::new();
+        let slidable = self.grid.slidable_locations_3d_height(pillbug_location, 2);
+        for &candidate_loc in slidable.iter() {
+            if self.grid.peek(candidate_loc).is_empty() {
+                empty_neighbors.push(candidate_loc);
+            }
+        }
+
+        let result = itertools::iproduct!(empty_neighbors, swappable).map(|(destination, source)| {
+            let mut new_grid = self.grid.clone();
+            let piece = new_grid.remove(source).unwrap();
+            new_grid.add(piece, destination);
+            new_grid
+        }).collect();
+
+        result
+    }
 }
 
 fn compare_moves(
@@ -999,4 +1087,254 @@ fn test_ladybug_pinned() {
     let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
     let ladybug_moves = generator.ladybug_moves(ladybug);
     assert!(ladybug_moves.is_empty());
+}
+
+#[test]
+fn test_pillbug_moves() {
+    use PieceColor::*; use PieceType::*;
+    // Testing gates and when adjacent moves would break the One Hive Rule
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a a . .\n",
+        ". a . P . a .\n",
+        " a . . a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . * a a . .\n",
+        ". a . P . a .\n",
+        " a . * a a . .\n",
+        ". a a a . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let pillbug_moves = generator.pillbug_moves(pillbug);
+    compare_moves(pillbug, selector, &grid, &pillbug_moves);
+
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " a . . a a . .\n",
+        ". a . P . a .\n",
+        " a . . . a . .\n",
+        ". a a a a . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " a . * a a . .\n",
+        ". a . P * a .\n",
+        " a . . . a . .\n",
+        ". a a a a . .\n\n",
+        "start - [0 0]\n\n"
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let pillbug_moves = generator.pillbug_moves(pillbug);
+    compare_moves(pillbug, selector, &grid, &pillbug_moves);
+}
+
+#[test]
+fn test_pillbug_swaps() {
+    use PieceColor::*; use PieceType::*;
+
+    // Testing strategy 
+    //
+    // for pieces adjacent to the pillbug:
+    //   -  [x] Pinned/ [x] Unpinned
+    //   -  [x] a location disallowed vs [x] free 
+    //   -  [x] Blocked entrance by upper level gate vs [x] Blocked exit vs [x] free
+    //   -  [x] Under stack vs [x] free
+    //   -  [x] 0 free spaces, [x] 1 free space, [x] >1 free spaces
+    // for pillbug:
+    //   - [x] unpinned/ [x] pinned
+
+
+    // tests covered:
+    //  -  >1 free space
+    //  -  pillbug pinned 
+    //  -  Blocked exit by upper level gate
+    //  -  unblocked by upper level gate
+    //  -  adjacent piece is not pinned
+    //  -  under stack
+    //  -  not under stack
+    //  -  locations allowed
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . 2 . . .\n",
+        ". . 2 P . . .\n",
+        " . . l . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [q b]\n",
+        "2 - [m b]\n"
+    ));
+
+    let expected = vec![
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 2 . . .\n",
+            ". . 2 P l . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [q b]\n",
+            "2 - [m b]\n"
+        )),
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 2 . . .\n",
+            ". . 2 P . . .\n",
+            " . . . l . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [q b]\n",
+            "2 - [m b]\n"
+        )),
+    ];
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let pillbug_moves = generator.pillbug_swaps(pillbug, None);
+    assert_eq!(pillbug_moves.len(), expected.len());
+    for grid in expected {
+        assert!(pillbug_moves.contains(&grid), 
+                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+    }
+
+    // adjacent piece pinned
+    // pillbug unpinned
+    // location disallowed
+    // 1 free space
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . b q . . .\n",
+        ". . 2 P a a .\n",
+        " . . l . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [m b]\n"
+    ));
+
+    let expected = vec![
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . q . . .\n",
+            ". . 2 P a a .\n",
+            " . . l b . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [m b]\n"
+        )),
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . b q . . .\n",
+            ". . 2 P a a .\n",
+            " . . . l . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [m b]\n"
+        )),
+    ];
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
+    let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
+
+    assert_eq!(pillbug_moves.len(), expected.len());
+    for grid in expected {
+        assert!(pillbug_moves.contains(&grid), 
+                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+    }
+
+    // 0 free space
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . b q . . .\n",
+        ". . 2 P a a .\n",
+        " . . l a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [m b]\n"
+    ));
+
+    let expected = vec![
+    ];
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
+    let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
+
+    assert_eq!(pillbug_moves.len(), expected.len());
+    for grid in expected {
+        assert!(pillbug_moves.contains(&grid), 
+                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+    }
+
+    // Blocked entrance by upper level gate
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . b 3 . . .\n",
+        ". . 2 P a . .\n",
+        " . . . a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "3 - [m b b]\n",
+        "2 - [m b]\n",
+    ));
+
+    let expected = vec![
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . b 3 . . .\n",
+            ". . 2 P . . .\n",
+            " . . a a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "3 - [m b b]\n",
+            "2 - [m b]\n",
+        )),
+        HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . b 3 . . .\n",
+            ". . 2 P a . .\n",
+            " . . a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "3 - [m b b]\n",
+            "2 - [m b]\n",
+        )),
+    ];
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let pillbug_moves = generator.pillbug_swaps(pillbug, None);
+    assert_eq!(pillbug_moves.len(), expected.len());
+    for grid in expected {
+        assert!(pillbug_moves.contains(&grid), 
+                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+    }
+}
+
+#[test]
+fn test_pillbug_pinned_moves() {
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . b . . . .\n",
+        ". . 2 P a . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [m b]\n",
+    ));
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+    let pillbug_moves = generator.pillbug_moves(pillbug);
+    assert!(pillbug_moves.is_empty());
 }

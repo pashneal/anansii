@@ -69,7 +69,7 @@ impl MoveGeneratorDebugger {
     pub fn spider_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1 as usize);
-        debug_assert!(stack[0].piece == PieceType::Spider);
+        debug_assert!(stack[0].piece == PieceType::Spider || stack[0].piece == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -101,7 +101,7 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn grasshopper_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Grasshopper);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Grasshopper || self.grid.peek(location)[0].piece == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -134,7 +134,7 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn queen_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Queen);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Queen || self.grid.peek(location)[0].piece == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -163,7 +163,7 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn ant_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Ant);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Ant || self.grid.peek(location)[0].piece == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -207,7 +207,7 @@ impl MoveGeneratorDebugger {
     pub fn beetle_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height >= 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Beetle);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Beetle || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
 
         let hive = self.grid.pieces().into_iter().map(|(_, loc)| loc).collect::<HashSet<HexLocation>>();
 
@@ -242,7 +242,7 @@ impl MoveGeneratorDebugger {
     pub fn ladybug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Ladybug);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Ladybug || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
 
 
         if self.pinned.contains(&location) {
@@ -291,7 +291,7 @@ impl MoveGeneratorDebugger {
     pub fn pillbug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Pillbug);
+        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Pillbug || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -319,11 +319,11 @@ impl MoveGeneratorDebugger {
     /// - a piece at the specified *disallowed* location
     /// - pieces in a stack of height > 1
     /// - pieces whose movement would violate the One Hive Rule
-    /// - pieces that must pass through a gate of height > 1 to slide on top of the pillbug
+    /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
     pub fn pillbug_swaps(&self, pillbug_location: HexLocation, disallowed : Option<HexLocation>) -> Vec<HexGrid> {
         let height = self.grid.peek(pillbug_location).len();
         debug_assert!(height == 1, "The stack must only contain the pillbug");
-        debug_assert!(self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug);
+        debug_assert!(self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug || self.grid.top(pillbug_location).unwrap().piece == PieceType::Mosquito);
 
 
         let mut swappable = Vec::new();
@@ -392,6 +392,16 @@ impl MoveGeneratorDebugger {
             }
         }
         placements.into_iter().collect()
+    }
+
+    /// Returns a list of all possible moves for a mosquito at a given location
+    /// if the mosquito is not covered by any other pieces.
+    /// (ignores pillbug swaps)
+    pub fn mosquito_moves(&self, location: HexLocation) -> Vec<HexGrid> {
+        debug_assert!(self.grid.peek(location).len() == 1);
+        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Mosquito);
+
+        todo!();
     }
 }
 
@@ -1411,4 +1421,101 @@ fn test_placements() {
         assert!(black_placements.contains(&placement), 
                 "Expected place not found in black_placements: \n{:?}", placement);
     }
+}
+
+#[test]
+fn test_mosquito_mosquito_no_moves() {
+    // Mosquitos beside only other mosquitoes have no moves
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . . . . .\n",
+        ". a m M . . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+    let mosquito_moves = generator.mosquito_moves(mosquito);
+    assert!(mosquito_moves.is_empty());
+}
+#[test]
+fn test_lower_level_mosquito_moves() {
+    // A mosquito on the lower level adopts the moves of surrounding pieces
+    // Mosquitos next to stacks
+    use PieceColor::*; use PieceType::*;
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . q g . . .\n",
+        ". a b M 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a S]\n",
+    ));
+    let selector = concat!(
+        ". . * . * . .\n",
+        " . . * * . . .\n",
+        "* a * M * * .\n",
+        " * . * * . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a S]\n",
+    );
+
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+    let mosquito_moves = generator.mosquito_moves(mosquito);
+    compare_moves(mosquito, selector, &grid, &mosquito_moves);
+}
+
+#[test]
+fn test_upper_level_mosquito_moves() {
+    use PieceColor::*; use PieceType::*;
+    // A mosquito on the upper level is functionally a beetle
+    // A top level mosquito on top of a pinned piece may still move
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . q . . . .\n",
+        ". a b 2 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a M]\n",
+        "2 - [a S]\n",
+    ));
+    let selector = concat!(
+        ". . . . . . .\n",
+        " . . * * . . .\n",
+        ". a * 2 * . .\n",
+        " . . * * . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a M]\n",
+        "2 - [a S]\n",
+    );
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+    let mosquito_moves = generator.mosquito_moves(mosquito);
+    compare_moves(mosquito, selector, &grid, &mosquito_moves);
+}
+
+#[test]
+fn test_pinned_mosquito() {
+    use PieceColor::*; use PieceType::*;
+    // A lower level mosquito may be pinned and have no moves
+    let grid = HexGrid::from_dsl(concat!(
+        ". . . . . . .\n",
+        " . . . g . . .\n",
+        ". a b M 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a B]\n",
+    ));
+    let generator = MoveGeneratorDebugger::from_grid(&grid);
+    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+    let mosquito_moves = generator.mosquito_moves(mosquito);
+    assert!(mosquito_moves.is_empty());
 }

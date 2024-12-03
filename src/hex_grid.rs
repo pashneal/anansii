@@ -182,7 +182,6 @@ impl HexGrid {
             // or if the location has a piece under it
             let mut maintains_contact = self.peek(destination).len() > 0;
             maintains_contact = maintains_contact || effective_height > 1;
-            println!("maintains contact initially: {}", maintains_contact);
 
             for destination_neighbor in destination_neighbors.iter() {
                 if original_neighbors.contains(destination_neighbor) {
@@ -190,8 +189,6 @@ impl HexGrid {
                     break;
                 }
             }
-            println!("maintains contact finally: {}", maintains_contact);
-            println!("done!");
 
             if maintains_contact {
                 slidable.push(destination);

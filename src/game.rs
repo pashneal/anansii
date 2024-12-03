@@ -1,8 +1,9 @@
 use crate::hex_grid::*;
 use crate::piece::*;
+use std::collections::HashSet;
 use crate::uhp::*;
-use std::marker::PhantomData;
 use thiserror::Error;
+use crate::move_generator::*;
 
 #[derive(Error, Debug)]
 pub enum GameDebuggerError {
@@ -28,6 +29,8 @@ pub struct GameDebugger {
     /// through the lens of the Annotator which translates
     /// moves to human-readable formats
     annotations: Vec<Annotator>,
+    generator: MoveGeneratorDebugger,
+    game_type: GameType,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -49,58 +52,111 @@ impl GameResult {
 }
 
 impl GameDebugger {
+
+    /// Give a list of legal UHP moves starting from the empty board,
+    /// create and return a GameDebugger with the moves accounted for.
+    /// assumes Base+MLP
+    pub fn from_moves(moves: &[String]) -> Result<Self> {
+        GameDebugger::from_moves_custom(moves, GameType::MLP)
+    }
+
+    pub fn from_moves_custom(moves: &[String], game_type : GameType) -> Result<Self> {
+        let annotator = Annotator::new();
+        let annotations = vec![annotator];
+        let mut game = GameDebugger { 
+            annotations,
+            generator: MoveGeneratorDebugger::new(game_type),
+            game_type,
+        };
+
+        for mv in moves.iter() {
+            game.make_move(mv)?;
+        }
+        Ok(game)
+
+    }
+
+    /// Given all positions arrived at within the game create
+    /// and return a GameDebugger with the positions.
+    /// assumes Base+MLP
+    pub fn from_positions<P: Position>(positions: &Vec<P>) -> Result<Self> {
+        GameDebugger::from_positions_custom(positions, GameType::MLP)
+    }
+
+    pub fn from_positions_custom<P: Position>(positions: &Vec<P>, game_type : GameType) -> Result<Self> {
+        let annotator = Annotator::new();
+        let annotations = vec![annotator];
+        let mut game = GameDebugger { 
+            annotations,
+            generator: MoveGeneratorDebugger::new(game_type),
+            game_type,
+        };
+
+        // Must begin with the empty board
+        debug_assert!(positions.len() > 0 && positions[0].to_hex_grid() == HexGrid::new());
+
+        // Skip the first position, as it is the empty board
+        for pos in positions.iter().skip(1) {
+            game.append_position(pos)?;
+        }
+
+        Ok(game)
+    }
+
+    pub fn undo_move(&mut self) -> Result<()> {
+        if self.annotations.len() == 1 {
+            return Err(GameDebuggerError::AnnotationError(UHPError::UndoError));
+        }
+        self.annotations.pop();
+        let last_move = self.annotations.last().unwrap().last_move();
+        self.generator = MoveGeneratorDebugger::from_grid(self.annotations.last().unwrap().position(), self.game_type, last_move);
+        Ok(())
+    }
+
     /// Makes a legal UHP move from the UHP-compatible string passed in
     pub fn make_move(&mut self, move_string: &str) -> Result<()> {
         let mut annotator = self.annotations.last().unwrap().clone();
         annotator = annotator
             .next_uhp_move(&move_string)
             .map_err(|e| GameDebuggerError::AnnotationError(e))?;
-        self.annotations.push(annotator);
-        Ok(())
+
+        self.append_position(annotator.position())
+    }
+
+    pub fn player_to_move(&self) -> PieceColor {
+        match self.annotations.len() % 2 {
+            1 => PieceColor::White,
+            _ => PieceColor::Black,
+        }
     }
 
     /// Adds a new position to the game, assuming it arrived from a legal move
     /// from the last position stored in the game.
     pub fn append_position<P: Position>(&mut self, position: &P) -> Result<()> {
-        let mut annotator = self.annotations.last().unwrap().clone();
         let grid = position.to_hex_grid();
-        annotator = annotator
+
+        if !self.legal_positions().contains(&grid)  {
+            return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove));
+        }
+
+        let annotator = self.annotations.last().unwrap().clone();
+        let annotator = annotator
             .next_state(&grid)
             .map_err(|e| GameDebuggerError::AnnotationError(e))?;
+
+        
+        self.generator = MoveGeneratorDebugger::from_grid(annotator.position(), self.game_type, annotator.last_move());
         self.annotations.push(annotator);
 
         Ok(())
     }
 
-    /// Give a list of legal UHP moves starting from the empty board,
-    /// create and return a GameDebugger with the moves accounted for.
-    pub fn from_moves(moves: &[String]) -> Result<Self> {
-        let annotator = Annotator::new();
-        let annotations = vec![annotator];
-        let mut game = GameDebugger { annotations };
-
-        for mv in moves.iter() {
-            game.make_move(mv)?;
+    pub fn legal_positions(&self) -> HashSet<HexGrid> {
+        // If the game is over, no legal moves
+        match self.game_result() {
+            Some(_) => HashSet::new(),
+            _ => self.generator.all_moves_for(self.player_to_move())
         }
-
-        Ok(game)
-    }
-
-    /// Given all positions arrived at within the game create
-    /// and return a GameDebugger with the positions.
-    pub fn from_positions<P: Position>(positions: &Vec<P>) -> Result<Self> {
-        let annotator = Annotator::new();
-        let annotations = vec![annotator];
-        let mut game = GameDebugger { annotations };
-
-        // Must begin with the empty board
-        debug_assert!(positions.len() > 0 && positions[0].to_hex_grid() == HexGrid::new());
-
-        for pos in positions.iter() {
-            game.append_position(pos)?;
-        }
-
-        Ok(game)
     }
 
     /// If the game is over, returns the result of the game.
@@ -140,14 +196,6 @@ impl GameDebugger {
         }
 
         None
-    }
-
-    /// Returns the locations in the hive that are "pinned",
-    /// in other words, removing the pieces in that stack would violate the One Hive rule
-    ///
-    /// returns in board order, that is, first top-to-bottom then left-to-right
-    pub fn pinned(&self) -> Vec<HexLocation> {
-        todo!()
     }
 
     /// Get the latest position in the game

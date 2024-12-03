@@ -2,6 +2,7 @@ use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
 pub use crate::piece::*;
+pub use std::collections::HashMap;
 use std::collections::HashSet;
 
 pub type Height = usize;
@@ -19,9 +20,9 @@ pub const MAX_HEIGHT: usize = 7;
 ///
 /// HexLocation 0,0 is in the center of the grid to make
 /// the grid easier to reason about as Hive is a boardless "floating" game
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub struct HexGrid {
-    grid: Vec<Vec<Vec<Option<Piece>>>>,
+    fast_grid: HashMap<(usize, usize), Vec<Piece>>,
 }
 
 impl HexGrid {
@@ -39,7 +40,7 @@ impl HexGrid {
 
     pub fn new() -> HexGrid {
         HexGrid {
-            grid: vec![vec![vec![None; MAX_HEIGHT]; HEX_GRID_SIZE]; HEX_GRID_SIZE],
+            fast_grid: HashMap::new(),
         }
     }
 
@@ -240,22 +241,25 @@ impl HexGrid {
     /// in the grid
     pub fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
-
-        let left = -(HEX_GRID_CENTER.0 as i8);
-        let right = HEX_GRID_CENTER.0 as i8;
-        let top = -(HEX_GRID_CENTER.1 as i8);
-        let bottom = HEX_GRID_CENTER.1 as i8;
-
-        for y in top..bottom {
-            for x in left..right {
-                let loc = HexLocation::new(x as i8, y as i8);
-                let stack = self.peek(loc);
-                if stack.len() > 0 {
-                    pieces.push((stack, loc))
-                };
-            }
+        for (&(q, r), stack) in self.fast_grid.iter() {
+            let location = HexGrid::uncentralize(q, r);
+            let (row, col) = HexGrid::axial_to_oddr(q as i8, r as i8);
+            pieces.push(((row, col), stack.clone(), location));
         }
+        pieces.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+        let pieces = pieces
+            .into_iter()
+            .map(|(_, stack, loc)| (stack, loc))
+            .collect::<Vec<_>>();
+
         pieces
+    }
+
+    fn uncentralize(x: usize, y: usize) -> HexLocation {
+        HexLocation::new(
+            x as i8 - HEX_GRID_CENTER.0 as i8,
+            y as i8 - HEX_GRID_CENTER.1 as i8,
+        )
     }
 
     fn centralize(location: HexLocation) -> (usize, usize) {
@@ -267,26 +271,26 @@ impl HexGrid {
     /// Adds a piece to the top of the stack at the given location
     pub fn add(&mut self, piece: Piece, location: HexLocation) {
         let (x, y) = HexGrid::centralize(location);
-        for i in 0..MAX_HEIGHT {
-            if self.grid[y][x][i].is_none() {
-                self.grid[y][x][i] = Some(piece);
-                break;
-            }
-        }
+        self.fast_grid.entry((x, y)).or_insert(vec![]).push(piece);
     }
 
     /// Removes the top-most piece from the stack at the given location
     pub fn remove(&mut self, location: HexLocation) -> Option<Piece> {
         let (x, y) = HexGrid::centralize(location);
-        for i in (0..MAX_HEIGHT).rev() {
-            if self.grid[y][x][i].is_some() {
-                let piece = self.grid[y][x][i];
-                self.grid[y][x][i] = None;
-                return piece;
-            }
+        let piece = self
+            .fast_grid
+            .get_mut(&(x, y))
+            .and_then(|stack| stack.pop());
+        if self
+            .fast_grid
+            .get(&(x, y))
+            .map(|stack| stack.len())
+            .unwrap_or(0)
+            == 0
+        {
+            self.fast_grid.remove(&(x, y));
         }
-
-        None
+        piece
     }
 
     /// Access a copy of the pieces at a given location
@@ -305,16 +309,11 @@ impl HexGrid {
     /// with only the pieces that are present at the location
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
     fn axial(&self, x: usize, y: usize) -> Vec<Piece> {
-        let mut pieces = vec![];
+        let location = HexLocation::new(x as i8, y as i8);
         if x < 0 || x >= HEX_GRID_SIZE || y < 0 || y >= HEX_GRID_SIZE {
             return vec![];
         }
-        for piece in &self.grid[y][x] {
-            if piece.is_some() {
-                pieces.push(piece.unwrap());
-            }
-        }
-        return pieces;
+        self.fast_grid.get(&(x, y)).unwrap_or(&vec![]).clone()
     }
 
     pub fn oddr_to_axial(row: usize, col: usize) -> (i8, i8) {
@@ -327,6 +326,12 @@ impl HexGrid {
         let q = col as i8 - (row as i8 + ((row as i8) & 1)) / 2;
         let r = row as i8;
         (q, r)
+    }
+
+    pub fn axial_to_oddr(q: i8, r: i8) -> (usize, usize) {
+        let col = q + (r - (r & 1)) / 2;
+        let row = r;
+        (row as usize, col as usize)
     }
 
     /// Access the grid using the odd-r coordinate system
@@ -383,19 +388,7 @@ impl HexGrid {
     }
 
     pub fn num_pieces(&self) -> usize {
-        let mut count = 0;
-        for y in 0..HEX_GRID_SIZE {
-            for x in 0..HEX_GRID_SIZE {
-                for i in 0..MAX_HEIGHT {
-                    if self.grid[y][x][i].is_some() {
-                        count += 1;
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-        count
+        self.fast_grid.values().map(|stack| stack.len()).sum()
     }
 
     /// Outputs the stack part of this current grid according to the DSL
@@ -488,15 +481,13 @@ impl HexGrid {
         let mut max_row = 0;
         let mut max_col = 0;
 
-        for row in 0..HEX_GRID_SIZE {
-            for col in 0..HEX_GRID_SIZE {
-                if self.oddr(row, col).len() > 0 {
-                    min_row = min_row.min(row);
-                    min_col = min_col.min(col);
-                    max_row = max_row.max(row);
-                    max_col = max_col.max(col);
-                }
-            }
+        for (stack, location) in self.pieces() {
+            let (x, y) = HexGrid::centralize(location);
+            let (row, col) = HexGrid::axial_to_oddr(x as i8, y as i8);
+            min_row = min_row.min(row);
+            min_col = min_col.min(col);
+            max_row = max_row.max(row);
+            max_col = max_col.max(col);
         }
 
         ((min_row, min_col), (max_row, max_col))
@@ -504,15 +495,13 @@ impl HexGrid {
 
     /// Checks to see if the board contains no pieces
     pub fn is_empty(&self) -> bool {
-        for y in 0..HEX_GRID_SIZE {
-            for x in 0..HEX_GRID_SIZE {
-                if self.grid[y][x][0].is_some() {
-                    return false;
-                }
-            }
-        }
+        self.fast_grid.is_empty()
+    }
+}
 
-        true
+impl std::hash::Hash for HexGrid {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.pieces().hash(state);
     }
 }
 

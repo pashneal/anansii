@@ -1,9 +1,9 @@
 use crate::hex_grid::*;
-use crate::piece::*;
-use std::collections::HashSet;
-use crate::uhp::*;
-use thiserror::Error;
 use crate::move_generator::*;
+use crate::piece::*;
+use crate::uhp::*;
+use std::collections::HashSet;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum GameDebuggerError {
@@ -52,7 +52,6 @@ impl GameResult {
 }
 
 impl GameDebugger {
-
     /// Give a list of legal UHP moves starting from the empty board,
     /// create and return a GameDebugger with the moves accounted for.
     /// assumes Base+MLP
@@ -60,10 +59,10 @@ impl GameDebugger {
         GameDebugger::from_moves_custom(moves, GameType::MLP)
     }
 
-    pub fn from_moves_custom(moves: &[String], game_type : GameType) -> Result<Self> {
+    pub fn from_moves_custom(moves: &[String], game_type: GameType) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
-        let mut game = GameDebugger { 
+        let mut game = GameDebugger {
             annotations,
             generator: MoveGeneratorDebugger::new(game_type),
             game_type,
@@ -73,7 +72,6 @@ impl GameDebugger {
             game.make_move(mv)?;
         }
         Ok(game)
-
     }
 
     /// Given all positions arrived at within the game create
@@ -83,10 +81,13 @@ impl GameDebugger {
         GameDebugger::from_positions_custom(positions, GameType::MLP)
     }
 
-    pub fn from_positions_custom<P: Position>(positions: &Vec<P>, game_type : GameType) -> Result<Self> {
+    pub fn from_positions_custom<P: Position>(
+        positions: &Vec<P>,
+        game_type: GameType,
+    ) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
-        let mut game = GameDebugger { 
+        let mut game = GameDebugger {
             annotations,
             generator: MoveGeneratorDebugger::new(game_type),
             game_type,
@@ -109,7 +110,11 @@ impl GameDebugger {
         }
         self.annotations.pop();
         let last_move = self.annotations.last().unwrap().last_move();
-        self.generator = MoveGeneratorDebugger::from_grid(self.annotations.last().unwrap().position(), self.game_type, last_move);
+        self.generator = MoveGeneratorDebugger::from_grid(
+            self.annotations.last().unwrap().position(),
+            self.game_type,
+            last_move,
+        );
         Ok(())
     }
 
@@ -135,7 +140,7 @@ impl GameDebugger {
     pub fn append_position<P: Position>(&mut self, position: &P) -> Result<()> {
         let grid = position.to_hex_grid();
 
-        if !self.legal_positions().contains(&grid)  {
+        if !self.legal_positions().contains(&grid) {
             return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove));
         }
 
@@ -144,8 +149,11 @@ impl GameDebugger {
             .next_state(&grid)
             .map_err(|e| GameDebuggerError::AnnotationError(e))?;
 
-        
-        self.generator = MoveGeneratorDebugger::from_grid(annotator.position(), self.game_type, annotator.last_move());
+        self.generator = MoveGeneratorDebugger::from_grid(
+            annotator.position(),
+            self.game_type,
+            annotator.last_move(),
+        );
         self.annotations.push(annotator);
 
         Ok(())
@@ -155,7 +163,7 @@ impl GameDebugger {
         // If the game is over, no legal moves
         match self.game_result() {
             Some(_) => HashSet::new(),
-            _ => self.generator.all_moves_for(self.player_to_move())
+            _ => self.generator.all_moves_for(self.player_to_move()),
         }
     }
 

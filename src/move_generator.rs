@@ -16,7 +16,7 @@ pub struct MoveGeneratorDebugger {
     pinned: Vec<HexLocation>,
     outside: HashSet<HexLocation>,
     game_type: GameType,
-    last_move : Option<HexLocation>,
+    last_move: Option<HexLocation>,
 }
 
 impl MoveGeneratorDebugger {
@@ -26,11 +26,15 @@ impl MoveGeneratorDebugger {
             pinned: Vec::new(),
             outside: HashSet::new(),
             game_type,
-            last_move : None,
+            last_move: None,
         }
     }
 
-    pub fn from_grid(grid: &HexGrid, game_type: GameType, last_move : Option<HexLocation>) -> MoveGeneratorDebugger {
+    pub fn from_grid(
+        grid: &HexGrid,
+        game_type: GameType,
+        last_move: Option<HexLocation>,
+    ) -> MoveGeneratorDebugger {
         MoveGeneratorDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
@@ -46,7 +50,7 @@ impl MoveGeneratorDebugger {
             pinned: grid.pinned(),
             outside: grid.outside(),
             game_type: GameType::MLP,
-            last_move : None,
+            last_move: None,
         }
     }
 
@@ -432,7 +436,7 @@ impl MoveGeneratorDebugger {
     ///  2) not adjacent to a piece of the opposite color
     ///  3) unoccupied
     ///
-    /// If the board has no pieces, placement occurs at location HexLocation(0,0) 
+    /// If the board has no pieces, placement occurs at location HexLocation(0,0)
     /// If the board has one piece, placement only needs follow rule 1
     pub fn placements(&self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
@@ -458,7 +462,6 @@ impl MoveGeneratorDebugger {
             placements.insert(HexLocation { x: 0, y: 0 });
         }
 
-        
         placements.into_iter().collect()
     }
 
@@ -555,7 +558,6 @@ impl MoveGeneratorDebugger {
             .filter(|piece| piece.color == color)
             .collect::<Vec<_>>();
         let num_friendly_pieces = friendly_pieces.len();
-
 
         // Queen not placed
         if let None = queen {
@@ -1655,14 +1657,8 @@ fn test_placements() {
 fn test_placements_empty() {
     use PieceColor::*;
     // Make sure you place at the center when the board is empty
-    let grid = HexGrid::from_dsl(concat!(
-        ".\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let selector = HexGrid::selector(concat!(
-        "*\n\n",
-        "start - [0 0]\n\n",
-    ));
+    let grid = HexGrid::from_dsl(concat!(".\n\n", "start - [0 0]\n\n",));
+    let selector = HexGrid::selector(concat!("*\n\n", "start - [0 0]\n\n",));
 
     let generator = MoveGeneratorDebugger::from_default_grid(&grid);
     let placements = generator.placements(White);
@@ -1673,7 +1669,7 @@ fn test_placements_empty() {
 #[test]
 fn test_placements_single() {
     use PieceColor::*;
-    // Regression test: placement allowed in any adjacent 
+    // Regression test: placement allowed in any adjacent
     // hex if the board has a single piece
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
@@ -1701,7 +1697,6 @@ fn test_placements_single() {
         );
     }
     assert_eq!(placements.len(), expected.len());
-
 }
 #[test]
 fn test_mosquito_mosquito_no_moves() {

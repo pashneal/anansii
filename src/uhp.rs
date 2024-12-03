@@ -569,7 +569,10 @@ impl Annotator {
 
     pub fn annotate(&self, position: &HexGrid) -> Result<String> {
         let next = self.next_state(position)?;
-        next.uhp_move_strings().last().cloned().ok_or(UHPError::InvariantError)
+        next.uhp_move_strings()
+            .last()
+            .cloned()
+            .ok_or(UHPError::InvariantError)
     }
 
     pub fn position(&self) -> &HexGrid {
@@ -652,8 +655,8 @@ impl UHPInterface {
         };
 
         // Also update underlying move generator
-        self.game = GameDebugger::from_moves(&self.annotations.last().unwrap().uhp_move_strings())
-            .unwrap();
+        self.game =
+            GameDebugger::from_moves(&self.annotations.last().unwrap().uhp_move_strings()).unwrap();
 
         Ok("".to_string())
     }
@@ -711,7 +714,10 @@ impl UHPInterface {
                 self.make_move(move_string)?;
             }
 
-            debug_assert!(game_state == self.game_result(), "Game did not end as expected");
+            debug_assert!(
+                game_state == self.game_result(),
+                "Game did not end as expected"
+            );
         }
 
         Ok(self.game_string())
@@ -756,14 +762,14 @@ impl UHPInterface {
     fn make_move(&mut self, move_string: &str) -> CommandResult {
         let annotator = self.annotations.last().unwrap();
         let position = annotator.position();
-        
-
 
         let annotator = annotator
             .next_uhp_move(move_string)
             .map_err(|e| e.to_string())?;
 
-        self.game.make_move(move_string).map_err(|e| e.to_string())?;
+        self.game
+            .make_move(move_string)
+            .map_err(|e| e.to_string())?;
         self.annotations.push(annotator);
         self.player_to_move = self.player_to_move.opposite();
         Ok(self.game_string())
@@ -787,7 +793,9 @@ impl UHPInterface {
 
         let mut moves = vec![];
         for position in positions {
-            let move_string = annotator.annotate(&position).map_err(|_| "Cannot create move string")?;
+            let move_string = annotator
+                .annotate(&position)
+                .map_err(|_| "Cannot create move string")?;
             moves.push(move_string);
         }
 
@@ -1854,7 +1862,7 @@ pub fn test_uhp_interface_some_moves() {
     println!("OUTPUT: {}", output);
     assert!(
         output == format!("Base+LP;InProgress;White[4];{}\nok\n", moves)
-        || output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
+            || output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
     );
     println!("{}", uhp.current_position().to_dsl());
     println!("{}", final_position.to_dsl());

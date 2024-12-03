@@ -427,6 +427,8 @@ impl MoveGeneratorDebugger {
     ///  - adjacent to some piece on the hive
     ///  - not adjacent to a piece of the opposite color
     ///  - unoccupied
+    ///
+    /// If the board has no pieces, placement occurs at location HexLocation(0,0) 
     pub fn placements(&self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
         for (_, loc) in self.grid.pieces() {
@@ -439,6 +441,10 @@ impl MoveGeneratorDebugger {
             for neighbor in self.grid.get_empty_neighbors(loc) {
                 placements.remove(&neighbor);
             }
+        }
+
+        if self.grid.is_empty() {
+            placements.insert(HexLocation { x: 0, y: 0 });
         }
         placements.into_iter().collect()
     }
@@ -527,8 +533,6 @@ impl MoveGeneratorDebugger {
     /// Returns each move translated to a new position for a given player's color.
     /// The last_move refers to the location that contains the most
     /// recently moved piece
-    /// TODO: also account for empty board placing at 0,0
-    /// TODO: currently does Base+MLP need to refactor to do any composition
     pub fn all_moves(&self, color: PieceColor, last_move: Option<HexLocation>) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
@@ -1635,6 +1639,25 @@ fn test_placements() {
     }
 }
 
+#[test]
+fn test_placements_empty() {
+    use PieceColor::*;
+    // Make sure you place at the center when the board is empty
+    let grid = HexGrid::from_dsl(concat!(
+        ".\n\n",
+        "start - [0 0]\n\n",
+    ));
+    let selector = HexGrid::selector(concat!(
+        "*\n\n",
+        "start - [0 0]\n\n",
+    ));
+
+    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+    let placements = generator.placements(White);
+    let expected = selector;
+    assert_eq!(placements, expected);
+
+}
 #[test]
 fn test_mosquito_mosquito_no_moves() {
     // Mosquitos beside only other mosquitoes have no moves

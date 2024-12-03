@@ -779,6 +779,31 @@ pub fn test_spider_door() {
     let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
     let spider_moves = generator.spider_moves(spider);
     compare_moves(spider, selector, &grid, &spider_moves);
+
+    let grid = HexGrid::from_dsl(concat!(
+        " . . . . . . .\n",
+        ". . a a a . .\n",
+        " . a S . a . .\n",
+        ". . a . a . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    ));
+
+    let selector = concat!(
+        " . . . . . . .\n",
+        ". . a a a . .\n",
+        " . a S . a . .\n",
+        ". . a . a . .\n",
+        " . * * * * . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n"
+    );
+
+    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+    let spider_moves = generator.spider_moves(spider);
+    compare_moves(spider, selector, &grid, &spider_moves);
 }
 
 #[test]

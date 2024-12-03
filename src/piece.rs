@@ -1,5 +1,5 @@
-use thiserror::Error;
 use crate::uhp::GameType;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum HexGridError {
@@ -47,15 +47,24 @@ impl PieceType {
         }
     }
 
-    pub fn all(game_type : GameType) -> Vec<PieceType> {
-        use PieceType::*;
+    pub fn all(game_type: GameType) -> Vec<PieceType> {
         use GameType::*;
+        use PieceType::*;
         match game_type {
             Standard => vec![Queen, Grasshopper, Spider, Beetle, Ant],
             M => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito],
             MP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Pillbug],
             ML => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Ladybug],
-            MLP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Pillbug, Ladybug],
+            MLP => vec![
+                Queen,
+                Grasshopper,
+                Spider,
+                Beetle,
+                Ant,
+                Mosquito,
+                Pillbug,
+                Ladybug,
+            ],
             L => vec![Queen, Grasshopper, Spider, Beetle, Ant, Ladybug],
             LP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Ladybug, Pillbug],
             P => vec![Queen, Grasshopper, Spider, Beetle, Ant, Pillbug],

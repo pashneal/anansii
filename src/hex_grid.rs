@@ -138,14 +138,18 @@ impl HexGrid {
     /// sliding pieces and maintains contact with at least one of its original neighbors
     ///
     /// Specifies the effective height of the piece, to see if the piece can jump over the gate
-    pub fn slidable_locations_3d_height(&self, location: HexLocation, effective_height : usize) -> Vec<HexLocation> {
+    pub fn slidable_locations_3d_height(
+        &self,
+        location: HexLocation,
+        effective_height: usize,
+    ) -> Vec<HexLocation> {
         let mut slidable = vec![];
         let original_neighbors = self.get_neighbors(location);
 
         for direction in Direction::all().iter() {
             let destination = location.apply(*direction);
             let destination_height = self.peek(destination).len();
-            let final_height =  destination_height + 1;
+            let final_height = destination_height + 1;
             let effective_height = final_height.max(effective_height);
 
             let (left_dir, right_dir) = direction.adjacent();
@@ -177,7 +181,7 @@ impl HexGrid {
             // maintains contact if the destination has a piece
             // or if the location has a piece under it
             let mut maintains_contact = self.peek(destination).len() > 0;
-            maintains_contact =  maintains_contact || effective_height > 1;
+            maintains_contact = maintains_contact || effective_height > 1;
             println!("maintains contact initially: {}", maintains_contact);
 
             for destination_neighbor in destination_neighbors.iter() {
@@ -188,7 +192,6 @@ impl HexGrid {
             }
             println!("maintains contact finally: {}", maintains_contact);
             println!("done!");
-
 
             if maintains_contact {
                 slidable.push(destination);
@@ -215,7 +218,10 @@ impl HexGrid {
     pub fn slidable_locations_2d(&self, location: HexLocation) -> Vec<HexLocation> {
         debug_assert!(self.peek(location).len() <= 1); // Cannot climb up the hive
         let all_locations = self.slidable_locations_3d_height(location, 1);
-        all_locations.into_iter().filter(|&loc| self.peek(loc).len() == 0).collect()
+        all_locations
+            .into_iter()
+            .filter(|&loc| self.peek(loc).len() == 0)
+            .collect()
     }
 
     /// Returns the first occurrence of a specified piece in the grid.

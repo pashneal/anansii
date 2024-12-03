@@ -114,11 +114,10 @@ impl GameDebugger {
         let white_queen = grid.find(Piece::new(Queen, White));
         let black_queen = grid.find(Piece::new(Queen, Black));
 
-        let queen_surrounded = |(queen_loc, _) : (HexLocation, _)| -> bool {
+        let queen_surrounded = |(queen_loc, _): (HexLocation, _)| -> bool {
             let neighbors = grid.get_neighbors(queen_loc);
             neighbors.len() == 6
-        }; 
-
+        };
 
         let white_queen_surrounded = white_queen.map(queen_surrounded).unwrap_or(false);
         let black_queen_surrounded = black_queen.map(queen_surrounded).unwrap_or(false);
@@ -127,7 +126,7 @@ impl GameDebugger {
             (true, false) => return Some(GameResult::BlackWins),
             (false, true) => return Some(GameResult::WhiteWins),
             (true, true) => return Some(GameResult::Draw),
-            _ => {},
+            _ => {}
         }
 
         let mut position_count = 0;
@@ -238,7 +237,6 @@ pub fn test_draw() {
     let game = GameDebugger::from_moves(&draw).unwrap();
     println!("game\n:{}", game.position().to_dsl());
     assert_eq!(game.game_result(), Some(GameResult::Draw));
-
 }
 
 #[test]
@@ -267,9 +265,7 @@ pub fn test_double_surround_draw() {
         String::from(r"bG1 wB1\"),
     ];
 
-
     let game = GameDebugger::from_moves(&draw).unwrap();
     println!("game\n:{}", game.position().to_dsl());
     assert_eq!(game.game_result(), Some(GameResult::Draw));
 }
-

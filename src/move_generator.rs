@@ -1,11 +1,10 @@
 use crate::hex_grid::*;
-use std::collections::HashSet;
-use crate::uhp::GameType;
 use crate::piece::PIECE_COUNTS;
+use crate::uhp::GameType;
+use std::collections::HashSet;
 
-
-/// Represents a HexGrid wrapper that can generate new positions. 
-/// It will create new boards according to the rules that govern pieces as if the 
+/// Represents a HexGrid wrapper that can generate new positions.
+/// It will create new boards according to the rules that govern pieces as if the
 /// game state could not be swapped by the Pillbug.
 ///
 /// For moves of the pillbug and pillbug adjacent pieces, see pillbug_swaps() and pillbug_moves()
@@ -20,7 +19,7 @@ pub struct MoveGeneratorDebugger {
 }
 
 impl MoveGeneratorDebugger {
-    pub fn new(game_type : GameType) -> MoveGeneratorDebugger {
+    pub fn new(game_type: GameType) -> MoveGeneratorDebugger {
         MoveGeneratorDebugger {
             grid: HexGrid::new(),
             pinned: Vec::new(),
@@ -29,7 +28,7 @@ impl MoveGeneratorDebugger {
         }
     }
 
-    pub fn from_grid(grid: HexGrid, game_type : GameType) -> MoveGeneratorDebugger {
+    pub fn from_grid(grid: HexGrid, game_type: GameType) -> MoveGeneratorDebugger {
         MoveGeneratorDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
@@ -116,7 +115,10 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn grasshopper_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Grasshopper || self.grid.peek(location)[0].piece == PieceType::Mosquito);
+        debug_assert!(
+            self.grid.peek(location)[0].piece == PieceType::Grasshopper
+                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -149,7 +151,10 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn queen_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Queen || self.grid.peek(location)[0].piece == PieceType::Mosquito);
+        debug_assert!(
+            self.grid.peek(location)[0].piece == PieceType::Queen
+                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -178,7 +183,10 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn ant_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
-        debug_assert!(self.grid.peek(location)[0].piece == PieceType::Ant || self.grid.peek(location)[0].piece == PieceType::Mosquito);
+        debug_assert!(
+            self.grid.peek(location)[0].piece == PieceType::Ant
+                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -222,9 +230,17 @@ impl MoveGeneratorDebugger {
     pub fn beetle_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height >= 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Beetle || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
+        debug_assert!(
+            self.grid.top(location).unwrap().piece == PieceType::Beetle
+                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+        );
 
-        let hive = self.grid.pieces().into_iter().map(|(_, loc)| loc).collect::<HashSet<HexLocation>>();
+        let hive = self
+            .grid
+            .pieces()
+            .into_iter()
+            .map(|(_, loc)| loc)
+            .collect::<HashSet<HexLocation>>();
 
         if self.pinned.contains(&location) && height == 1 {
             return vec![];
@@ -257,8 +273,10 @@ impl MoveGeneratorDebugger {
     pub fn ladybug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Ladybug || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
-
+        debug_assert!(
+            self.grid.top(location).unwrap().piece == PieceType::Ladybug
+                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -269,24 +287,31 @@ impl MoveGeneratorDebugger {
         let mut outside = ladybug_removed.outside();
         outside.remove(&location);
 
-
-        let hive = ladybug_removed.pieces().into_iter().map(|(_, loc)| loc).collect::<HashSet<HexLocation>>();
+        let hive = ladybug_removed
+            .pieces()
+            .into_iter()
+            .map(|(_, loc)| loc)
+            .collect::<HashSet<HexLocation>>();
 
         let mut result = vec![];
         // Two moves on the hive
         let neighbors = ladybug_removed.slidable_locations_3d_height(location, 1);
         let neighbors = neighbors.iter().filter(|loc| hive.contains(loc));
-        let climb_atop = neighbors.map(|loc| {
-            let height = ladybug_removed.peek(*loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(*loc, height)
-        }).flatten();
+        let climb_atop = neighbors
+            .map(|loc| {
+                let height = ladybug_removed.peek(*loc).len() + 1;
+                ladybug_removed.slidable_locations_3d_height(*loc, height)
+            })
+            .flatten();
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
         // One move off it
-        let climb_down = climb_atop.map(|loc| {
-            let height = ladybug_removed.peek(loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(loc, height)
-        }).flatten();
+        let climb_down = climb_atop
+            .map(|loc| {
+                let height = ladybug_removed.peek(loc).len() + 1;
+                ladybug_removed.slidable_locations_3d_height(loc, height)
+            })
+            .flatten();
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
         let final_moves = climb_down.collect::<HashSet<HexLocation>>();
@@ -306,7 +331,10 @@ impl MoveGeneratorDebugger {
     pub fn pillbug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Pillbug || self.grid.top(location).unwrap().piece == PieceType::Mosquito);
+        debug_assert!(
+            self.grid.top(location).unwrap().piece == PieceType::Pillbug
+                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -327,7 +355,7 @@ impl MoveGeneratorDebugger {
     }
 
     /// Returns a list of all positions with each possible swap applied to adjacent pieces by
-    /// the top-facing pillbug at a given *location*. 
+    /// the top-facing pillbug at a given *location*.
     ///
     /// Adjacent pieces that are not allowed to be swapped are:
     ///
@@ -335,15 +363,20 @@ impl MoveGeneratorDebugger {
     /// - pieces in a stack of height > 1
     /// - pieces whose movement would violate the One Hive Rule
     /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
-    pub fn pillbug_swaps(&self, pillbug_location: HexLocation, disallowed : Option<HexLocation>) -> Vec<HexGrid> {
+    pub fn pillbug_swaps(
+        &self,
+        pillbug_location: HexLocation,
+        disallowed: Option<HexLocation>,
+    ) -> Vec<HexGrid> {
         let height = self.grid.peek(pillbug_location).len();
         debug_assert!(height == 1, "The stack must only contain the pillbug");
-        debug_assert!(self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug || self.grid.top(pillbug_location).unwrap().piece == PieceType::Mosquito);
-
+        debug_assert!(
+            self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug
+                || self.grid.top(pillbug_location).unwrap().piece == PieceType::Mosquito
+        );
 
         let mut swappable = Vec::new();
         for &candidate_loc in self.grid.get_neighbors(pillbug_location).iter() {
-
             if let Some(disallowed) = disallowed {
                 if candidate_loc == disallowed {
                     continue;
@@ -377,16 +410,17 @@ impl MoveGeneratorDebugger {
             }
         }
 
-        let result = itertools::iproduct!(empty_neighbors, swappable).map(|(destination, source)| {
-            let mut new_grid = self.grid.clone();
-            let piece = new_grid.remove(source).unwrap();
-            new_grid.add(piece, destination);
-            new_grid
-        }).collect();
+        let result = itertools::iproduct!(empty_neighbors, swappable)
+            .map(|(destination, source)| {
+                let mut new_grid = self.grid.clone();
+                let piece = new_grid.remove(source).unwrap();
+                new_grid.add(piece, destination);
+                new_grid
+            })
+            .collect();
 
         result
     }
-
 
     /// Returns locations that follow the typical placement rules for a given
     /// color. These are all locations which are:
@@ -461,63 +495,78 @@ impl MoveGeneratorDebugger {
             }
         }
 
-
         grids.into_iter().collect()
     }
 
     /// TODO: refactor cause this kinda ugly
-    fn pieces_in_hand(&self, color : PieceColor) -> Vec<Piece> {
+    fn pieces_in_hand(&self, color: PieceColor) -> Vec<Piece> {
         let all_pieces = self.grid.pieces();
-        let friendly_pieces = all_pieces.iter().map(|(stack, _)| stack).flatten().filter(|piece| piece.color == color).collect::<Vec<_>>();
+        let friendly_pieces = all_pieces
+            .iter()
+            .map(|(stack, _)| stack)
+            .flatten()
+            .filter(|piece| piece.color == color)
+            .collect::<Vec<_>>();
         let mut result = Vec::new();
 
         for piece in PieceType::all(GameType::MLP) {
             let num_placed = friendly_pieces.iter().filter(|p| p.piece == piece).count();
-            let total = PIECE_COUNTS.iter().find(|(piece_type, _)| *piece_type == piece).unwrap().1;
+            let total = PIECE_COUNTS
+                .iter()
+                .find(|(piece_type, _)| *piece_type == piece)
+                .unwrap()
+                .1;
             if num_placed < total {
                 result.push(Piece::new(piece, color));
             }
         }
 
         result
-
     }
-    
+
     /// Returns each move translated to a new position for a given player's color.
-    /// The last_move refers to the location that contains the most 
+    /// The last_move refers to the location that contains the most
     /// recently moved piece
     /// TODO: also account for empty board placing at 0,0
     /// TODO: currently does Base+MLP need to refactor to do any composition
-    pub fn all_moves(&self, color : PieceColor,  last_move : Option<HexLocation>) -> HashSet<HexGrid> {
+    pub fn all_moves(&self, color: PieceColor, last_move: Option<HexLocation>) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
         let all_pieces = self.grid.pieces();
-        let friendly_pieces = all_pieces.iter().map(|(stack, _)| stack).flatten().filter(|piece| piece.color == color).collect::<Vec<_>>();
+        let friendly_pieces = all_pieces
+            .iter()
+            .map(|(stack, _)| stack)
+            .flatten()
+            .filter(|piece| piece.color == color)
+            .collect::<Vec<_>>();
         let num_friendly_pieces = friendly_pieces.len();
 
         // Queen not placed
         if let None = queen {
-            // Forced to place a queen by 4th turn 
-            if num_friendly_pieces == 3 { 
+            // Forced to place a queen by 4th turn
+            if num_friendly_pieces == 3 {
                 for placement in self.placements(color) {
                     let mut new_grid = self.grid.clone();
                     new_grid.add(Piece::new(PieceType::Queen, color), placement);
                     positions.insert(new_grid);
                 }
-                return positions
+                return positions;
             }
         }
 
         // Calculate placements
-        itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(|(piece, placement)| {
-            let placement_disallowed = piece.piece == PieceType::Queen && num_friendly_pieces == 0;
+        itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
+            |(piece, placement)| {
+                let placement_disallowed =
+                    piece.piece == PieceType::Queen && num_friendly_pieces == 0;
 
-            if !placement_disallowed {
-                let mut new_grid = self.grid.clone();
-                new_grid.add(piece, placement);
-                positions.insert(new_grid);
-            }
-        });
+                if !placement_disallowed {
+                    let mut new_grid = self.grid.clone();
+                    new_grid.add(piece, placement);
+                    positions.insert(new_grid);
+                }
+            },
+        );
 
         // Calculate moves
         for (stack, location) in all_pieces {
@@ -540,7 +589,7 @@ impl MoveGeneratorDebugger {
             positions.extend(moves.into_iter());
         }
 
-        positions 
+        positions
     }
 }
 
@@ -898,7 +947,8 @@ pub fn test_queen_moves() {
 }
 #[test]
 fn test_queen_slide() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " a . . a a . .\n",
@@ -924,7 +974,7 @@ fn test_queen_slide() {
 #[test]
 pub fn test_ant_moves() {
     //TODO: there may be some weird edge cases with
-    //the one hive move that necessitates it checking if 
+    //the one hive move that necessitates it checking if
     //it is still in contact with its original neighbors?
     use PieceColor::*;
     use PieceType::*;
@@ -981,7 +1031,8 @@ fn test_ant_pinned() {
 
 #[test]
 fn test_beetle_gate_lower_level() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     // Tests slide, climb up (always unblocked if only lower level gates exist), down
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
@@ -1055,8 +1106,8 @@ fn test_beetle_gate_lower_level() {
 fn test_beetle_gate_upper_level() {
     // Test when the beetle is on top of the hive with these situations:
     // slide (blocked/unblocked), up (blocked/unblocked), down(blocked/unblocked)
-    use PieceColor::*; use PieceType::*;
-
+    use PieceColor::*;
+    use PieceType::*;
 
     // slide unblocked
     // climb up blocked
@@ -1120,7 +1171,8 @@ fn test_beetle_gate_upper_level() {
 #[test]
 fn test_beetle_pinned() {
     // Test with a beetle that is pinned
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " . . . a . . .\n",
@@ -1139,7 +1191,8 @@ fn test_beetle_pinned() {
 fn test_beetle_pinned_top() {
     // Test with a beetle that is on top of a pinned piece,
     // but is not pinned itself
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " . . . a . . .\n",
@@ -1169,7 +1222,8 @@ fn test_ladybug_moves() {
     //  Test when ladybug moves across the hive with several situations:
     //  blocked climb up, blocked slide on upper level, blocked climb down
     //  unblocked climb up, unblocked slide on upper level, unblocked climb down
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
 
     // unblocked slide
     // blocked slide
@@ -1202,7 +1256,6 @@ fn test_ladybug_moves() {
     let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
     let ladybug_moves = generator.ladybug_moves(ladybug);
     compare_moves(ladybug, selector, &grid, &ladybug_moves);
-
 
     // climb up blocked
     // climb up unblocked
@@ -1239,7 +1292,8 @@ fn test_ladybug_moves() {
 
 #[test]
 fn test_ladybug_pinned() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     // unblocked slide
     // blocked slide
     let grid = HexGrid::from_dsl(concat!(
@@ -1261,7 +1315,8 @@ fn test_ladybug_pinned() {
 
 #[test]
 fn test_pillbug_moves() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     // Testing gates and when adjacent moves would break the One Hive Rule
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
@@ -1308,23 +1363,23 @@ fn test_pillbug_moves() {
 
 #[test]
 fn test_pillbug_swaps() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
 
-    // Testing strategy 
+    // Testing strategy
     //
     // for pieces adjacent to the pillbug:
     //   -  [x] Pinned/ [x] Unpinned
-    //   -  [x] a location disallowed vs [x] free 
+    //   -  [x] a location disallowed vs [x] free
     //   -  [x] Blocked entrance by upper level gate vs [x] Blocked exit vs [x] free
     //   -  [x] Under stack vs [x] free
     //   -  [x] 0 free spaces, [x] 1 free space, [x] >1 free spaces
     // for pillbug:
     //   - [x] unpinned/ [x] pinned
 
-
     // tests covered:
     //  -  >1 free space
-    //  -  pillbug pinned 
+    //  -  pillbug pinned
     //  -  Blocked exit by upper level gate
     //  -  unblocked by upper level gate
     //  -  adjacent piece is not pinned
@@ -1370,8 +1425,11 @@ fn test_pillbug_swaps() {
     let pillbug_moves = generator.pillbug_swaps(pillbug, None);
     assert_eq!(pillbug_moves.len(), expected.len());
     for grid in expected {
-        assert!(pillbug_moves.contains(&grid), 
-                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+        assert!(
+            pillbug_moves.contains(&grid),
+            "Expected grid not found in pillbug_moves: \n{}",
+            grid.to_dsl()
+        );
     }
 
     // adjacent piece pinned
@@ -1416,8 +1474,11 @@ fn test_pillbug_swaps() {
 
     assert_eq!(pillbug_moves.len(), expected.len());
     for grid in expected {
-        assert!(pillbug_moves.contains(&grid), 
-                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+        assert!(
+            pillbug_moves.contains(&grid),
+            "Expected grid not found in pillbug_moves: \n{}",
+            grid.to_dsl()
+        );
     }
 
     // 0 free space
@@ -1431,8 +1492,7 @@ fn test_pillbug_swaps() {
         "2 - [m b]\n"
     ));
 
-    let expected = vec![
-    ];
+    let expected = vec![];
 
     let generator = MoveGeneratorDebugger::from_default_grid(&grid);
     let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
@@ -1441,8 +1501,11 @@ fn test_pillbug_swaps() {
 
     assert_eq!(pillbug_moves.len(), expected.len());
     for grid in expected {
-        assert!(pillbug_moves.contains(&grid), 
-                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+        assert!(
+            pillbug_moves.contains(&grid),
+            "Expected grid not found in pillbug_moves: \n{}",
+            grid.to_dsl()
+        );
     }
 
     // Blocked entrance by upper level gate
@@ -1485,14 +1548,18 @@ fn test_pillbug_swaps() {
     let pillbug_moves = generator.pillbug_swaps(pillbug, None);
     assert_eq!(pillbug_moves.len(), expected.len());
     for grid in expected {
-        assert!(pillbug_moves.contains(&grid), 
-                "Expected grid not found in pillbug_moves: \n{}", grid.to_dsl());
+        assert!(
+            pillbug_moves.contains(&grid),
+            "Expected grid not found in pillbug_moves: \n{}",
+            grid.to_dsl()
+        );
     }
 }
 
 #[test]
 fn test_pillbug_pinned_moves() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " . . b . . . .\n",
@@ -1509,7 +1576,7 @@ fn test_pillbug_pinned_moves() {
     assert!(pillbug_moves.is_empty());
 }
 
-#[test] 
+#[test]
 fn test_placements() {
     use PieceColor::*;
     // Tests interesting interactions with enemy pieces
@@ -1544,7 +1611,7 @@ fn test_placements() {
         "2 - [A b]\n",
         "2 - [m B]\n",
     ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);    
+    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
     let white_placements = generator.placements(White);
     let black_placements = generator.placements(Black);
 
@@ -1552,20 +1619,27 @@ fn test_placements() {
     assert_eq!(white_placements.len(), expected_white_placements.len());
 
     for placement in expected_white_placements {
-        assert!(white_placements.contains(&placement), 
-                "Expected place not found in white_placements: \n{:?}", placement);
+        assert!(
+            white_placements.contains(&placement),
+            "Expected place not found in white_placements: \n{:?}",
+            placement
+        );
     }
 
     for placement in expected_black_placements {
-        assert!(black_placements.contains(&placement), 
-                "Expected place not found in black_placements: \n{:?}", placement);
+        assert!(
+            black_placements.contains(&placement),
+            "Expected place not found in black_placements: \n{:?}",
+            placement
+        );
     }
 }
 
 #[test]
 fn test_mosquito_mosquito_no_moves() {
     // Mosquitos beside only other mosquitoes have no moves
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " . . . . . . .\n",
@@ -1583,7 +1657,8 @@ fn test_mosquito_mosquito_no_moves() {
 fn test_lower_level_mosquito_moves() {
     // A mosquito on the lower level adopts the moves of surrounding pieces
     // Mosquitos next to stacks
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",
         " . . q g . . .\n",
@@ -1611,7 +1686,8 @@ fn test_lower_level_mosquito_moves() {
 
 #[test]
 fn test_upper_level_mosquito_moves() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     // A mosquito on the upper level is functionally a beetle
     // A top level mosquito on top of a pinned piece may still move
     let grid = HexGrid::from_dsl(concat!(
@@ -1642,7 +1718,8 @@ fn test_upper_level_mosquito_moves() {
 
 #[test]
 fn test_pinned_mosquito() {
-    use PieceColor::*; use PieceType::*;
+    use PieceColor::*;
+    use PieceType::*;
     // A lower level mosquito may be pinned and have no moves
     let grid = HexGrid::from_dsl(concat!(
         ". . . . . . .\n",

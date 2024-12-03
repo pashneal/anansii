@@ -1,4 +1,5 @@
 use thiserror::Error;
+use crate::uhp::GameType;
 
 #[derive(Error, Debug)]
 pub enum HexGridError {
@@ -7,6 +8,17 @@ pub enum HexGridError {
 }
 
 pub type Result<T> = std::result::Result<T, HexGridError>;
+
+pub const PIECE_COUNTS: [(PieceType, usize); 8] = [
+    (PieceType::Queen, 1),
+    (PieceType::Grasshopper, 3),
+    (PieceType::Spider, 2),
+    (PieceType::Beetle, 2),
+    (PieceType::Ant, 3),
+    (PieceType::Pillbug, 1),
+    (PieceType::Ladybug, 1),
+    (PieceType::Mosquito, 1),
+];
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PieceType {
@@ -32,6 +44,21 @@ impl PieceType {
             Pillbug => "P",
             Ladybug => "L",
             Mosquito => "M",
+        }
+    }
+
+    pub fn all(game_type : GameType) -> Vec<PieceType> {
+        use PieceType::*;
+        use GameType::*;
+        match game_type {
+            Standard => vec![Queen, Grasshopper, Spider, Beetle, Ant],
+            M => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito],
+            MP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Pillbug],
+            ML => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Ladybug],
+            MLP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Mosquito, Pillbug, Ladybug],
+            L => vec![Queen, Grasshopper, Spider, Beetle, Ant, Ladybug],
+            LP => vec![Queen, Grasshopper, Spider, Beetle, Ant, Ladybug, Pillbug],
+            P => vec![Queen, Grasshopper, Spider, Beetle, Ant, Pillbug],
         }
     }
 

@@ -450,6 +450,10 @@ impl Annotator {
         debug_assert!(self.ambiguous == false);
         debug_assert!(move_string.trim() == move_string);
 
+        if move_string == "pass" {
+            return self.next_state(&self.prev_grid);
+        }
+
         // TODO: cleanup logic - this function is a little long
         let mut parts = move_string.split_whitespace();
 
@@ -460,8 +464,6 @@ impl Annotator {
             let mut new_grid = HexGrid::new();
             new_grid.add(new_piece, HexLocation::new(0, 0));
             return self.next_state(&new_grid);
-        } else if move_string == "pass" {
-            return self.next_state(&self.prev_grid);
         }
 
         let anchor_piece_string = parts.next().expect("Expected an anchor position");
@@ -625,7 +627,7 @@ impl UHPInterface {
     }
 
     fn info(&self) -> CommandResult {
-        Ok(ENGINE_NAME.to_string() + " v" + VERSION + "\n" + "Mosquito;Ladybug;Pillbug")
+        Ok("id ".to_string() + ENGINE_NAME + " v" + VERSION + "\n" + "Mosquito;Ladybug;Pillbug")
     }
 
     fn unknown(&self) -> CommandResult {
@@ -655,8 +657,11 @@ impl UHPInterface {
         };
 
         // Also update underlying move generator
-        self.game =
-            GameDebugger::from_moves(&self.annotations.last().unwrap().uhp_move_strings()).unwrap();
+        self.game = GameDebugger::from_moves_custom(
+            &self.annotations.last().unwrap().uhp_move_strings(),
+            self.game_type,
+        )
+        .unwrap();
 
         Ok("".to_string())
     }
@@ -673,7 +678,7 @@ impl UHPInterface {
         self.annotations = vec![Annotator::new()];
         self.player_to_move = PieceColor::White;
         if input == "newgame" {
-            self.game_type = GameType::Standard;
+            self.set_game_type("Base")?;
             return Ok(self.game_string());
         }
 
@@ -2008,3 +2013,8 @@ pub fn test_game_states_input() {
 pub fn test_valid_moves() {
     //TODO
 }
+
+// TODO: two problems:
+// 1. The graceless crash
+// 2. passing in "Base" doesn't limit moveset!
+// 3. mosquito copying mosquito on top of the hive

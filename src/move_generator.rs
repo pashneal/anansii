@@ -531,7 +531,7 @@ impl MoveGeneratorDebugger {
             .collect::<Vec<_>>();
         let mut result = Vec::new();
 
-        for piece in PieceType::all(GameType::MLP) {
+        for piece in PieceType::all(self.game_type) {
             let num_placed = friendly_pieces.iter().filter(|p| p.piece == piece).count();
             let total = PIECE_COUNTS
                 .iter()
@@ -589,6 +589,9 @@ impl MoveGeneratorDebugger {
         // Calculate moves
         for (stack, location) in all_pieces {
             let top = stack.last().unwrap();
+            if top.color != color {
+                continue;
+            }
             let moves = match top.piece {
                 PieceType::Queen => self.queen_moves(location),
                 PieceType::Grasshopper => self.grasshopper_moves(location),
@@ -607,6 +610,11 @@ impl MoveGeneratorDebugger {
             positions.extend(moves.into_iter());
         }
 
+        // If there are no possible moves, return this board to represent th
+        // "pass" move
+        if positions.is_empty() {
+            positions.insert(self.grid.clone());
+        }
         positions
     }
 }
@@ -1822,10 +1830,4 @@ fn test_pinned_mosquito() {
     let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
     let mosquito_moves = generator.mosquito_moves(mosquito);
     assert!(mosquito_moves.is_empty());
-}
-
-#[test]
-fn test_all_moves() {
-    // for the purposes of perft does a pillbug swap count as a different move than the piece
-    // moving into that position themselves?
 }

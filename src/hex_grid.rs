@@ -157,24 +157,9 @@ impl HexGrid {
             let (left, right) = (location.apply(left_dir), location.apply(right_dir));
             let (left_stack, right_stack) = (self.peek(left), self.peek(right));
 
-            let selector = concat!(
-                ". . . . . . .\n",
-                " . . 2 * . . .\n",
-                ". . a a L . .\n",
-                " . . 2 a . . .\n",
-                ". . . . . . .\n\n",
-                " . . . . . a .\n",
-                "start - [0 0]\n\n",
-            );
-            let s = HexGrid::selector(selector)[0];
-
-            if destination == s {
-                println!("FOUND IT!");
-            }
             // Must be high enough to step over and through gate
             let gate_requirement = left_stack.len().min(right_stack.len());
             if effective_height <= gate_requirement {
-                println!("gated!");
                 continue;
             }
 

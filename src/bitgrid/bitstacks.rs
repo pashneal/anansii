@@ -12,6 +12,9 @@ use std::iter::IntoIterator;
 /// height, presence, or piece (for example in games without mosquitos)
 /// we could even shave a bit off locations if we assume things can't be
 /// further than 32 from any other? more expensive computation though
+///
+/// Another idea is to assign holes to white mosquito, black beetle etc,
+///
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
@@ -25,7 +28,7 @@ pub struct BasicBitStackEntry {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BasicBitStack {
     bitset: SmallBitset,
-    stack: [BasicBitStackEntry; 7],
+    stack: [BasicBitStackEntry; 6],
 }
 
 pub const PIECE_BITS: u8 = 1;
@@ -92,7 +95,7 @@ impl BasicBitStack {
     pub fn new() -> Self {
         BasicBitStack {
             bitset: SmallBitset::new(),
-            stack: [BasicBitStackEntry::default(); 7],
+            stack: [BasicBitStackEntry::default(); 6],
         }
     }
 
@@ -101,7 +104,7 @@ impl BasicBitStack {
         self.stack[index] = entry;
     }
 
-    pub fn remove(&mut self, index: u8) {
+    pub fn remove(&mut self, index: usize) {
         self.bitset.remove_index(index);
     }
 
@@ -153,8 +156,8 @@ impl SmallBitset {
     }
 
     #[inline(always)]
-    pub fn remove_index(&mut self, index: u8) {
-        self.set &= !(1 << index);
+    pub fn remove_index(&mut self, index: usize) {
+        self.set &= !(1 << index as u8);
     }
 }
 
@@ -188,5 +191,5 @@ impl IntoIterator for SmallBitset {
 #[test]
 pub fn stack_size_is_small() {
     assert_eq!(std::mem::size_of::<BasicBitStackEntry>(), 2);
-    assert_eq!(std::mem::size_of::<BasicBitStack>(), 16);
+    assert!(std::mem::size_of::<BasicBitStack>() <= 16);
 }

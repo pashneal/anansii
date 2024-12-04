@@ -1,3 +1,4 @@
+mod bitgrid;
 mod constants;
 mod game;
 mod hex_grid;

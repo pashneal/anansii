@@ -91,7 +91,7 @@ impl MoveGeneratorDebugger {
     pub fn spider_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1 as usize);
-        debug_assert!(stack[0].piece == PieceType::Spider || stack[0].piece == PieceType::Mosquito);
+        debug_assert!(stack[0].piece_type == PieceType::Spider || stack[0].piece_type == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -124,8 +124,8 @@ impl MoveGeneratorDebugger {
     pub fn grasshopper_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
         debug_assert!(
-            self.grid.peek(location)[0].piece == PieceType::Grasshopper
-                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+            self.grid.peek(location)[0].piece_type == PieceType::Grasshopper
+                || self.grid.peek(location)[0].piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
@@ -160,8 +160,8 @@ impl MoveGeneratorDebugger {
     pub fn queen_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
         debug_assert!(
-            self.grid.peek(location)[0].piece == PieceType::Queen
-                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+            self.grid.peek(location)[0].piece_type == PieceType::Queen
+                || self.grid.peek(location)[0].piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
@@ -192,8 +192,8 @@ impl MoveGeneratorDebugger {
     pub fn ant_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         debug_assert!(self.grid.peek(location).len() == 1);
         debug_assert!(
-            self.grid.peek(location)[0].piece == PieceType::Ant
-                || self.grid.peek(location)[0].piece == PieceType::Mosquito
+            self.grid.peek(location)[0].piece_type == PieceType::Ant
+                || self.grid.peek(location)[0].piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
@@ -239,8 +239,8 @@ impl MoveGeneratorDebugger {
         let height = self.grid.peek(location).len();
         debug_assert!(height >= 1);
         debug_assert!(
-            self.grid.top(location).unwrap().piece == PieceType::Beetle
-                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+            self.grid.top(location).unwrap().piece_type == PieceType::Beetle
+                || self.grid.top(location).unwrap().piece_type == PieceType::Mosquito
         );
 
         let hive = self
@@ -282,8 +282,8 @@ impl MoveGeneratorDebugger {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
         debug_assert!(
-            self.grid.top(location).unwrap().piece == PieceType::Ladybug
-                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+            self.grid.top(location).unwrap().piece_type == PieceType::Ladybug
+                || self.grid.top(location).unwrap().piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
@@ -340,8 +340,8 @@ impl MoveGeneratorDebugger {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
         debug_assert!(
-            self.grid.top(location).unwrap().piece == PieceType::Pillbug
-                || self.grid.top(location).unwrap().piece == PieceType::Mosquito
+            self.grid.top(location).unwrap().piece_type == PieceType::Pillbug
+                || self.grid.top(location).unwrap().piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
@@ -379,8 +379,8 @@ impl MoveGeneratorDebugger {
         let height = self.grid.peek(pillbug_location).len();
         debug_assert!(height == 1, "The stack must only contain the pillbug");
         debug_assert!(
-            self.grid.top(pillbug_location).unwrap().piece == PieceType::Pillbug
-                || self.grid.top(pillbug_location).unwrap().piece == PieceType::Mosquito
+            self.grid.top(pillbug_location).unwrap().piece_type == PieceType::Pillbug
+                || self.grid.top(pillbug_location).unwrap().piece_type == PieceType::Mosquito
         );
 
         let mut swappable = Vec::new();
@@ -472,7 +472,7 @@ impl MoveGeneratorDebugger {
         use PieceType::*;
         let height = self.grid.peek(location).len();
         debug_assert!(height >= 1);
-        debug_assert!(self.grid.top(location).unwrap().piece == PieceType::Mosquito);
+        debug_assert!(self.grid.top(location).unwrap().piece_type == PieceType::Mosquito);
 
         if self.pinned.contains(&location) && height == 1 {
             return vec![];
@@ -484,7 +484,7 @@ impl MoveGeneratorDebugger {
 
         let mut adjacent_pieces = Vec::new();
         for neighbor in self.grid.get_neighbors(location) {
-            let piece = self.grid.top(neighbor).unwrap().piece;
+            let piece = self.grid.top(neighbor).unwrap().piece_type;
             adjacent_pieces.push(piece);
         }
 
@@ -532,7 +532,7 @@ impl MoveGeneratorDebugger {
         let mut result = Vec::new();
 
         for piece in PieceType::all(self.game_type) {
-            let num_placed = friendly_pieces.iter().filter(|p| p.piece == piece).count();
+            let num_placed = friendly_pieces.iter().filter(|p| p.piece_type == piece).count();
             let total = PIECE_COUNTS
                 .iter()
                 .find(|(piece_type, _)| *piece_type == piece)
@@ -576,7 +576,7 @@ impl MoveGeneratorDebugger {
         itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
             |(piece, placement)| {
                 let placement_disallowed =
-                    piece.piece == PieceType::Queen && num_friendly_pieces == 0;
+                    piece.piece_type == PieceType::Queen && num_friendly_pieces == 0;
 
                 if !placement_disallowed {
                     let mut new_grid = self.grid.clone();
@@ -592,7 +592,7 @@ impl MoveGeneratorDebugger {
             if top.color != color {
                 continue;
             }
-            let moves = match top.piece {
+            let moves = match top.piece_type {
                 PieceType::Queen => self.queen_moves(location),
                 PieceType::Grasshopper => self.grasshopper_moves(location),
                 PieceType::Spider => self.spider_moves(location),

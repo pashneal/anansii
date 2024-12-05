@@ -115,20 +115,20 @@ impl PieceColor {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Piece {
-    pub piece: PieceType,
+    pub piece_type: PieceType,
     pub color: PieceColor,
 }
 
 impl Piece {
     pub fn new(piece: PieceType, color: PieceColor) -> Piece {
-        Piece { piece, color }
+        Piece { piece_type: piece, color }
     }
 
     /// Uppercase letter for white, lowercase for black
     pub fn to_str(&self) -> String {
         let piece_str = match self.color {
-            PieceColor::White => self.piece.to_str().to_uppercase(),
-            PieceColor::Black => self.piece.to_str().to_lowercase(),
+            PieceColor::White => self.piece_type.to_str().to_uppercase(),
+            PieceColor::Black => self.piece_type.to_str().to_lowercase(),
         };
 
         piece_str
@@ -136,8 +136,8 @@ impl Piece {
 
     pub fn to_uhp(&self, id: u8) -> String {
         match self.color {
-            PieceColor::White => format!("w{}{}", self.piece.to_str(), id),
-            PieceColor::Black => format!("b{}{}", self.piece.to_str(), id),
+            PieceColor::White => format!("w{}{}", self.piece_type.to_str(), id),
+            PieceColor::Black => format!("b{}{}", self.piece_type.to_str(), id),
         }
     }
 
@@ -155,7 +155,7 @@ impl Piece {
 
 impl std::hash::Hash for Piece {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.piece.hash(state);
+        self.piece_type.hash(state);
         self.color.hash(state);
     }
 }

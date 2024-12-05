@@ -1,3 +1,5 @@
+use std::ops;
+
 /// Represents a internal part of the Hive grid
 ///
 /// Compositions of AxialBitboards are used to represent the full
@@ -35,6 +37,9 @@
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct AxialBitboard(u64);
+
+pub const BITBOARD_HEIGHT : usize = 8;
+pub const BITBOARD_WIDTH : usize = 8;
 
 impl AxialBitboard {
     #[inline(always)]
@@ -76,7 +81,77 @@ impl AxialBitboard {
     pub fn shift_south_east(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> 8)
     }
+
+    #[inline(always)]
+    pub fn peek(&self, index : usize) -> bool {
+        (self.0 & (1 << index)) != 0
+    }
 }
+
+impl ops::BitOr<Self> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitor(self, rhs: Self) -> Self {
+        AxialBitboard(self.0 | rhs.0)
+    }
+}
+
+impl ops::BitOr<u64> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitor(self, rhs: u64) -> Self {
+        AxialBitboard(self.0 | rhs)
+    }
+}
+
+impl ops::BitOrAssign<Self> for AxialBitboard {
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl ops::BitOrAssign<u64> for AxialBitboard {
+    #[inline(always)]
+    fn bitor_assign(&mut self, rhs: u64) {
+        self.0 |= rhs;
+    }
+}
+
+impl ops::BitAnd<Self> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitand(self, rhs: Self) -> Self {
+        AxialBitboard(self.0 & rhs.0)
+    }
+}
+
+impl ops::BitAnd<u64> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitand(self, rhs: u64) -> Self {
+        AxialBitboard(self.0 & rhs)
+    }
+}
+
+impl ops::BitAndAssign<Self> for AxialBitboard {
+    #[inline(always)]
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl ops::BitAndAssign<u64> for AxialBitboard {
+    #[inline(always)]
+    fn bitand_assign(&mut self, rhs: u64) {
+        self.0 &= rhs;
+    }
+}
+
 
 #[test]
 pub fn size_is_small() {

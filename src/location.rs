@@ -79,8 +79,12 @@ impl Location for HexLocation {
     fn to_hex(&self) -> HexLocation {
         *self
     }
+    fn from_hex(hex: HexLocation) -> Self {
+        hex
+    }
 }
 
 pub trait Location {
     fn to_hex(&self) -> HexLocation;
+    fn from_hex(hex: HexLocation) -> Self; 
 }

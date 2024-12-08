@@ -13,6 +13,11 @@ pub type GridLocation = usize;
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug 
 /// that follow the One Hive rule and has no stack greater than 7. 
 ///
+/// Only beetles and mosquitos can be at height > 1 in this representation
+/// as opposed to HexGrid which is more relaxed in its constraints.
+///
+/// TODO: may have to refactor tests
+///
 /// See the documentation of the bit grid's AxialBitboard to
 /// understand how the grid is represented at the bit level
 ///

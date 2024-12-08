@@ -1,5 +1,6 @@
 use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
+use crate::bitgrid::basic::*;
 pub use crate::location::*;
 pub use crate::piece::*;
 pub use std::collections::HashMap;
@@ -221,24 +222,6 @@ impl HexGrid {
         None
     }
 
-    /// Return piece stacks on the board in "board order", that is,
-    /// from top to bottom, then left to right, including their location
-    /// in the grid
-    pub fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
-        let mut pieces = vec![];
-        for (&(q, r), stack) in self.fast_grid.iter() {
-            let location = HexGrid::uncentralize(q, r);
-            let (row, col) = HexGrid::axial_to_oddr(q as i8, r as i8);
-            pieces.push(((row, col), stack.clone(), location));
-        }
-        pieces.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-        let pieces = pieces
-            .into_iter()
-            .map(|(_, stack, loc)| (stack, loc))
-            .collect::<Vec<_>>();
-
-        pieces
-    }
 
     fn uncentralize(x: usize, y: usize) -> HexLocation {
         HexLocation::new(
@@ -484,13 +467,34 @@ impl HexGrid {
     }
 }
 
+impl PieceIterator for HexGrid {
+    type Output = HexLocation;
+    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        let mut pieces = vec![];
+        for (&(q, r), stack) in self.fast_grid.iter() {
+            let location = HexGrid::uncentralize(q, r);
+            let (row, col) = HexGrid::axial_to_oddr(q as i8, r as i8);
+            pieces.push(((row, col), stack.clone(), location));
+        }
+        pieces.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+        let pieces = pieces
+            .into_iter()
+            .map(|(_, stack, loc)| (stack, loc))
+            .collect::<Vec<_>>();
+
+        pieces
+    }
+}
+
+
+
 impl std::hash::Hash for HexGrid {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.pieces().hash(state);
     }
 }
 
-impl PartialEq for HexGrid {
+impl PartialEq<HexGrid> for HexGrid {
     fn eq(&self, other: &Self) -> bool {
         other.pieces() == self.pieces()
     }

@@ -636,7 +636,7 @@ pub fn test_spider_gate() {
         ". . . . . . .\n\n",
         "start - [0 0]\n\n"
     ));
-    let legal_moves = vec![];
+    let legal_moves : Vec<_> = vec![];
 
     let generator = MoveGeneratorDebugger::from_default_grid(&grid);
     let (spider, _) = grid

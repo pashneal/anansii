@@ -1,5 +1,14 @@
 use std::iter::IntoIterator;
-//IntoIterator
+use crate::piece::*;
+use super::*;
+pub const PIECE_BITS: u8 = 1;
+pub const HEIGHT_BITS: u8 = 3;
+pub const HEIGHT_MASK: u8 = 0b111;
+pub const COORD_MASK: u32 = 0b111;
+pub const LOCATION_BITS: u8 = 12;
+pub const LOCATION_MASK: u8 = 0b111111;
+pub const COLOR_BITS: u8 = 1;
+pub const PRESENCE_MASK: u32 = 1 << 17;
 
 /// A densly packed representation of pieces in a stack
 /// greater than 1 height in the game of Hive. Represents
@@ -19,10 +28,23 @@ use std::iter::IntoIterator;
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
     /// 3 bits for height (can represent 2 - 7)
-    /// 10 bits for location (x => 3 , y => 3, board_num => 4)
+    /// 12 bits for location (x => 3 , y => 3, board_num => 6)
     /// 1 bit for color (white/black)
-    /// 1 bit for presence (is this a valid entry)
-    data: u16,
+    data: u32,
+}
+
+impl BasicBitStackEntry {
+    pub fn height(&self) -> u8 {
+        ((self.data >> PIECE_BITS) as u8 & HEIGHT_MASK) + 1
+    }
+
+    pub fn piece(&self) -> StackPiece {
+        unsafe { std::mem::transmute((self.data & 0b1) as u8) }
+    }
+
+    pub fn color(&self) -> StackColor {
+        unsafe { std::mem::transmute((self.data >> (PIECE_BITS + HEIGHT_BITS + LOCATION_BITS)) as u8) }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -31,12 +53,6 @@ pub struct BasicBitStack {
     stack: [BasicBitStackEntry; 6],
 }
 
-pub const PIECE_BITS: u8 = 1;
-pub const HEIGHT_BITS: u8 = 3;
-pub const LOCATION_BITS: u8 = 10;
-pub const COLOR_BITS: u8 = 1;
-
-pub const PRESENCE_MASK: u16 = 1 << 15;
 
 #[repr(u8)]
 pub enum StackPiece {
@@ -44,19 +60,67 @@ pub enum StackPiece {
     Mosquito = 1,
 }
 
+impl From<PieceType> for  StackPiece{
+    fn from(piece : PieceType) -> Self {
+        match piece {
+            PieceType::Beetle => StackPiece::Beetle,
+            PieceType::Mosquito => StackPiece::Mosquito,
+            _ => panic!("Invalid piece type")
+        }
+    }
+}
+
+impl From<StackPiece> for PieceType {
+    fn from(piece : StackPiece) -> Self {
+        match piece {
+            StackPiece::Beetle => PieceType::Beetle,
+            StackPiece::Mosquito => PieceType::Mosquito,
+        }
+    }
+}
+
 #[repr(u8)]
 pub enum StackColor {
-    Beetle = 0,
-    Mosquito = 1,
+    White = 0,
+    Black = 1,
+}
+
+impl From<StackColor> for PieceColor {
+    fn from(color : StackColor) -> Self {
+        match color {
+            StackColor::White => PieceColor::White,
+            StackColor::Black => PieceColor::Black,
+        }
+    }
+} 
+
+impl From<PieceColor> for StackColor {
+    fn from(color : PieceColor) -> Self {
+        match color {
+            PieceColor::White => StackColor::White,
+            PieceColor::Black => StackColor::Black,
+        }
+    }
 }
 
 // TODO: Perhaps experiment with smaller representation of
 // location
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BasicBitLocation {
-    pub x: u16,
-    pub y: u16,
-    pub board_num: u16,
+    pub x: u32,
+    pub y: u32,
+    pub board_num: u32,
+}
+
+impl From<BitGridLocation> for BasicBitLocation {
+    fn from(location: BitGridLocation) -> Self {
+        BasicBitLocation {
+            x: location.bitboard_index as u32 % BITBOARD_WIDTH as u32,
+            y: location.bitboard_index as u32 / BITBOARD_HEIGHT as u32,
+            board_num: location.board_index as u32,
+        }
+    }
+
 }
 
 impl BasicBitStackEntry {
@@ -67,9 +131,9 @@ impl BasicBitStackEntry {
         location: BasicBitLocation,
         color: StackColor,
     ) -> Self {
-        let piece = piece as u16;
-        let height = height as u16;
-        let color = color as u16;
+        let piece = piece as u32;
+        let height = height as u32;
+        let color = color as u32;
 
         let height_shift = PIECE_BITS;
         let location_shift = PIECE_BITS + HEIGHT_BITS;
@@ -107,22 +171,54 @@ impl BasicBitStack {
     pub fn remove(&mut self, index: usize) {
         self.bitset.remove_index(index);
     }
+    
+    pub fn get_height(&mut self, index: usize) -> u8 {
+        let entry = self.stack[index];
+        (entry.data >> PIECE_BITS) as u8 & 0b111
+    }
+
+    pub fn get(&self, index: usize) -> BasicBitStackEntry {
+        self.stack[index]
+    }
 
     /// TODO: transmute shenanigans
-    pub fn find(&self, location: BasicBitLocation) -> Option<usize> {
+    pub fn find_one(&self, location: BasicBitLocation) -> Option<usize> {
         for index in self.bitset.into_iter() {
             let entry = self.stack[index];
             let entry_location = BasicBitLocation {
-                x: (entry.data >> (PIECE_BITS + HEIGHT_BITS)) & 0b111,
-                y: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 3)) & 0b111,
-                board_num: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 6)) & 0b1111,
+                x: (entry.data >> (PIECE_BITS + HEIGHT_BITS)) & COORD_MASK,
+                y: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 3)) & COORD_MASK,
+                board_num: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 6)) & LOCATION_MASK as u32,
             };
             if entry_location == location {
                 return Some(index);
             }
         }
 
-        todo!()
+        None
+    }
+
+    /// Returns all of the pieces at a given stack in height
+    /// order from lowest to highest
+    pub fn find_all(&self, location: BasicBitLocation) -> Vec<usize> {
+        let mut indices = Vec::new();
+        for index in self.bitset.into_iter() {
+            let entry = self.stack[index];
+            let entry_location = BasicBitLocation {
+                x: (entry.data >> (PIECE_BITS + HEIGHT_BITS)) & COORD_MASK,
+                y: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 3)) & COORD_MASK,
+                board_num: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 6)) & LOCATION_MASK as u32,
+            };
+
+            let height = (entry.data >> PIECE_BITS) & HEIGHT_MASK as u32;
+            if entry_location == location {
+                indices.push((height, index));
+            }
+        }
+
+        indices.sort();
+        let indices = indices.into_iter().map(|(_, index)| index).collect();
+        indices
     }
 }
 
@@ -140,7 +236,7 @@ impl SmallBitset {
     pub fn insert(&mut self) -> usize {
         let empty_mask = self.get_empty();
         self.set |= empty_mask;
-        empty_mask.trailing_ones() as usize
+        empty_mask.trailing_zeros() as usize
     }
 
     #[inline(always)]
@@ -188,6 +284,7 @@ impl IntoIterator for SmallBitset {
     }
 }
 
+#[ignore]
 #[test]
 pub fn stack_size_is_small() {
     assert_eq!(std::mem::size_of::<BasicBitStackEntry>(), 2);

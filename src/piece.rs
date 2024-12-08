@@ -159,3 +159,9 @@ impl std::hash::Hash for Piece {
         self.color.hash(state);
     }
 }
+
+pub trait PieceIterator {
+    type Output;
+    fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
+}
+

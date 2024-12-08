@@ -75,16 +75,52 @@ impl HexLocation {
     }
 }
 
-impl Location for HexLocation {
-    fn to_hex(&self) -> HexLocation {
-        *self
+impl Shiftable for HexLocation {
+    fn shift_west(&self) -> HexLocation {
+        self.apply(Direction::W)
     }
-    fn from_hex(hex: HexLocation) -> Self {
+
+    fn shift_east(&self) -> HexLocation {
+        self.apply(Direction::E)
+    }
+
+    fn shift_northwest(&self) -> HexLocation {
+        self.apply(Direction::NW)
+    }
+
+    fn shift_northeast(&self) -> HexLocation {
+        self.apply(Direction::NE)
+    }
+
+    fn shift_southwest(&self) -> HexLocation {
+        self.apply(Direction::SW)
+    }
+
+    fn shift_southeast(&self) -> HexLocation {
+        self.apply(Direction::SE)
+    }
+
+    fn center() -> HexLocation {
+        HexLocation::new(0, 0)
+    }
+}
+
+impl FromHex for HexLocation {
+    fn from_hex(hex : HexLocation) -> HexLocation {
         hex
     }
 }
 
-pub trait Location {
-    fn to_hex(&self) -> HexLocation;
-    fn from_hex(hex: HexLocation) -> Self; 
+pub trait FromHex : PartialEq + std::fmt::Debug {
+    fn from_hex(hex : HexLocation) -> Self;
+}
+
+pub trait Shiftable {
+    fn shift_west(&self) -> Self;
+    fn shift_east(&self) -> Self;
+    fn shift_northwest(&self) -> Self;
+    fn shift_northeast(&self) -> Self;
+    fn shift_southwest(&self) -> Self;
+    fn shift_southeast(&self) -> Self;
+    fn center() -> Self;
 }

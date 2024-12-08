@@ -1,32 +1,37 @@
 use super::*; 
 use crate::location::*;
 use crate::piece::*;
-pub const GRID_LENGTH: usize = 16;
-pub const GRID_WIDTH: usize = 4;
-pub const GRID_HEIGHT: usize = 4;
-pub const GRID_SENTINEL: GridLocation = 0b10000;
-pub const MAX_WRAP_BEFORE_COLLSION: usize = GRID_WIDTH*8;
+
+pub const CENTER_BOARD_INDEX: usize = 24;
+pub const CENTER_BITBOARD_INDEX : usize = 28;
+pub const GRID_WIDTH: usize = 7;
+pub const GRID_HEIGHT: usize = 7;
+pub const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
+pub const MAX_WRAP_BEFORE_COLLSION: usize = 32;
 pub type GridLocation = usize;
 
-/// Represents only legal states of Hive with Pillbug Mosquito and Ladybug grids 
-/// correctly. TODO: may have to refactor tests to account for this.
+/// Represents positions of Hive with Pillbug Mosquito and Ladybug 
+/// that follow the One Hive rule and has no stack greater than 7. 
 ///
 /// See the documentation of the bit grid's AxialBitboard to
 /// understand how the grid is represented at the bit level
 ///
 /// Zooming out, the grid is represented instead as
-/// a 4x4 grid of AxialBitboards
+/// a 7x7 grid of AxialBitboards
 ///
 /// The grid is represented as follows:
 /// ```
-///   15 14 13 12
-///   11 10 09 08
-///   07 06 05 04
-///   03 02 01 00
+///    48 47 46 45 44 43 42
+///    41 40 39 38 37 36 35
+///    34 33 32 31 30 29 28
+///    27 26 25 24 23 22 21
+///    20 19 18 17 16 15 14
+///    13 12 11 10 09 08 07
+///    06 05 04 03 02 01 00
 /// ```
 ///
-/// The center is assigned to board 10 at the 28th bit
-pub type Grid = [AxialBitboard; GRID_LENGTH];
+/// The center is assigned to board index 24 at the bitboard index 28
+pub type Grid = [AxialBitboard; GRID_SIZE];
 pub struct BasicBitGrid {
     pub queens: Grid,
     pub beetles:Grid,
@@ -46,23 +51,23 @@ pub struct BasicBitGrid {
 impl BasicBitGrid {
     pub fn new() -> Self {
         BasicBitGrid {
-            queens: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            beetles: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            spiders: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            grasshoppers: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            ants: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            pillbugs: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            ladybugs: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            mosquitos: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            all_pieces: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            white_pieces: [AxialBitboard::from_u64(0); GRID_LENGTH],
-            black_pieces: [AxialBitboard::from_u64(0); GRID_LENGTH],
+            queens: [AxialBitboard::from_u64(0); GRID_SIZE],
+            beetles: [AxialBitboard::from_u64(0); GRID_SIZE],
+            spiders: [AxialBitboard::from_u64(0); GRID_SIZE],
+            grasshoppers: [AxialBitboard::from_u64(0); GRID_SIZE],
+            ants: [AxialBitboard::from_u64(0); GRID_SIZE],
+            pillbugs: [AxialBitboard::from_u64(0); GRID_SIZE],
+            ladybugs: [AxialBitboard::from_u64(0); GRID_SIZE],
+            mosquitos: [AxialBitboard::from_u64(0); GRID_SIZE],
+            all_pieces: [AxialBitboard::from_u64(0); GRID_SIZE],
+            white_pieces: [AxialBitboard::from_u64(0); GRID_SIZE],
+            black_pieces: [AxialBitboard::from_u64(0); GRID_SIZE],
             stacks: BasicBitStack::new()
         }
     }
 
     pub fn add(&mut self, piece : Piece, loc : BitGridLocation) {
-        debug_assert!(loc.board_index < GRID_LENGTH);
+        debug_assert!(loc.board_index < GRID_SIZE);
         let color = piece.color;
         let piece = piece.piece_type;
 
@@ -78,7 +83,7 @@ impl BasicBitGrid {
     }
 
     pub fn remove(&mut self, piece : Piece, loc : BitGridLocation) {
-        debug_assert!(loc.board_index < GRID_LENGTH);
+        debug_assert!(loc.board_index < GRID_SIZE);
         let color = piece.color;
         let piece = piece.piece_type;
 
@@ -108,7 +113,7 @@ impl BasicBitGrid {
 
     
     pub fn piece_present(&self, loc : BitGridLocation) -> bool {
-        debug_assert!(loc.board_index < GRID_LENGTH);
+        debug_assert!(loc.board_index < GRID_SIZE);
         self.all_pieces[loc.board_index].peek(loc.bitboard_index)
     }
 
@@ -127,8 +132,6 @@ impl BasicBitGrid {
 // TODO: 
 // add piece
 // remove piece
-// direction (without overflow)
-// direction (with overflow)
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -145,7 +148,7 @@ impl BitGridLocation {
         }
     }
 
-    pub fn apply(&self, direction : Direction) ->  BitGridLocation{
+    fn apply(&self, direction : Direction) ->  BitGridLocation{
         use Direction::*;
         let x = self.bitboard_index % BITBOARD_WIDTH;
         let y = self.bitboard_index / BITBOARD_HEIGHT;
@@ -155,66 +158,42 @@ impl BitGridLocation {
         let (x, y) = match direction {
             E => (x - 1, y),
             W => (x + 1, y),
-            NW => (x + 1, y - 1),
-            NE => (x - 1, y - 1),
-            SE => (x - 1, y + 1),
-            SW => (x + 1, y + 1),
+            NW => (x, y + 1),
+            NE => (x - 1, y + 1),
+            SE => (x, y - 1),
+            SW => (x + 1, y - 1),
         };
 
         self.wrap(board, x, y)
     }
 
+    /// Deals with overflow and underflow of the x and y coordinates
+    /// of a given board
     fn wrap(&self, board : i8, x : i8, y : i8) -> BitGridLocation {
         let width = BITBOARD_WIDTH as i8;
         let height = BITBOARD_HEIGHT as i8;
-        let grid_length = GRID_LENGTH as i8;
+        let grid_length = GRID_SIZE as i8;
 
         let mut dx = if x < 0 { -1 } else { 0 };
         dx = if x >= width { 1 } else { dx };
 
-        let mut dy = if y < 0 { -(GRID_HEIGHT as i8) } else { 0 };
-        dy = if y >= height { GRID_HEIGHT as i8} else { dy };
+        let mut dy = if y < 0 { -(GRID_WIDTH as i8) } else { 0 };
+        dy = if y >= height { GRID_WIDTH as i8} else { dy };
 
         let new_board_index = board + dx + dy;
         let new_board_index = new_board_index.rem_euclid(grid_length);
 
-        let new_x = x.rem_euclid(width);
-        let new_y = y.rem_euclid(height);
-        let new_bitboard_index = new_y * height + new_x;
+        let new_bitboard_index = y.rem_euclid(height) * height + x.rem_euclid(width);
+        println!("x : {}, y : {}, new_bitboard_index : {}", x, y, new_bitboard_index);
+
 
         BitGridLocation::new(new_board_index as usize, new_bitboard_index as usize)
     }
 }
 
-pub const CENTER_BOARD_INDEX: usize = 10;
-pub const CENTER_BITBOARD_INDEX : usize = 28;
 
 
-impl Location for BitGridLocation {
-    fn to_hex(&self) -> HexLocation {
-        let center_x = (CENTER_BITBOARD_INDEX % BITBOARD_WIDTH) as i8;
-        let center_y = (CENTER_BITBOARD_INDEX / BITBOARD_HEIGHT) as i8;
-
-        let board_center_x = (CENTER_BOARD_INDEX % GRID_WIDTH) as i8;
-        let board_center_y = (CENTER_BOARD_INDEX / GRID_HEIGHT) as i8;
-        
-        let board_x = (self.board_index % GRID_WIDTH) as i8;
-        let board_y = (self.board_index / GRID_HEIGHT) as i8;
-
-        // Adjust for the grid's position away from the center
-        let mut x = (board_center_x - board_x) * BITBOARD_WIDTH as i8;
-        let mut y = (board_y - board_center_y) * BITBOARD_HEIGHT as i8;
-
-        let bit_x = (self.bitboard_index % BITBOARD_WIDTH) as i8;
-        let bit_y = (self.bitboard_index / BITBOARD_HEIGHT) as i8;
-
-        // Then adjust for the bit's position away from the center
-        x += center_x - bit_x;
-        y += bit_y - center_y;
-
-        HexLocation::new(x, y)
-    }
-
+impl FromHex for BitGridLocation {
     fn from_hex(hex: HexLocation) -> Self {
         let center_x = (CENTER_BITBOARD_INDEX % BITBOARD_WIDTH) as i8; 
         let center_y = (CENTER_BITBOARD_INDEX / BITBOARD_HEIGHT) as i8;
@@ -237,116 +216,68 @@ impl Location for BitGridLocation {
     }
 }
 
-#[test]
-pub fn test_bitgrid_location() {
-    let location = BitGridLocation::new(CENTER_BOARD_INDEX, CENTER_BITBOARD_INDEX);
-    let hex = location.to_hex();
-    assert_eq!(hex, HexLocation::new(0, 0));
-}
+impl Shiftable for BitGridLocation {
+    fn shift_west(&self) -> BitGridLocation {
+        self.apply(Direction::W)
+    }
 
-#[test]
-pub fn test_bitgrid_location_from_hex() {
-    let hex = HexLocation::new(0, 0);
-    let location = BitGridLocation::from_hex(hex);
-    let expected = BitGridLocation::new(CENTER_BOARD_INDEX, CENTER_BITBOARD_INDEX);
-    assert_eq!(location, expected);
-}
+    fn shift_east(&self) -> BitGridLocation {
+        self.apply(Direction::E)
+    }
 
-#[test]
-pub fn test_bitgrid_location_many_quadrants() {
-    // Test the various (x,y) quadrant conversion back and forth
-    //          |
-    // (-,+)    |    (+, +)
-    //-------------------
-    // (-,-)    |    (+, -)
-    //          |
-    let hex = HexLocation::new(1, 1);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
+    fn shift_northwest(&self) -> BitGridLocation {
+        self.apply(Direction::NW)
+    }
 
-    let hex = HexLocation::new(-1, 1);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
+    fn shift_northeast(&self) -> BitGridLocation {
+        self.apply(Direction::NE)
+    }
 
-    let hex = HexLocation::new(-1, -1);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
+    fn shift_southwest(&self) -> BitGridLocation {
+        self.apply(Direction::SW)
+    }
 
-    let hex = HexLocation::new(1, -1);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
-}
+    fn shift_southeast(&self) -> BitGridLocation {
+        self.apply(Direction::SE)
+    }
 
-#[test]
-pub fn test_bitgrid_at_least_3_boards_high() {
-    let width = BITBOARD_WIDTH as i8;
-    let height = BITBOARD_HEIGHT as i8;
-
-    let hex = HexLocation::new(width, height);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
-
-    let hex = HexLocation::new(-width, height);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
-
-    let hex = HexLocation::new(-width, -height);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
-
-    let hex = HexLocation::new(width, -height);
-    let result = BitGridLocation::from_hex(hex).to_hex();
-    assert_eq!(result, hex);
-}
-
-#[test]
-pub fn test_bitgrid_wrapping() {
-    let mut location = HexLocation::new(0, 0);
-    let mut bit_location = BitGridLocation::from_hex(location);
-    let mut bit_grid = BasicBitGrid::new();
-    for i in 0..MAX_WRAP_BEFORE_COLLSION {
-
-        println!("-------------------");
-        println!("i: {}", i);
-        println!("location: {:?}", location);
-        println!("bit_location: {:?}", bit_location);
-        println!("converted back: {:?}", bit_location.to_hex());
-        println!("and back again: {:?}", BitGridLocation::from_hex(location));
-        bit_grid.add(Piece::new(PieceType::Queen, PieceColor::White), bit_location);
-        assert!(bit_grid.piece_present(bit_location));
-        assert!(bit_grid.piece_present(BitGridLocation::from_hex(location)));
-        bit_grid.remove(Piece::new(PieceType::Queen, PieceColor::White), bit_location);
-        assert!(!bit_grid.piece_present(BitGridLocation::from_hex(location)));
-
-        location = location.apply(Direction::E);
-        bit_location = bit_location.apply(Direction::E);
+    fn center() -> BitGridLocation {
+        BitGridLocation::new(CENTER_BOARD_INDEX, CENTER_BITBOARD_INDEX)
     }
 }
 
+
 #[test]
-pub fn boundary() {
-    let width = BITBOARD_WIDTH as i8;
-    let height = BITBOARD_HEIGHT as i8;
-    let center_y = CENTER_BITBOARD_INDEX / BITBOARD_HEIGHT;
-    let center_y = center_y as i8;
-    let center_x = CENTER_BITBOARD_INDEX % BITBOARD_WIDTH;
-    let center_x = center_x as i8;
+pub fn test_bitgrid_location() {
+    let hex = HexLocation::center();
+    let bitgrid = BitGridLocation::from_hex(hex);
+    assert_eq!(bitgrid, BitGridLocation::center());
+}
 
-    let location = HexLocation::new(width + center_x + 1, 0);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
+#[test] 
+pub fn test_bitgrid_wrap() {
+    let start  = BitGridLocation::center();
+    let mut e = start;
+    let mut w = start;
+    let mut nw = start;
+    let mut ne = start;
+    let mut sw = start;
+    let mut se = start;
 
-    let location = HexLocation::new(width + center_x + 0, 0);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
+    for _ in 0..BITBOARD_WIDTH {
+        e = e.shift_east();
+        w = w.shift_west();
+        nw = nw.shift_northwest();
+        ne = ne.shift_northeast();
+        sw = sw.shift_southwest();
+        se = se.shift_southeast();
+    }
 
-    let location = HexLocation::new(width + center_x + -1, 0);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
-
-    let location = HexLocation::new(0, height + center_y + 1);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
-
-    let location = HexLocation::new(0, height + center_y + 0);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
-
-    let location = HexLocation::new(0, height + center_y + -1);
-    assert_eq!(location, BitGridLocation::from_hex(location).to_hex());
+    assert_eq!(e.board_index , start.board_index - 1);
+    assert_eq!(w.board_index , start.board_index + 1);
+    assert_eq!(ne.board_index , start.board_index + GRID_WIDTH - 1);
+    assert_eq!(nw.board_index , start.board_index + GRID_WIDTH);
+    assert_eq!(se.board_index , start.board_index - GRID_WIDTH);
+    assert_eq!(sw.board_index , start.board_index - GRID_WIDTH + 1);
+    
 }

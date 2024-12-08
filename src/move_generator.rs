@@ -1,3 +1,4 @@
+use crate::testing_utils::compare_moves;
 use crate::hex_grid::*;
 use crate::piece::PIECE_COUNTS;
 use crate::uhp::GameType;
@@ -619,37 +620,6 @@ impl MoveGeneratorDebugger {
     }
 }
 
-fn compare_moves(
-    start_location: HexLocation,
-    expected: &str,
-    original_position: &HexGrid,
-    test_positions: &Vec<HexGrid>,
-) {
-    let expected_locations = HexGrid::selector(expected);
-    let mut original_position = original_position.clone();
-    let piece = original_position
-        .remove(start_location)
-        .expect("Expected piece at start location");
-    let mut expected_positions = Vec::new();
-
-    for location in expected_locations {
-        let mut new_position = original_position.clone();
-        new_position.add(piece, location);
-        expected_positions.push(new_position);
-    }
-
-    for position in test_positions {
-        println!("test_position:\n{}\n", position.to_dsl());
-    }
-    for position in expected_positions.iter() {
-        println!("expected_position:\n{}\n", position.to_dsl());
-    }
-
-    assert_eq!(expected_positions.len(), test_positions.len());
-    for position in expected_positions {
-        assert!(test_positions.contains(&position));
-    }
-}
 
 #[test]
 pub fn test_spider_gate() {

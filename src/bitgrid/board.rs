@@ -63,22 +63,22 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    pub fn shift_north_west(&self) -> AxialBitboard {
+    pub fn shift_northwest(&self) -> AxialBitboard {
         AxialBitboard(self.0 << 8)
     }
 
     #[inline(always)]
-    pub fn shift_north_east(&self) -> AxialBitboard {
+    pub fn shift_northeast(&self) -> AxialBitboard {
         AxialBitboard(self.0 << 7)
     }
 
     #[inline(always)]
-    pub fn shift_south_west(&self) -> AxialBitboard {
+    pub fn shift_southwest(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> 7)
     }
 
     #[inline(always)]
-    pub fn shift_south_east(&self) -> AxialBitboard {
+    pub fn shift_southeast(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> 8)
     }
 
@@ -171,10 +171,10 @@ pub fn test_directions() {
 
     assert_eq!(start.shift_west(), w);
     assert_eq!(start.shift_east(), e);
-    assert_eq!(start.shift_north_west(), nw);
-    assert_eq!(start.shift_north_east(), ne);
-    assert_eq!(start.shift_south_west(), sw);
-    assert_eq!(start.shift_south_east(), se);
+    assert_eq!(start.shift_northwest(), nw);
+    assert_eq!(start.shift_northeast(), ne);
+    assert_eq!(start.shift_southwest(), sw);
+    assert_eq!(start.shift_southeast(), se);
 }
 
 #[test]
@@ -183,9 +183,9 @@ pub fn test_direction_cohesion() {
     let everywhere = start
         .shift_west()
         .shift_east()
-        .shift_north_west()
-        .shift_north_east()
-        .shift_south_west()
-        .shift_south_east();
+        .shift_northwest()
+        .shift_northeast()
+        .shift_southwest()
+        .shift_southeast();
     assert_eq!(start, everywhere);
 }

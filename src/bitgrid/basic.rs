@@ -2,13 +2,15 @@ use super::*;
 use crate::location::*;
 use crate::piece::*;
 use crate::hex_grid::*;
+use crate::testing_utils::is_localized;
+use std::collections::HashSet;
 
 pub const CENTER_BOARD_INDEX: usize = 24;
 pub const CENTER_BITBOARD_INDEX : usize = 28;
 pub const GRID_WIDTH: usize = 7;
 pub const GRID_HEIGHT: usize = 7;
 pub const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
-pub const MAX_WRAP_BEFORE_COLLSION: usize = 32;
+pub const MAX_WRAP_BEFORE_COLLISION: usize = 27;
 pub type GridLocation = usize;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug 
@@ -80,7 +82,6 @@ impl BasicBitGrid {
 
         let all_pieces  = self.get_mut_all_pieces().get_mut(loc.board_index).unwrap();
         if all_pieces.peek(loc.bitboard_index) {
-            println!("Adding to stack");
             self.insert_stack(piece, loc, color);
         } else {
             *all_pieces |= 1 << loc.bitboard_index;
@@ -91,9 +92,6 @@ impl BasicBitGrid {
             let color = self.get_mut_color(color).get_mut(loc.board_index).unwrap();
             *color |= 1 << loc.bitboard_index;
         }
-
-
-
     }
 
     fn insert_stack(&mut self, piece: PieceType, loc: BitGridLocation, color: PieceColor) {
@@ -232,7 +230,7 @@ impl BasicBitGrid {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BitGridLocation {
     pub board_index : usize,
     pub bitboard_index : usize 
@@ -296,8 +294,8 @@ impl FromHex for BitGridLocation {
         let board_center_x = (CENTER_BOARD_INDEX % GRID_WIDTH) as i8;
         let board_center_y = (CENTER_BOARD_INDEX / GRID_HEIGHT) as i8;
 
-        let bit_x = ( center_x - hex.x + BITBOARD_WIDTH as i8) % BITBOARD_WIDTH as i8;
-        let bit_y = ( center_y - hex.y + BITBOARD_HEIGHT as i8 ) % BITBOARD_HEIGHT as i8;
+        let bit_x = ( center_x - hex.x + BITBOARD_WIDTH as i8).rem_euclid(BITBOARD_WIDTH as i8);
+        let bit_y = ( center_y - hex.y + BITBOARD_HEIGHT as i8 ).rem_euclid(BITBOARD_HEIGHT as i8);
 
         let board_x = -hex.x + (board_center_x * BITBOARD_WIDTH as i8) + center_x;
         let board_x = board_x / BITBOARD_WIDTH as i8;
@@ -309,6 +307,12 @@ impl FromHex for BitGridLocation {
         let bitboard_index = (bit_y * BITBOARD_HEIGHT as i8 + bit_x) as usize;
 
         BitGridLocation::new(board_index, bitboard_index)
+    }
+}
+
+impl From<HexLocation> for BitGridLocation {
+    fn from(hex: HexLocation) -> Self {
+        BitGridLocation::from_hex(hex)
     }
 }
 
@@ -373,6 +377,92 @@ impl PartialEq<HexGrid> for BasicBitGrid {
     }
 }
 
+impl TryInto<HexGrid> for BasicBitGrid{
+    type Error = HexGridError;
+    fn try_into(self) -> Result<HexGrid> {
+        let left = -((HEX_GRID_SIZE/2)  as i8);
+        let right = (HEX_GRID_SIZE/2)  as i8;
+        let top = -((HEX_GRID_SIZE/2)  as i8);
+        let bottom = (HEX_GRID_SIZE/2)  as i8;
+
+        let mut start = None;
+        for row in top..=bottom {
+            for col in left..=right {
+                let hex_location = HexLocation::new(row, col);
+                let bit_location : BitGridLocation = hex_location.into();
+                if self.peek(bit_location).len() > 0 {
+                    start = Some(hex_location); 
+                }
+            }
+        }
+
+        // TODO: we assume that if there *is* a piece on the board
+        // at least one must be within the bounds of the hex grid, check if 
+        // this is a valid assumption down the line
+        if start.is_none() {
+            return Ok(HexGrid::new()) 
+        }
+
+        // Since we know the position must follow the One Hive rule,
+        // we do a dfs starting from the start location to find all the pieces
+        //
+        // Note: the reason we can't convert directly is that there is 
+        // no guarantee that BasicBitLocation -> HexLocation is an injective mapping -
+        // there may be multiple BasicBitLocations that map to the same HexLocation
+        // due to wrapping
+        fn dfs(grid : &BasicBitGrid, current_loc: HexLocation, visited: &mut HashSet<HexLocation>, on_hive : &mut usize, result: &mut HexGrid) -> Result<()> {
+            if visited.contains(&current_loc) {
+                return Ok(());
+            }
+
+            let pieces = grid.peek(current_loc.into());
+
+            if pieces.is_empty() {
+                return Ok(());
+            }
+
+            *on_hive += pieces.len() - 1;
+
+            if *on_hive > 6 {
+                return Err(HexGridError::TooManyPiecesOnHive)
+            }
+
+            visited.insert(current_loc);
+            for piece in pieces {
+                result.add(piece, current_loc);
+            }
+            for direction in Direction::all() {
+                let next_loc = current_loc.apply(direction);
+                dfs(grid, next_loc, visited, on_hive, result)?;
+            }
+
+            return Ok(());
+        }
+
+        let mut visited = HashSet::new();
+        let mut on_hive = 0;
+        let mut result = HexGrid::new();
+        match dfs(&self, start.unwrap(), &mut visited, &mut on_hive, &mut result) {
+            Err(e) => Err(e),
+            _ => Ok(result)
+        }
+    }
+}
+
+// All basic bit grids are legal HexGrids
+impl From<HexGrid> for BasicBitGrid {
+    fn from(hex_grid: HexGrid) -> Self {
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+        bit_grid
+    }
+}
+
+
 #[test]
 pub fn test_bitgrid_location() {
     let hex = HexLocation::center();
@@ -406,6 +496,13 @@ pub fn test_bitgrid_wrap() {
     assert_eq!(se.board_index , start.board_index - GRID_WIDTH);
     assert_eq!(sw.board_index , start.board_index - GRID_WIDTH + 1);
 
+    assert_eq!(e.bitboard_index, start.bitboard_index);
+    assert_eq!(w.bitboard_index, start.bitboard_index);
+    assert_eq!(ne.bitboard_index, start.bitboard_index);
+    assert_eq!(nw.bitboard_index, start.bitboard_index);
+    assert_eq!(se.bitboard_index, start.bitboard_index);
+    assert_eq!(sw.bitboard_index, start.bitboard_index);
+
     for _ in 0..BITBOARD_WIDTH {
         e = e.shift_east();
         w = w.shift_west();
@@ -421,6 +518,14 @@ pub fn test_bitgrid_wrap() {
     assert_eq!(nw.board_index , start.board_index + 2*GRID_WIDTH);
     assert_eq!(se.board_index , start.board_index - 2*GRID_WIDTH);
     assert_eq!(sw.board_index , start.board_index - 2*GRID_WIDTH + 2);
+
+    assert_eq!(e.bitboard_index, start.bitboard_index);
+    assert_eq!(w.bitboard_index, start.bitboard_index);
+    assert_eq!(ne.bitboard_index, start.bitboard_index);
+    assert_eq!(nw.bitboard_index, start.bitboard_index);
+    assert_eq!(se.bitboard_index, start.bitboard_index);
+    assert_eq!(sw.bitboard_index, start.bitboard_index);
+
 }
 
 #[test]
@@ -544,4 +649,42 @@ pub fn test_remove() {
     }
 
     assert_eq!(bit_grid.pieces().len(), 0, "There should be no pieces left");
+}
+
+#[test]
+pub fn test_convert() {
+    let hex_grid = HexGrid::from_dsl(concat!(
+        " . a . . . .\n",
+        ". . a . a .\n",
+        " . a 7 a . .\n",
+        ". . a . . .\n",
+        " . . a a . .\n",
+        ". . . . a .\n\n",
+        "start - [0 0]\n\n",
+        "7 - [a b M B M b B]\n",
+    ));
+
+    let bit_grid : BasicBitGrid = hex_grid.clone().into();
+    let result : HexGrid = bit_grid.try_into().unwrap();
+
+    assert_eq!(result, hex_grid, "These board's pieces should match");
+}
+
+#[test]
+pub fn test_center_localized() {
+    let reference = HexLocation::center();
+    let start : BitGridLocation = reference.into();
+
+    assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+}
+
+#[test]
+pub fn test_many_locations_localized() {
+    for row in -10..10 {
+        for col in -10..10 {
+            let reference = HexLocation::new(row, col);
+            let start : BitGridLocation = reference.into();
+            assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+        }
+    }
 }

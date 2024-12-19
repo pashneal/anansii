@@ -5,6 +5,18 @@ pub use crate::location::*;
 pub use crate::piece::*;
 pub use std::collections::HashMap;
 use std::collections::HashSet;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum HexGridError {
+    #[error("String input cannot be converted to piece")]
+    PieceError,
+    #[error("Board is illegal, too many pieces on the top of the hive")]
+    TooManyPiecesOnHive,
+}
+
+pub type Result<T> = std::result::Result<T, HexGridError>;
+
 
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
@@ -485,8 +497,6 @@ impl PieceIterator for HexGrid {
         pieces
     }
 }
-
-
 
 impl std::hash::Hash for HexGrid {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

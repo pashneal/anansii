@@ -68,7 +68,8 @@ pub fn is_localized<H : Shiftable + FromHex>(start : H, reference : HexLocation,
         }
 
         if H::from_hex(reference) != current {
-            println!("The mapping Hexlocation -> H is not preserved under shifting, current: {:?}, reference: {:?}", current, reference);
+            println!("The mapping Hexlocation -> H is not preserved under shifting, \ncurrent: {:?}\nreference: {:?}\ntranslated: {:?}\n", current, reference, H::from_hex(reference));
+            println!("stack: {:#?}", dfs_stack);
             return false;
         }
 

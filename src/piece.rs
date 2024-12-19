@@ -1,13 +1,7 @@
 use crate::uhp::GameType;
-use thiserror::Error;
+use crate::hex_grid::HexGridError;
 
-#[derive(Error, Debug)]
-pub enum HexGridError {
-    #[error("String input cannot be converted to piece")]
-    PieceError,
-}
-
-pub type Result<T> = std::result::Result<T, HexGridError>;
+type Result<T> = std::result::Result<T, HexGridError>;
 
 pub const PIECE_COUNTS: [(PieceType, usize); 8] = [
     (PieceType::Queen, 1),

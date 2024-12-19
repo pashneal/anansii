@@ -284,9 +284,3 @@ impl IntoIterator for SmallBitset {
     }
 }
 
-#[ignore]
-#[test]
-pub fn stack_size_is_small() {
-    assert_eq!(std::mem::size_of::<BasicBitStackEntry>(), 2);
-    assert!(std::mem::size_of::<BasicBitStack>() <= 16);
-}

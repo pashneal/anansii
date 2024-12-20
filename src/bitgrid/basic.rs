@@ -690,6 +690,17 @@ pub fn test_center_localized() {
 }
 
 #[test]
+pub fn test_few_locations_localized() {
+    for row in -5..5 {
+        for col in -5..5 {
+            let reference = HexLocation::new(row, col);
+            let start : BitGridLocation = reference.into();
+            assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+        }
+    }
+}
+#[ignore = "test is slow, be sure to run with --release -- --ignored"]
+#[test]
 pub fn test_many_locations_localized() {
     for row in -30..30 {
         for col in -30..30 {

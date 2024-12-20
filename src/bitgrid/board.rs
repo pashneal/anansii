@@ -6,7 +6,7 @@ use std::ops;
 /// hive grid and game state
 ///
 /// Locations are represented by axial coordinates mapping to bit
-/// numbers as follows:
+/// indices as follows:
 ///
 /// Assumes that the bitboard represents its individual bits as
 /// follows (00 is the least significant bit, 63 is the most)

@@ -10,7 +10,7 @@ pub const CENTER_BITBOARD_INDEX : usize = 28;
 pub const GRID_WIDTH: usize = 7;
 pub const GRID_HEIGHT: usize = 7;
 pub const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
-pub const MAX_WRAP_BEFORE_COLLISION: usize = 27;
+pub const MAX_WRAP_BEFORE_COLLISION: usize = 28;
 pub type GridLocation = usize;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug 
@@ -691,8 +691,8 @@ pub fn test_center_localized() {
 
 #[test]
 pub fn test_many_locations_localized() {
-    for row in -10..10 {
-        for col in -10..10 {
+    for row in -30..30 {
+        for col in -30..30 {
             let reference = HexLocation::new(row, col);
             let start : BitGridLocation = reference.into();
             assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));

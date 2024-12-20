@@ -1,4 +1,5 @@
 use std::ops;
+use std::fmt::{Display, Formatter};
 
 /// Represents a internal part of the Hive grid
 ///
@@ -40,6 +41,7 @@ pub struct AxialBitboard(u64);
 
 pub const BITBOARD_HEIGHT : usize = 8;
 pub const BITBOARD_WIDTH : usize = 8;
+
 
 impl AxialBitboard {
     #[inline(always)]
@@ -152,6 +154,22 @@ impl ops::BitAndAssign<u64> for AxialBitboard {
     }
 }
 
+impl Display for AxialBitboard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for i in (0..BITBOARD_HEIGHT).rev() {
+            for j in (0..BITBOARD_WIDTH).rev() {
+                let index = i * BITBOARD_WIDTH + j;
+                if self.peek(index) {
+                    write!(f, "■")?;
+                } else {
+                    write!(f, "□")?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
+    }
+}
 
 #[test]
 pub fn size_is_small() {
@@ -188,4 +206,22 @@ pub fn test_direction_cohesion() {
         .shift_southwest()
         .shift_southeast();
     assert_eq!(start, everywhere);
+}
+
+#[test]
+pub fn test_display() {
+    let output = concat!(
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "□□□□□□□□\n",
+        "■□□□□□□□\n",
+    );
+
+    let start = AxialBitboard::from_u64(0x80);
+    assert_eq!(format!("{}", start), output);
+
 }

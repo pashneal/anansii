@@ -907,1114 +907,1117 @@ impl UHPInterface {
     }
 }
 
-#[test]
-pub fn test_annotator_empty() {
-    let mut annotator = Annotator::new();
-    let grid = HexGrid::new();
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Empty -> empty should be a legal state transition"
-    );
-    annotator = result.unwrap();
-    assert_eq!(
-        annotator.standard_move_strings(),
-        vec![String::from("pass")]
-    );
-    assert_eq!(annotator.uhp_move_strings(), vec![String::from("pass")]);
-}
+#[cfg(test)]
+mod tests {
+    use super::UHPInterface;
+    use super::Annotator;
+    use super::*;
 
-#[test]
-pub fn test_annotator_pass() {
-    let mut annotator = Annotator::new();
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . L . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . L . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(result.is_ok(), "Pass should be handled correctly");
-    annotator = result.unwrap();
-
-    assert_eq!(
-        annotator.standard_move_strings(),
-        vec![String::from("wL1"), String::from("pass")]
-    );
-    assert_eq!(
-        annotator.uhp_move_strings(),
-        vec![String::from("wL"), String::from("pass")]
-    );
-}
-
-#[test]
-pub fn test_annotator_place() {
-    let mut annotator = Annotator::new();
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . B . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . B a .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . Q . .\n",
-        " . . B a .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single placement should be handled correctly"
-    );
-    annotator = result.unwrap();
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". a Q . .\n",
-        " . . B . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    assert!(
-        result.is_ok(),
-        "Single movement should be handled correctly"
-    );
-    annotator = result.unwrap();
-
-    assert_eq!(
-        annotator.standard_move_strings(),
-        vec![
-            String::from("wB1"),
-            String::from("bA1 wB1-"),
-            String::from(r"wQ1 \wB1"),
-            String::from("bA1 -wQ1")
-        ]
-    );
-    assert_eq!(
-        annotator.uhp_move_strings(),
-        vec![
-            String::from("wB1"),
-            String::from("bA1 wB1-"),
-            String::from(r"wQ \wB1"),
-            String::from("bA1 -wQ")
-        ]
-    );
-}
-
-#[test]
-pub fn test_annotator_climb() {
-    let mut annotator = Annotator::new();
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . B . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . B a .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . Q . .\n",
-        " . . B a .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". a Q . .\n",
-        " . . B . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single movement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". a 2 . .\n",
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "2 - [Q B]\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single movement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". 2 Q . .\n",
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "2 - [a B]\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single movement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". a Q . .\n",
-        " B . . . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Climb off should be handled correctly");
-
-    let standard_moves = annotator.standard_move_strings();
-    let possible_standard_moves = vec![
-        vec![String::from("wB1")],
-        vec![String::from("bA1 wB1-")],
-        vec![String::from(r"wQ1 \wB1")],
-        vec![String::from("bA1 -wQ1")],
-        vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
-        vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
-        vec![String::from("wB1 /bA1")],
-    ];
-    assert!(possible_standard_moves.len() == standard_moves.len());
-    for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
+    #[test]
+    pub fn test_annotator_empty() {
+        let mut annotator = Annotator::new();
+        let grid = HexGrid::new();
+        let result = annotator.next_state(&grid);
         assert!(
-            expected.contains(actual),
-            "Expected {:?} to contain {:?}",
-            expected,
-            actual
+            result.is_ok(),
+            "Empty -> empty should be a legal state transition"
         );
-    }
-    let uhp_moves = annotator.uhp_move_strings();
-    let possible_uhp_moves = vec![
-        vec![String::from("wB1")],
-        vec![String::from("bA1 wB1-")],
-        vec![String::from(r"wQ \wB1")],
-        vec![String::from("bA1 -wQ")],
-        vec![String::from("wB1 bA1-"), String::from("wB1 wQ")],
-        vec![String::from("wB1 -wQ"), String::from("wB1 bA1")],
-        vec![String::from("wB1 /bA1")],
-    ];
-    assert!(possible_uhp_moves.len() == uhp_moves.len());
-    for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
-        assert!(
-            expected.contains(actual),
-            "Expected {:?} to contain {:?}",
-            expected,
-            actual
+        annotator = result.unwrap();
+        assert_eq!(
+            annotator.standard_move_strings(),
+            vec![String::from("pass")]
         );
+        assert_eq!(annotator.uhp_move_strings(), vec![String::from("pass")]);
     }
-}
 
-#[test]
-pub fn test_uhp_move_strings() {
-    let mut annotator = Annotator::new();
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . S . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . S . .\n",
-        ". . L . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . S . .\n",
-        ". . L p .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . m .\n",
-        " . . S . .\n",
-        ". . L p .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . m .\n",
-        " . . S G .\n",
-        ". . L p .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . 2 G .\n",
-        ". . L p .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "2 - [ S m ]\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single climb up should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . 3 G .\n",
-        ". . . p .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single climb up should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . p .\n",
-        " . . 3 G .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single movement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . p .\n",
-        " . . 3 . .\n",
-        ". . G . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Single movement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . p .\n",
-        " . . 3 G .\n",
-        ". . G . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n",
-    ));
-
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Second placement should be handled correctly");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . p .\n",
-        " . G 3 . .\n",
-        ". . G . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "3 - [ S m L ]\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Pieces should be fungible even if moved");
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . .\n",
-        ". . . p .\n",
-        " . G 4 . .\n",
-        ". . . . .\n",
-        " . . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "4 - [ S m L G]\n",
-    ));
-    let result = annotator.next_state(&grid);
-    annotator = result.expect("Pieces should be fungible even if climbing up");
-
-    let moves = annotator.standard_move_strings();
-    let possible_moves = vec![
-        vec![String::from("wS1")],
-        vec![String::from("wL1 /wS1")],
-        vec![String::from(r"bP1 wS1\"), String::from("bP1 wL1-")],
-        vec![String::from(r"bM1 wS1/")],
-        vec![
-            String::from(r"wG1 wS1-"),
-            String::from(r"wG1 bP1/"),
-            String::from(r"wG1 bM1\"),
-        ],
-        vec![
-            String::from(r"bM1 -wG1"),
-            String::from(r"bM1 \bP1"),
-            String::from(r"bM1 wL1/"),
-            String::from(r"bM1 wS1"),
-        ],
-        vec![
-            String::from(r"wL1 \bP1"),
-            String::from(r"wL1 -wG1"),
-            String::from(r"wL1 bM1"),
-        ],
-        vec![
-            String::from(r"bP1 wS1/"),
-            String::from(r"bP1 bM1/"),
-            String::from(r"bP1 wL1/"),
-            String::from(r"bP1 \wG1"),
-        ],
-        vec![
-            String::from(r"wG1 /wS1"),
-            String::from(r"wG1 /bM1"),
-            String::from(r"wG1 /wL1"),
-        ],
-        vec![
-            String::from(r"wG2 wS1-"),
-            String::from(r"wG2 bM1-"),
-            String::from(r"wG2 wL1-"),
-            String::from(r"wG2 bP1\"),
-        ],
-        vec![
-            String::from(r"wG2 -wS1"),
-            String::from(r"wG2 -bM1"),
-            String::from(r"wG2 -wL1"),
-            String::from(r"wG2 \wG1"),
-        ],
-        vec![
-            String::from(r"wG1 wG2-"),
-            String::from(r"wG1 /bP1"),
-            String::from(r"wG1 wL1"),
-        ],
-    ];
-    assert_eq!(possible_moves.len() == moves.len(), true);
-
-    for (expected, actual) in possible_moves.iter().zip(moves.iter()) {
+    #[test]
+    pub fn test_annotator_pass() {
+        let mut annotator = Annotator::new();
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . L . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
         assert!(
-            expected.contains(actual),
-            "Expected {:?} to contain {:?}",
-            expected,
-            actual
+            result.is_ok(),
+            "Single placement should be handled correctly"
+        );
+        annotator = result.unwrap();
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . L . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        assert!(result.is_ok(), "Pass should be handled correctly");
+        annotator = result.unwrap();
+
+        assert_eq!(
+            annotator.standard_move_strings(),
+            vec![String::from("wL1"), String::from("pass")]
+        );
+        assert_eq!(
+            annotator.uhp_move_strings(),
+            vec![String::from("wL"), String::from("pass")]
         );
     }
 
-    let uhp_moves = annotator.uhp_move_strings();
-    let possible_uhp_moves = vec![
-        vec![String::from("wS1")],
-        vec![String::from("wL /wS1")],
-        vec![String::from(r"bP wS1\"), String::from("bP wL-")],
-        vec![String::from(r"bM wS1/")],
-        vec![
-            String::from(r"wG1 wS1-"),
-            String::from(r"wG1 bP/"),
-            String::from(r"wG1 bM\"),
-        ],
-        vec![
-            String::from(r"bM -wG1"),
-            String::from(r"bM \bP"),
-            String::from(r"bM wL/"),
-            String::from(r"bM wS1"),
-        ],
-        vec![
-            String::from(r"wL \bP"),
-            String::from(r"wL -wG1"),
-            String::from(r"wL bM"),
-        ],
-        vec![
-            String::from(r"bP wS1/"),
-            String::from(r"bP bM/"),
-            String::from(r"bP wL/"),
-            String::from(r"bP \wG1"),
-        ],
-        vec![
-            String::from(r"wG1 /wS1"),
-            String::from(r"wG1 /bM"),
-            String::from(r"wG1 /wL"),
-        ],
-        vec![
-            String::from(r"wG2 wS1-"),
-            String::from(r"wG2 bM-"),
-            String::from(r"wG2 wL-"),
-            String::from(r"wG2 bP\"),
-        ],
-        vec![
-            String::from(r"wG2 -wS1"),
-            String::from(r"wG2 -bM"),
-            String::from(r"wG2 -wL"),
-            String::from(r"wG2 \wG1"),
-        ],
-        vec![
-            String::from(r"wG1 wG2-"),
-            String::from(r"wG1 /bP"),
-            String::from(r"wG1 wL"),
-        ],
-    ];
-    assert_eq!(possible_uhp_moves.len() == uhp_moves.len(), true);
-
-    for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
+    #[test]
+    pub fn test_annotator_place() {
+        let mut annotator = Annotator::new();
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . B . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
         assert!(
-            expected.contains(actual),
-            "Expected {:?} to contain {:?}",
-            expected,
-            actual
+            result.is_ok(),
+            "Single placement should be handled correctly"
+        );
+        annotator = result.unwrap();
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . B a .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        assert!(
+            result.is_ok(),
+            "Single placement should be handled correctly"
+        );
+        annotator = result.unwrap();
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . Q . .\n",
+            " . . B a .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        assert!(
+            result.is_ok(),
+            "Single placement should be handled correctly"
+        );
+        annotator = result.unwrap();
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". a Q . .\n",
+            " . . B . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        assert!(
+            result.is_ok(),
+            "Single movement should be handled correctly"
+        );
+        annotator = result.unwrap();
+
+        assert_eq!(
+            annotator.standard_move_strings(),
+            vec![
+                String::from("wB1"),
+                String::from("bA1 wB1-"),
+                String::from(r"wQ1 \wB1"),
+                String::from("bA1 -wQ1")
+            ]
+        );
+        assert_eq!(
+            annotator.uhp_move_strings(),
+            vec![
+                String::from("wB1"),
+                String::from("bA1 wB1-"),
+                String::from(r"wQ \wB1"),
+                String::from("bA1 -wQ")
+            ]
         );
     }
-}
 
-#[test]
-pub fn test_annotator_climb_across() {
-    //TODO: climbing across distinct stacks
-    let mut annotator = Annotator::new();
-    let positions = vec![
-        HexGrid::from_dsl(concat!(
+    #[test]
+    pub fn test_annotator_climb() {
+        let mut annotator = Annotator::new();
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . B . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . B a .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . Q . .\n",
+            " . . B a .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". a Q . .\n",
+            " . . B . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single movement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". a 2 . .\n",
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [Q B]\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single movement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". 2 Q . .\n",
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [a B]\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single movement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". a Q . .\n",
+            " B . . . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Climb off should be handled correctly");
+
+        let standard_moves = annotator.standard_move_strings();
+        let possible_standard_moves = vec![
+            vec![String::from("wB1")],
+            vec![String::from("bA1 wB1-")],
+            vec![String::from(r"wQ1 \wB1")],
+            vec![String::from("bA1 -wQ1")],
+            vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
+            vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
+            vec![String::from("wB1 /bA1")],
+        ];
+        assert!(possible_standard_moves.len() == standard_moves.len());
+        for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
+            assert!(
+                expected.contains(actual),
+                "Expected {:?} to contain {:?}",
+                expected,
+                actual
+            );
+        }
+        let uhp_moves = annotator.uhp_move_strings();
+        let possible_uhp_moves = vec![
+            vec![String::from("wB1")],
+            vec![String::from("bA1 wB1-")],
+            vec![String::from(r"wQ \wB1")],
+            vec![String::from("bA1 -wQ")],
+            vec![String::from("wB1 bA1-"), String::from("wB1 wQ")],
+            vec![String::from("wB1 -wQ"), String::from("wB1 bA1")],
+            vec![String::from("wB1 /bA1")],
+        ];
+        assert!(possible_uhp_moves.len() == uhp_moves.len());
+        for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
+            assert!(
+                expected.contains(actual),
+                "Expected {:?} to contain {:?}",
+                expected,
+                actual
+            );
+        }
+    }
+
+    #[test]
+    pub fn test_uhp_move_strings() {
+        let mut annotator = Annotator::new();
+        let grid = HexGrid::from_dsl(concat!(
             " . . . . .\n",
             ". . . . .\n",
             " . . S . .\n",
             ". . . . .\n",
             " . . . . .\n\n",
             "start - [ 0 0 ]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " . . S b .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " . b S b .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " b b S b .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " . 2 S b .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-            "2 - [ b b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " . 2 2 . .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-            "2 - [ b b ]\n",
-            "2 - [ S b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". . . . .\n",
-            " . 3 S . .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-            "3 - [ b b b]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . .\n",
-            ". b . . .\n",
-            " . 2 S . .\n",
-            ". . . . .\n",
-            " . . . . .\n\n",
-            "start - [ 0 0 ]\n\n",
-            "2 - [ b b ]\n",
-        )),
-    ];
-
-    for grid in positions {
+        ));
         let result = annotator.next_state(&grid);
-        assert!(
-            result.is_ok(),
-            "Move should be legal, but got error {:?}",
-            result
-        );
-        annotator = result.unwrap();
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . S . .\n",
+            ". . L . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . S . .\n",
+            ". . L p .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . m .\n",
+            " . . S . .\n",
+            ". . L p .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . m .\n",
+            " . . S G .\n",
+            ". . L p .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . 2 G .\n",
+            ". . L p .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [ S m ]\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single climb up should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . 3 G .\n",
+            ". . . p .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ S m L ]\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single climb up should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . p .\n",
+            " . . 3 G .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ S m L ]\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single movement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . p .\n",
+            " . . 3 . .\n",
+            ". . G . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ S m L ]\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Single movement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . p .\n",
+            " . . 3 G .\n",
+            ". . G . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ S m L ]\n",
+        ));
+
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Second placement should be handled correctly");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . p .\n",
+            " . G 3 . .\n",
+            ". . G . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "3 - [ S m L ]\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Pieces should be fungible even if moved");
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . .\n",
+            ". . . p .\n",
+            " . G 4 . .\n",
+            ". . . . .\n",
+            " . . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "4 - [ S m L G]\n",
+        ));
+        let result = annotator.next_state(&grid);
+        annotator = result.expect("Pieces should be fungible even if climbing up");
+
+        let moves = annotator.standard_move_strings();
+        let possible_moves = vec![
+            vec![String::from("wS1")],
+            vec![String::from("wL1 /wS1")],
+            vec![String::from(r"bP1 wS1\"), String::from("bP1 wL1-")],
+            vec![String::from(r"bM1 wS1/")],
+            vec![
+                String::from(r"wG1 wS1-"),
+                String::from(r"wG1 bP1/"),
+                String::from(r"wG1 bM1\"),
+            ],
+            vec![
+                String::from(r"bM1 -wG1"),
+                String::from(r"bM1 \bP1"),
+                String::from(r"bM1 wL1/"),
+                String::from(r"bM1 wS1"),
+            ],
+            vec![
+                String::from(r"wL1 \bP1"),
+                String::from(r"wL1 -wG1"),
+                String::from(r"wL1 bM1"),
+            ],
+            vec![
+                String::from(r"bP1 wS1/"),
+                String::from(r"bP1 bM1/"),
+                String::from(r"bP1 wL1/"),
+                String::from(r"bP1 \wG1"),
+            ],
+            vec![
+                String::from(r"wG1 /wS1"),
+                String::from(r"wG1 /bM1"),
+                String::from(r"wG1 /wL1"),
+            ],
+            vec![
+                String::from(r"wG2 wS1-"),
+                String::from(r"wG2 bM1-"),
+                String::from(r"wG2 wL1-"),
+                String::from(r"wG2 bP1\"),
+            ],
+            vec![
+                String::from(r"wG2 -wS1"),
+                String::from(r"wG2 -bM1"),
+                String::from(r"wG2 -wL1"),
+                String::from(r"wG2 \wG1"),
+            ],
+            vec![
+                String::from(r"wG1 wG2-"),
+                String::from(r"wG1 /bP1"),
+                String::from(r"wG1 wL1"),
+            ],
+        ];
+        assert_eq!(possible_moves.len() == moves.len(), true);
+
+        for (expected, actual) in possible_moves.iter().zip(moves.iter()) {
+            assert!(
+                expected.contains(actual),
+                "Expected {:?} to contain {:?}",
+                expected,
+                actual
+            );
+        }
+
+        let uhp_moves = annotator.uhp_move_strings();
+        let possible_uhp_moves = vec![
+            vec![String::from("wS1")],
+            vec![String::from("wL /wS1")],
+            vec![String::from(r"bP wS1\"), String::from("bP wL-")],
+            vec![String::from(r"bM wS1/")],
+            vec![
+                String::from(r"wG1 wS1-"),
+                String::from(r"wG1 bP/"),
+                String::from(r"wG1 bM\"),
+            ],
+            vec![
+                String::from(r"bM -wG1"),
+                String::from(r"bM \bP"),
+                String::from(r"bM wL/"),
+                String::from(r"bM wS1"),
+            ],
+            vec![
+                String::from(r"wL \bP"),
+                String::from(r"wL -wG1"),
+                String::from(r"wL bM"),
+            ],
+            vec![
+                String::from(r"bP wS1/"),
+                String::from(r"bP bM/"),
+                String::from(r"bP wL/"),
+                String::from(r"bP \wG1"),
+            ],
+            vec![
+                String::from(r"wG1 /wS1"),
+                String::from(r"wG1 /bM"),
+                String::from(r"wG1 /wL"),
+            ],
+            vec![
+                String::from(r"wG2 wS1-"),
+                String::from(r"wG2 bM-"),
+                String::from(r"wG2 wL-"),
+                String::from(r"wG2 bP\"),
+            ],
+            vec![
+                String::from(r"wG2 -wS1"),
+                String::from(r"wG2 -bM"),
+                String::from(r"wG2 -wL"),
+                String::from(r"wG2 \wG1"),
+            ],
+            vec![
+                String::from(r"wG1 wG2-"),
+                String::from(r"wG1 /bP"),
+                String::from(r"wG1 wL"),
+            ],
+        ];
+        assert_eq!(possible_uhp_moves.len() == uhp_moves.len(), true);
+
+        for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
+            assert!(
+                expected.contains(actual),
+                "Expected {:?} to contain {:?}",
+                expected,
+                actual
+            );
+        }
     }
-}
 
-#[test]
-pub fn test_annotator_standard_move_string_interpretation() {
-    let legal_moves = vec![
-        String::from(r"wL1"),
-        String::from(r"bL1 wL1\"),
-        String::from(r"wA1 \wL1"),
-        String::from(r"bM1 bL1\"),
-        String::from(r"wQ1 /wA1"),
-        String::from(r"bA1 /bL1"),
-        String::from(r"wP1 \wQ1"),
-        String::from(r"bQ1 bM1/"),
-        String::from(r"wA1 bQ1-"),
-        String::from(r"bM1 wA1-"),
-    ];
+    #[test]
+    pub fn test_annotator_climb_across() {
+        //TODO: climbing across distinct stacks
+        let mut annotator = Annotator::new();
+        let positions = vec![
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . . S . .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . . S b .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . b S b .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " b b S b .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . 2 S b .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+                "2 - [ b b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . 2 2 . .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+                "2 - [ b b ]\n",
+                "2 - [ S b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". . . . .\n",
+                " . 3 S . .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+                "3 - [ b b b]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . .\n",
+                ". b . . .\n",
+                " . 2 S . .\n",
+                ". . . . .\n",
+                " . . . . .\n\n",
+                "start - [ 0 0 ]\n\n",
+                "2 - [ b b ]\n",
+            )),
+        ];
 
-    let positions = vec![
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . . . . .\n",
-            " . . L . . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . . . . .\n",
-            " . . L . . .\n",
-            ". . . l . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . . .\n",
-            " . . L . . .\n",
-            ". . . l . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". . A . . . .\n",
-            " . . L . . . .\n",
-            ". . . l . . .\n",
-            " . . . m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". . A . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l . . .\n",
-            " . . . m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". . A . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l . . .\n",
-            " . . a m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". P A . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l . . .\n",
-            " . . a m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". P A . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l q . .\n",
-            " . . a m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". P . . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l q A .\n",
-            " . . a m . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . . .\n",
-            ". P . . . . .\n",
-            " . Q L . . . .\n",
-            ". . . l q A m\n",
-            " . . a . . . .\n",
-            ". . . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-    ];
+        for grid in positions {
+            let result = annotator.next_state(&grid);
+            assert!(
+                result.is_ok(),
+                "Move should be legal, but got error {:?}",
+                result
+            );
+            annotator = result.unwrap();
+        }
+    }
 
-    let mut annotator = Annotator::new();
-    for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
-        let result = annotator.next_standard_move(move_string);
+    #[test]
+    pub fn test_annotator_standard_move_string_interpretation() {
+        let legal_moves = vec![
+            String::from(r"wL1"),
+            String::from(r"bL1 wL1\"),
+            String::from(r"wA1 \wL1"),
+            String::from(r"bM1 bL1\"),
+            String::from(r"wQ1 /wA1"),
+            String::from(r"bA1 /bL1"),
+            String::from(r"wP1 \wQ1"),
+            String::from(r"bQ1 bM1/"),
+            String::from(r"wA1 bQ1-"),
+            String::from(r"bM1 wA1-"),
+        ];
+
+        let positions = vec![
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . . . . .\n",
+                " . . L . . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . . . . .\n",
+                " . . L . . .\n",
+                ". . . l . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . . .\n",
+                " . . L . . .\n",
+                ". . . l . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". . A . . . .\n",
+                " . . L . . . .\n",
+                ". . . l . . .\n",
+                " . . . m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". . A . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l . . .\n",
+                " . . . m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". . A . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l . . .\n",
+                " . . a m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". P A . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l . . .\n",
+                " . . a m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". P A . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l q . .\n",
+                " . . a m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". P . . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l q A .\n",
+                " . . a m . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . . .\n",
+                ". P . . . . .\n",
+                " . Q L . . . .\n",
+                ". . . l q A m\n",
+                " . . a . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+        ];
+
+        let mut annotator = Annotator::new();
+        for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
+            let result = annotator.next_standard_move(move_string);
+            assert!(
+                result.is_ok(),
+                "Move input {:?} should be legal, but got error {:?}",
+                move_string,
+                result
+            );
+            annotator = result.unwrap();
+            assert!(
+                annotator.position() == grid,
+                "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
+                annotator.position().to_dsl(),
+                grid.to_dsl()
+            );
+        }
+    }
+
+    #[test]
+    pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
+        let legal_moves = vec![
+            String::from(r"wL"),
+            String::from(r"bP wL-"),
+            String::from(r"wA1 \wL"),
+            String::from(r"bB1 bP/"),
+            String::from(r"wQ /wA1"),
+            String::from(r"bQ bB1\"),
+            String::from(r"wB1 wQ\"),
+            String::from(r"bB1 bP"),  // Move atop the hive absolute notation
+            String::from(r"wB1 wQ-"), // Move atop the hive with relative notation
+            String::from(r"bB1 wB1"), // absolute again
+            String::from(r"wA1 bQ-"),
+            String::from(r"bB1 \wB1"),
+        ];
+
+        let positions = [
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . . . . .\n",
+                " . . L . . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . . . . .\n",
+                " . . L p . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . . .\n",
+                " . . L p . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . b .\n",
+                " . . L p . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . b .\n",
+                " . Q L p . .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . b .\n",
+                " . Q L p q .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . b .\n",
+                " . Q L p q .\n",
+                ". . B . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . . .\n",
+                " . Q L 2 q .\n",
+                ". . B . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+                "2 - [ p b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . . .\n",
+                " . Q 2 2 q .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+                "2 - [ L B ]\n",
+                "2 - [ p b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . A . . .\n",
+                " . Q 3 p q .\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+                "3 - [ L B b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . . . . .\n",
+                " . Q 3 p q A\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+                "3 - [ L B b ]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                " . . . . . .\n",
+                ". . b . . .\n",
+                " . Q 2 p q A\n",
+                ". . . . . .\n",
+                " . . . . . .\n",
+                ". . . . . .\n\n",
+                "start - [-1 -2]\n\n",
+                "2 - [ L B ]\n",
+            )),
+        ];
+
+        let mut annotator = Annotator::new();
+        for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
+            let result = annotator.next_uhp_move(move_string);
+            assert!(
+                result.is_ok(),
+                "Move input {:?} should be legal, but got error {:?}",
+                move_string,
+                result
+            );
+            annotator = result.unwrap();
+            assert!(
+                annotator.position() == grid,
+                "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
+                annotator.position().to_dsl(),
+                grid.to_dsl()
+            );
+        }
+    }
+
+    #[test]
+    pub fn test_uhp_interface_newgame() {
+        let mut uhp = UHPInterface::new();
+        let result = uhp.command("newgame");
+        assert_eq!(result, "Base;NotStarted;White[1]\nok\n")
+    }
+
+    #[test]
+    pub fn test_uhp_interface_newgame_game_type_strings() {
+        let mut uhp = UHPInterface::new();
+        let result = uhp.command("newgame Base+M");
+        assert_eq!(result, "Base+M;NotStarted;White[1]\nok\n");
+        let result = uhp.command("newgame Base+ML");
         assert!(
-            result.is_ok(),
-            "Move input {:?} should be legal, but got error {:?}",
-            move_string,
-            result
+            result == "Base+ML;NotStarted;White[1]\nok\n"
+                || result == "Base+LM;NotStarted;White[1]\nok\n"
         );
-        annotator = result.unwrap();
+
+        let result = uhp.command("newgame Base+LM");
         assert!(
-            annotator.position() == grid,
-            "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
-            annotator.position().to_dsl(),
-            grid.to_dsl()
+            result == "Base+LM;NotStarted;White[1]\nok\n"
+                || result == "Base+ML;NotStarted;White[1]\nok\n"
+        );
+        let result = uhp.command("newgame Base+MLP");
+        assert!(
+            result == "Base+MLP;NotStarted;White[1]\nok\n"
+                || result == "Base+MPL;NotStarted;White[1]\nok\n"
+                || result == "Base+PLM;NotStarted;White[1]\nok\n"
+                || result == "Base+PML;NotStarted;White[1]\nok\n"
+                || result == "Base+LMP;NotStarted;White[1]\nok\n"
+                || result == "Base+LPM;NotStarted;White[1]\nok\n"
         );
     }
-}
 
-#[test]
-pub fn test_annotator_uhp_move_string_interpretation_with_climbing() {
-    let legal_moves = vec![
-        String::from(r"wL"),
-        String::from(r"bP wL-"),
-        String::from(r"wA1 \wL"),
-        String::from(r"bB1 bP/"),
-        String::from(r"wQ /wA1"),
-        String::from(r"bQ bB1\"),
-        String::from(r"wB1 wQ\"),
-        String::from(r"bB1 bP"),  // Move atop the hive absolute notation
-        String::from(r"wB1 wQ-"), // Move atop the hive with relative notation
-        String::from(r"bB1 wB1"), // absolute again
-        String::from(r"wA1 bQ-"),
-        String::from(r"bB1 \wB1"),
-    ];
+    #[test]
+    pub fn test_uhp_interface_some_moves() {
+        let moves = vec![
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
+        let final_position = HexGrid::from_dsl(concat!(
+            ". . . . . .\n",
+            " . A . b . .\n",
+            ". Q L p q .\n",
+            " . . . . . .\n\n",
+            "start - [ -1 -2 ]\n\n"
+        ));
 
-    let positions = [
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . . . . .\n",
-            " . . L . . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . . . . .\n",
-            " . . L p . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . . .\n",
-            " . . L p . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . b .\n",
-            " . . L p . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . b .\n",
-            " . Q L p . .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . b .\n",
-            " . Q L p q .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . b .\n",
-            " . Q L p q .\n",
-            ". . B . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . . .\n",
-            " . Q L 2 q .\n",
-            ". . B . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-            "2 - [ p b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . . .\n",
-            " . Q 2 2 q .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-            "2 - [ L B ]\n",
-            "2 - [ p b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . A . . .\n",
-            " . Q 3 p q .\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-            "3 - [ L B b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . . . . .\n",
-            " . Q 3 p q A\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-            "3 - [ L B b ]\n",
-        )),
-        HexGrid::from_dsl(concat!(
-            " . . . . . .\n",
-            ". . b . . .\n",
-            " . Q 2 p q A\n",
-            ". . . . . .\n",
-            " . . . . . .\n",
-            ". . . . . .\n\n",
-            "start - [-1 -2]\n\n",
-            "2 - [ L B ]\n",
-        )),
-    ];
+        let moves = moves.join(";");
+        let newgame = format!("newgame Base+LP;InProgress;White[4];{}", moves);
 
-    let mut annotator = Annotator::new();
-    for (move_string, grid) in legal_moves.iter().zip(positions.iter()) {
-        let result = annotator.next_uhp_move(move_string);
+        let mut uhp = UHPInterface::new();
+        let output = uhp.command(&newgame);
+
+        println!("OUTPUT: {}", output);
         assert!(
-            result.is_ok(),
-            "Move input {:?} should be legal, but got error {:?}",
-            move_string,
-            result
+            output == format!("Base+LP;InProgress;White[4];{}\nok\n", moves)
+                || output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
         );
-        annotator = result.unwrap();
-        assert!(
-            annotator.position() == grid,
-            "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
-            annotator.position().to_dsl(),
-            grid.to_dsl()
-        );
+        println!("{}", uhp.current_position().to_dsl());
+        println!("{}", final_position.to_dsl());
+        assert!(*uhp.current_position() == final_position);
     }
-}
 
-#[test]
-pub fn test_uhp_interface_newgame() {
-    let mut uhp = UHPInterface::new();
-    let result = uhp.command("newgame");
-    assert_eq!(result, "Base;NotStarted;White[1]\nok\n")
-}
+    #[test]
+    pub fn test_uhp_interface_play() {
+        let moves = vec![
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
+        let final_position = HexGrid::from_dsl(concat!(
+            ". . . . . .\n",
+            " . A . b . .\n",
+            ". Q L p q .\n",
+            " . . . . . .\n\n",
+            "start - [ -1 -2 ]\n\n"
+        ));
 
-#[test]
-pub fn test_uhp_interface_newgame_game_type_strings() {
-    let mut uhp = UHPInterface::new();
-    let result = uhp.command("newgame Base+M");
-    assert_eq!(result, "Base+M;NotStarted;White[1]\nok\n");
-    let result = uhp.command("newgame Base+ML");
-    assert!(
-        result == "Base+ML;NotStarted;White[1]\nok\n"
-            || result == "Base+LM;NotStarted;White[1]\nok\n"
-    );
+        let mut uhp = UHPInterface::new();
+        uhp.command("newgame Base+PL");
 
-    let result = uhp.command("newgame Base+LM");
-    assert!(
-        result == "Base+LM;NotStarted;White[1]\nok\n"
-            || result == "Base+ML;NotStarted;White[1]\nok\n"
-    );
-    let result = uhp.command("newgame Base+MLP");
-    assert!(
-        result == "Base+MLP;NotStarted;White[1]\nok\n"
-            || result == "Base+MPL;NotStarted;White[1]\nok\n"
-            || result == "Base+PLM;NotStarted;White[1]\nok\n"
-            || result == "Base+PML;NotStarted;White[1]\nok\n"
-            || result == "Base+LMP;NotStarted;White[1]\nok\n"
-            || result == "Base+LPM;NotStarted;White[1]\nok\n"
-    );
-}
+        for (i, move_string) in moves.iter().enumerate() {
+            let turn_number = (i + 1) / 2 + 1;
+            let color = match (i + 1) % 2 {
+                0 => "White",
+                _ => "Black",
+            };
+            let output = uhp.command(&format!("play {}", move_string));
+            let moves = moves
+                .iter()
+                .take(i + 1)
+                .cloned()
+                .collect::<Vec<&str>>()
+                .join(";");
 
-#[test]
-pub fn test_uhp_interface_some_moves() {
-    let moves = vec![
-        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-    ];
-    let final_position = HexGrid::from_dsl(concat!(
-        ". . . . . .\n",
-        " . A . b . .\n",
-        ". Q L p q .\n",
-        " . . . . . .\n\n",
-        "start - [ -1 -2 ]\n\n"
-    ));
-
-    let moves = moves.join(";");
-    let newgame = format!("newgame Base+LP;InProgress;White[4];{}", moves);
-
-    let mut uhp = UHPInterface::new();
-    let output = uhp.command(&newgame);
-
-    println!("OUTPUT: {}", output);
-    assert!(
-        output == format!("Base+LP;InProgress;White[4];{}\nok\n", moves)
-            || output == format!("Base+PL;InProgress;White[4];{}\nok\n", moves)
-    );
-    println!("{}", uhp.current_position().to_dsl());
-    println!("{}", final_position.to_dsl());
-    assert!(*uhp.current_position() == final_position);
-}
-
-#[test]
-pub fn test_uhp_interface_play() {
-    let moves = vec![
-        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-    ];
-    let final_position = HexGrid::from_dsl(concat!(
-        ". . . . . .\n",
-        " . A . b . .\n",
-        ". Q L p q .\n",
-        " . . . . . .\n\n",
-        "start - [ -1 -2 ]\n\n"
-    ));
-
-    let mut uhp = UHPInterface::new();
-    uhp.command("newgame Base+PL");
-
-    for (i, move_string) in moves.iter().enumerate() {
-        let turn_number = (i + 1) / 2 + 1;
-        let color = match (i + 1) % 2 {
-            0 => "White",
-            _ => "Black",
-        };
-        let output = uhp.command(&format!("play {}", move_string));
-        let moves = moves
-            .iter()
-            .take(i + 1)
-            .cloned()
-            .collect::<Vec<&str>>()
-            .join(";");
-
-        println!("GOT TO THIS OUTPUT {}", output);
-        assert!(
-            output
-                == format!(
-                    "Base+PL;InProgress;{}[{}];{}\nok\n",
-                    color, turn_number, moves
-                )
-                || output
+            println!("GOT TO THIS OUTPUT {}", output);
+            assert!(
+                output
                     == format!(
-                        "Base+LP;InProgress;{}[{}];{}\nok\n",
+                        "Base+PL;InProgress;{}[{}];{}\nok\n",
                         color, turn_number, moves
                     )
-        );
+                    || output
+                        == format!(
+                            "Base+LP;InProgress;{}[{}];{}\nok\n",
+                            color, turn_number, moves
+                        )
+            );
+        }
+
+        assert!(*uhp.current_position() == final_position);
     }
 
-    assert!(*uhp.current_position() == final_position);
+    #[test]
+    pub fn test_uhp_interface_undo() {
+        let moves = vec![
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
+
+        let mut uhp = UHPInterface::new();
+        uhp.command("newgame Base+PML;NotStarted;White[1]");
+        uhp.command(&format!("play {}", moves[0]));
+        uhp.command(&format!("play {}", moves[1]));
+        uhp.command(&format!("play {}", moves[2]));
+        uhp.command(&format!("play {}", moves[3]));
+        let output = uhp.command("undo");
+        assert_eq!(
+            &output[8..],
+            ";InProgress;Black[2];wL;bP wL-;wA1 \\wL\nok\n"
+        );
+
+        let output = uhp.command("undo");
+        assert_eq!(&output[8..], ";InProgress;White[2];wL;bP wL-\nok\n");
+
+        uhp.command(&format!("play {}", moves[2]));
+        let output = uhp.command("undo 2");
+        assert_eq!(&output[8..], ";InProgress;Black[1];wL\nok\n");
+    }
+
+    #[test]
+    pub fn test_game_states_output() {
+        let draw_before = r"Base;InProgress;Black[6];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1";
+        let draw_last_move = r"bQ bA1-";
+        let draw_complete = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
+
+        let black_wins_before = r"Base+LMP;InProgress;White[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\";
+        let black_wins_last_move = r"wA2 wQ\";
+        let black_wins_complete = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
+
+        let white_wins_before = r"Base+PL;InProgress;White[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/";
+        let white_wins_last_move = r"wB1 \bL";
+        let white_wins_complete = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
+
+        let mut uhp = UHPInterface::new();
+
+        uhp.command(&format!("newgame {}", draw_before));
+        let output = uhp.command(&format!("play {}", draw_last_move));
+        println!("{}", output);
+        println!("{}", format!("{}\nok\n", draw_complete));
+        assert!(output == format!("{}\nok\n", draw_complete));
+
+        uhp.command(&format!("newgame {}", black_wins_before));
+        let output = uhp.command(&format!("play {}", black_wins_last_move));
+        let output = output.to_string();
+        let black_wins_complete = black_wins_complete.to_string();
+        println!("{}", output[8..].to_string());
+        println!(
+            "{}",
+            format!("{}\nok\n", black_wins_complete)[8..].to_string()
+        );
+        assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
+
+        uhp.command(&format!("newgame {}", white_wins_before));
+        let output = uhp.command(&format!("play {}", white_wins_last_move));
+        println!("{}", output);
+        println!("{}", format!("{}\nok\n", white_wins_complete));
+        assert!(output[7..] == format!("{}\nok\n", white_wins_complete)[7..]);
+    }
+
+    #[test]
+    pub fn test_game_states_input() {
+        let mut uhp = UHPInterface::new();
+        let draw_game_string = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
+        let output = uhp.command(&format!("newgame {}", draw_game_string));
+        println!("{}", output);
+        println!("{}", format!("{}\nok\n", draw_game_string));
+        assert!(output == format!("{}\nok\n", draw_game_string));
+
+        let black_wins = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
+        let output = uhp.command(&format!("newgame {}", black_wins));
+        println!("{}", output);
+        println!("{}", format!("{}\nok\n", black_wins));
+        assert!(output[8..] == format!("{}\nok\n", black_wins)[8..]);
+
+        let white_wins = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
+        let output = uhp.command(&format!("newgame {}", white_wins));
+        println!("{}", output);
+        println!("{}", format!("{}\nok\n", white_wins));
+        assert!(output[7..] == format!("{}\nok\n", white_wins)[7..]);
+    }
+
+    #[test]
+    pub fn test_valid_moves() {
+        //TODO
+    }
 }
-
-#[test]
-pub fn test_uhp_interface_undo() {
-    let moves = vec![
-        r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-    ];
-
-    let mut uhp = UHPInterface::new();
-    uhp.command("newgame Base+PML;NotStarted;White[1]");
-    uhp.command(&format!("play {}", moves[0]));
-    uhp.command(&format!("play {}", moves[1]));
-    uhp.command(&format!("play {}", moves[2]));
-    uhp.command(&format!("play {}", moves[3]));
-    let output = uhp.command("undo");
-    assert_eq!(
-        &output[8..],
-        ";InProgress;Black[2];wL;bP wL-;wA1 \\wL\nok\n"
-    );
-
-    let output = uhp.command("undo");
-    assert_eq!(&output[8..], ";InProgress;White[2];wL;bP wL-\nok\n");
-
-    uhp.command(&format!("play {}", moves[2]));
-    let output = uhp.command("undo 2");
-    assert_eq!(&output[8..], ";InProgress;Black[1];wL\nok\n");
-}
-#[test]
-pub fn test_game_states_output() {
-    let draw_before = r"Base;InProgress;Black[6];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1";
-    let draw_last_move = r"bQ bA1-";
-    let draw_complete = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
-
-    let black_wins_before = r"Base+LMP;InProgress;White[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\";
-    let black_wins_last_move = r"wA2 wQ\";
-    let black_wins_complete = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
-
-    let white_wins_before = r"Base+PL;InProgress;White[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/";
-    let white_wins_last_move = r"wB1 \bL";
-    let white_wins_complete = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
-
-    let mut uhp = UHPInterface::new();
-
-    uhp.command(&format!("newgame {}", draw_before));
-    let output = uhp.command(&format!("play {}", draw_last_move));
-    println!("{}", output);
-    println!("{}", format!("{}\nok\n", draw_complete));
-    assert!(output == format!("{}\nok\n", draw_complete));
-
-    uhp.command(&format!("newgame {}", black_wins_before));
-    let output = uhp.command(&format!("play {}", black_wins_last_move));
-    let output = output.to_string();
-    let black_wins_complete = black_wins_complete.to_string();
-    println!("{}", output[8..].to_string());
-    println!(
-        "{}",
-        format!("{}\nok\n", black_wins_complete)[8..].to_string()
-    );
-    assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
-
-    uhp.command(&format!("newgame {}", white_wins_before));
-    let output = uhp.command(&format!("play {}", white_wins_last_move));
-    println!("{}", output);
-    println!("{}", format!("{}\nok\n", white_wins_complete));
-    assert!(output[7..] == format!("{}\nok\n", white_wins_complete)[7..]);
-}
-
-#[test]
-pub fn test_game_states_input() {
-    let mut uhp = UHPInterface::new();
-    let draw_game_string = r"Base;Draw;White[7];wA1;bA1 wA1-;wQ -wA1;bQ bA1-;wQ \wA1;bQ bA1/;wQ -wA1;bQ bA1-;wQ /wA1;bQ bA1\;wQ -wA1;bQ bA1-";
-    let output = uhp.command(&format!("newgame {}", draw_game_string));
-    println!("{}", output);
-    println!("{}", format!("{}\nok\n", draw_game_string));
-    assert!(output == format!("{}\nok\n", draw_game_string));
-
-    let black_wins = r"Base+LMP;BlackWins;Black[8];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bA2 bQ/;wB1 wP;bA1 /wA1;wB1 wP\;bA2 bA1\;wA2 \wP;bA3 bQ\;wA2 wQ\";
-    let output = uhp.command(&format!("newgame {}", black_wins));
-    println!("{}", output);
-    println!("{}", format!("{}\nok\n", black_wins));
-    assert!(output[8..] == format!("{}\nok\n", black_wins)[8..]);
-
-    let white_wins = r"Base+PL;WhiteWins;Black[7];wP;bL wP-;wB1 \wP;bQ bL/;wA1 /wB1;bA1 \bQ;wQ wA1\;bB1 bQ/;wB1 wP;bG1 bB1\;wA1 bQ\;bG2 bG1/;wB1 \bL";
-    let output = uhp.command(&format!("newgame {}", white_wins));
-    println!("{}", output);
-    println!("{}", format!("{}\nok\n", white_wins));
-    assert!(output[7..] == format!("{}\nok\n", white_wins)[7..]);
-}
-
-#[test]
-pub fn test_valid_moves() {
-    //TODO
-}
-
-// TODO: two problems:
-// 1. The graceless crash
-// 2. passing in "Base" doesn't limit moveset!
-// 3. mosquito copying mosquito on top of the hive

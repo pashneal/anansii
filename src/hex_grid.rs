@@ -1,6 +1,5 @@
 use crate::game::Position;
 use crate::hex_grid_dsl::Parser;
-use crate::bitgrid::basic::*;
 pub use crate::location::*;
 pub use crate::piece::*;
 pub use std::collections::HashMap;
@@ -21,7 +20,6 @@ pub type Result<T> = std::result::Result<T, HexGridError>;
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
 pub const HEX_GRID_CENTER: (usize, usize) = (HEX_GRID_SIZE / 2, HEX_GRID_SIZE / 2);
-pub const MAX_HEIGHT: usize = 7;
 
 /// Represents a hexagonal grid
 ///
@@ -526,426 +524,433 @@ impl Position for HexGrid {
     }
 }
 
-#[test]
-fn test_board_string_empty() {
-    let grid = HexGrid::new();
-    let board = grid.board_string();
-    let expected = ".";
-    assert_eq!(board, expected, "Empty board should be a single dot");
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use super::HexGrid;
 
-#[test]
-fn test_board_string_single() {
-    let mut grid = HexGrid::new();
-    let piece = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(piece, HexLocation::new(0, 1));
-    let board = grid.board_string();
-    let expected = concat!(". . .\n", " . Q .\n", ". . .\n",);
+    #[test]
+    pub(crate) fn test_board_string_empty() {
+        let grid = HexGrid::new();
+        let board = grid.board_string();
+        let expected = ".";
+        assert_eq!(board, expected, "Empty board should be a single dot");
+    }
 
-    assert_eq!(board, expected, "Should represent a single piece");
-}
+    #[test]
+    pub(crate) fn test_board_string_single() {
+        let mut grid = HexGrid::new();
+        let piece = Piece::new(PieceType::Queen, PieceColor::White);
+        grid.add(piece, HexLocation::new(0, 1));
+        let board = grid.board_string();
+        let expected = concat!(". . .\n", " . Q .\n", ". . .\n",);
 
-#[test]
-fn test_board_string_single_stack() {
-    let mut grid = HexGrid::new();
-    let piece = Piece::new(PieceType::Queen, PieceColor::White);
-    let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
-    grid.add(piece, HexLocation::new(0, 1));
-    grid.add(dummy, HexLocation::new(0, 1));
-    let board = grid.board_string();
-    let expected = concat!(". . .\n", " . 2 .\n", ". . .\n",);
+        assert_eq!(board, expected, "Should represent a single piece");
+    }
 
-    assert_eq!(board, expected, "Should represent a single stack");
-}
+    #[test]
+    pub(crate) fn test_board_string_single_stack() {
+        let mut grid = HexGrid::new();
+        let piece = Piece::new(PieceType::Queen, PieceColor::White);
+        let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
+        grid.add(piece, HexLocation::new(0, 1));
+        grid.add(dummy, HexLocation::new(0, 1));
+        let board = grid.board_string();
+        let expected = concat!(". . .\n", " . 2 .\n", ". . .\n",);
 
-#[test]
-fn test_board_string_multiple() {
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
-    let black_beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
-    let black_mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
-    let black_grasshopper = Piece::new(PieceType::Grasshopper, PieceColor::Black);
-    let black_spider = Piece::new(PieceType::Spider, PieceColor::Black);
-    let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
-    let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
-    let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
+        assert_eq!(board, expected, "Should represent a single stack");
+    }
 
-    let start = HexLocation::new(10, -3);
-    let white_ant_loc = start;
-    let white_queen_loc = white_ant_loc.apply(Direction::NW);
-    let black_beetle_loc = white_ant_loc.apply(Direction::E);
-    let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
-    let black_grasshopper_loc = black_beetle_loc.apply(Direction::NE);
-    let stack2_loc = white_ant_loc.apply(Direction::SW);
-    let stack3_loc = white_ant_loc.apply(Direction::NE);
-    let black_spider_loc = stack2_loc.apply(Direction::SW);
-    let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
-    let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
+    #[test]
+    pub(crate) fn test_board_string_multiple() {
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
+        let black_beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
+        let black_mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
+        let black_grasshopper = Piece::new(PieceType::Grasshopper, PieceColor::Black);
+        let black_spider = Piece::new(PieceType::Spider, PieceColor::Black);
+        let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
+        let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
+        let dummy = Piece::new(PieceType::Pillbug, PieceColor::Black);
 
-    grid.add(white_queen, white_queen_loc);
-    grid.add(white_ant, white_ant_loc);
-    grid.add(black_beetle, black_beetle_loc);
-    grid.add(black_mosquito, black_mosquito_loc);
-    grid.add(black_grasshopper, black_grasshopper_loc);
-    grid.add(black_spider, black_spider_loc);
-    grid.add(white_ladybug, white_ladybug_loc);
-    grid.add(white_beetle, white_beetle_loc);
+        let start = HexLocation::new(10, -3);
+        let white_ant_loc = start;
+        let white_queen_loc = white_ant_loc.apply(Direction::NW);
+        let black_beetle_loc = white_ant_loc.apply(Direction::E);
+        let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
+        let black_grasshopper_loc = black_beetle_loc.apply(Direction::NE);
+        let stack2_loc = white_ant_loc.apply(Direction::SW);
+        let stack3_loc = white_ant_loc.apply(Direction::NE);
+        let black_spider_loc = stack2_loc.apply(Direction::SW);
+        let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
+        let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
 
-    grid.add(dummy, stack2_loc);
-    grid.add(dummy, stack2_loc);
+        grid.add(white_queen, white_queen_loc);
+        grid.add(white_ant, white_ant_loc);
+        grid.add(black_beetle, black_beetle_loc);
+        grid.add(black_mosquito, black_mosquito_loc);
+        grid.add(black_grasshopper, black_grasshopper_loc);
+        grid.add(black_spider, black_spider_loc);
+        grid.add(white_ladybug, white_ladybug_loc);
+        grid.add(white_beetle, white_beetle_loc);
 
-    grid.add(dummy, stack3_loc);
-    grid.add(dummy, stack3_loc);
-    grid.add(dummy, stack3_loc);
+        grid.add(dummy, stack2_loc);
+        grid.add(dummy, stack2_loc);
 
-    let expected = concat!(
-        " . . . . . .\n",
-        ". . Q 3 g .\n",
-        " . . A b . .\n",
-        ". . 2 . m .\n",
-        " . s . . . .\n",
-        ". . L . . .\n",
-        " . B . . . .\n",
-        ". . . . . .\n",
-    );
+        grid.add(dummy, stack3_loc);
+        grid.add(dummy, stack3_loc);
+        grid.add(dummy, stack3_loc);
 
-    let board = grid.board_string();
-    println!("{}", board);
-
-    assert_eq!(board, expected);
-}
-
-#[test]
-fn test_board_multiple_stacks() {
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
-    let black_beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
-    let black_mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
-    let black_grasshopper = Piece::new(PieceType::Grasshopper, PieceColor::Black);
-    let black_spider = Piece::new(PieceType::Spider, PieceColor::Black);
-    let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
-    let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
-
-    let start = HexLocation::new(2, 0);
-    let white_ant_loc = start;
-    let white_queen_loc = white_ant_loc.apply(Direction::NW);
-    let black_beetle_loc = white_ant_loc.apply(Direction::E);
-    let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
-    let black_grasshopper_loc = black_beetle_loc.apply(Direction::NE);
-    let stack2_loc = white_ant_loc.apply(Direction::SW);
-    let stack3_loc = white_ant_loc.apply(Direction::NE);
-    let black_spider_loc = stack2_loc.apply(Direction::SW);
-    let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
-    let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
-
-    grid.add(white_queen, white_queen_loc);
-    grid.add(white_queen, white_queen_loc);
-    grid.add(white_queen, white_queen_loc);
-
-    grid.add(white_ant, white_ant_loc);
-    grid.add(black_beetle, black_beetle_loc);
-
-    grid.add(black_mosquito, black_mosquito_loc);
-    grid.add(black_mosquito, black_mosquito_loc);
-
-    grid.add(black_grasshopper, black_grasshopper_loc);
-    grid.add(black_grasshopper, black_grasshopper_loc);
-
-    grid.add(black_spider, black_spider_loc);
-    grid.add(white_ladybug, white_ladybug_loc);
-    grid.add(white_beetle, white_beetle_loc);
-
-    grid.add(black_beetle, stack2_loc);
-    grid.add(black_mosquito, stack2_loc);
-
-    grid.add(white_queen, stack3_loc);
-    grid.add(black_grasshopper, stack3_loc);
-    grid.add(white_ant, stack3_loc);
-
-    // Modeled after the board string:
-    //let expected = concat!(
-    //" . . . . . .\n",
-    //". . 3 3 2 .\n",
-    //" . . A b . .\n",
-    //". . 2 . 2 .\n",
-    //" . s . . . .\n",
-    //". . L . . .\n",
-    //" . B . . . .\n",
-    //". . . . . .\n",
-    //);
-
-    let expected = concat!(
-        "3 - [ Q Q Q ]\n",
-        "3 - [ Q g A ]\n",
-        "2 - [ g g ]\n",
-        "2 - [ b m ]\n",
-        "2 - [ m m ]\n",
-    );
-    let board = grid.stacks_string();
-    println!("{}", board);
-
-    assert_eq!(board, expected);
-}
-
-#[test]
-fn test_board_string_padding() {
-    let start = HexLocation::new(0, 0);
-    let ne = start.apply(Direction::NE);
-    let se = start.apply(Direction::SE);
-
-    let expected = concat!(". . .\n", " . Q .\n", ". Q .\n", " . Q .\n", ". . .\n",);
-
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(white_queen, start);
-    grid.add(white_queen, ne);
-    grid.add(white_queen, se);
-
-    let board = grid.board_string();
-    println!("{}", board);
-    assert_eq!(board, expected);
-
-    let start = HexLocation::new(0, 1);
-    let nw = start.apply(Direction::NW);
-    let sw = start.apply(Direction::SW);
-
-    let expected = concat!(" . . .\n", ". Q .\n", " . Q .\n", ". Q .\n", " . . .\n",);
-
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(white_queen, start);
-    grid.add(white_queen, nw);
-    grid.add(white_queen, sw);
-
-    let board = grid.board_string();
-    println!("{}", board);
-    assert_eq!(board, expected);
-}
-
-#[test]
-fn test_start_string1() {
-    let start = HexLocation::new(0, 0);
-    let ne = start.apply(Direction::NE);
-    let se = start.apply(Direction::SE);
-
-    // The board looks like this:
-    //let expected = concat!(
-    //". . .\n",
-    //" . Q .\n",
-    //". Q .\n",
-    //" . Q .\n",
-    //". . .\n",
-    //);
-
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(white_queen, start);
-    grid.add(white_queen, ne);
-    grid.add(white_queen, se);
-
-    let start_string = grid.start_string();
-    let expected = "start - [ 0 -2 ]";
-    assert_eq!(start_string, expected);
-}
-
-#[test]
-fn test_start_string2() {
-    let start = HexLocation::new(5, -6);
-    let nw = start.apply(Direction::NW);
-    let sw = start.apply(Direction::SW);
-
-    // board  expected to look like:
-    //. . . .
-    // . Q . .
-    //. . Q .
-    // . Q . .
-    //. . . .
-
-    let mut grid = HexGrid::new();
-    let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
-    grid.add(white_queen, start);
-    grid.add(white_queen, nw);
-    grid.add(white_queen, sw);
-
-    let start_string = grid.start_string();
-    let expected = "start - [ 4 -8 ]";
-    assert_eq!(start_string, expected);
-}
-
-#[test]
-fn test_pinned_pieces_single() {
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . a . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . * . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    assert_eq!(grid.pinned(), answer);
-}
-
-#[test]
-pub fn test_piece_pinned_boundary_conditions() {
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . a . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    assert_eq!(grid.pinned(), answer);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    // Vacuously true
-    assert_eq!(grid.pinned(), answer);
-}
-
-#[test]
-pub fn test_no_existing_pieces_pinned() {
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". a a a . .\n",
-        " . a . a . .\n",
-        ". . a a a .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    assert_eq!(grid.pinned(), answer);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". a . . . .\n",
-        " . a . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    assert_eq!(grid.pinned(), answer);
-}
-
-#[test]
-pub fn test_long_pins() {
-    let grid = HexGrid::from_dsl(concat!(
-        " . . a . . .\n",
-        ". a a . a .\n",
-        " . . a a . .\n",
-        ". . a . a .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". . * . . .\n",
-        " . . * * . .\n",
-        ". . . . . .\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    assert_eq!(grid.pinned(), answer);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " a . . . . .\n",
-        ". a a . . .\n",
-        " a . a a . .\n",
-        ". . . . a a\n",
-        " . . . . . a\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let answer = HexGrid::selector(concat!(
-        " . . . . . .\n",
-        ". * * . . .\n",
-        " . . * * . .\n",
-        ". . . . * *\n",
-        " . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    assert_eq!(grid.pinned(), answer);
-}
-
-#[test]
-pub fn test_outside() {
-    let board = HexGrid::from_dsl(concat!(
-        " . . . . . .\n",
-        ". . a . a .\n",
-        " . a a a . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    let expected = HexGrid::selector(concat!(
-        " . * * * * .\n",
-        ". * a * a *\n",
-        " * a a a * .\n",
-        ". * a * * .\n",
-        " . * a a * .\n",
-        ". . * * * .\n\n",
-        "start - [0 0]\n\n",
-    ));
-
-    let set_expected = expected.iter().cloned().collect::<HashSet<_>>();
-    assert_eq!(board.outside().len(), set_expected.len());
-    for location in board.outside() {
-        assert!(
-            set_expected.contains(&location),
-            "Location {:?} not found in expected",
-            location
+        let expected = concat!(
+            " . . . . . .\n",
+            ". . Q 3 g .\n",
+            " . . A b . .\n",
+            ". . 2 . m .\n",
+            " . s . . . .\n",
+            ". . L . . .\n",
+            " . B . . . .\n",
+            ". . . . . .\n",
         );
+
+        let board = grid.board_string();
+        println!("{}", board);
+
+        assert_eq!(board, expected);
+    }
+
+    #[test]
+    pub(crate) fn test_board_multiple_stacks() {
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        let white_ant = Piece::new(PieceType::Ant, PieceColor::White);
+        let black_beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
+        let black_mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
+        let black_grasshopper = Piece::new(PieceType::Grasshopper, PieceColor::Black);
+        let black_spider = Piece::new(PieceType::Spider, PieceColor::Black);
+        let white_ladybug = Piece::new(PieceType::Ladybug, PieceColor::White);
+        let white_beetle = Piece::new(PieceType::Beetle, PieceColor::White);
+
+        let start = HexLocation::new(2, 0);
+        let white_ant_loc = start;
+        let white_queen_loc = white_ant_loc.apply(Direction::NW);
+        let black_beetle_loc = white_ant_loc.apply(Direction::E);
+        let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
+        let black_grasshopper_loc = black_beetle_loc.apply(Direction::NE);
+        let stack2_loc = white_ant_loc.apply(Direction::SW);
+        let stack3_loc = white_ant_loc.apply(Direction::NE);
+        let black_spider_loc = stack2_loc.apply(Direction::SW);
+        let white_ladybug_loc = black_spider_loc.apply(Direction::SE);
+        let white_beetle_loc = white_ladybug_loc.apply(Direction::SW);
+
+        grid.add(white_queen, white_queen_loc);
+        grid.add(white_queen, white_queen_loc);
+        grid.add(white_queen, white_queen_loc);
+
+        grid.add(white_ant, white_ant_loc);
+        grid.add(black_beetle, black_beetle_loc);
+
+        grid.add(black_mosquito, black_mosquito_loc);
+        grid.add(black_mosquito, black_mosquito_loc);
+
+        grid.add(black_grasshopper, black_grasshopper_loc);
+        grid.add(black_grasshopper, black_grasshopper_loc);
+
+        grid.add(black_spider, black_spider_loc);
+        grid.add(white_ladybug, white_ladybug_loc);
+        grid.add(white_beetle, white_beetle_loc);
+
+        grid.add(black_beetle, stack2_loc);
+        grid.add(black_mosquito, stack2_loc);
+
+        grid.add(white_queen, stack3_loc);
+        grid.add(black_grasshopper, stack3_loc);
+        grid.add(white_ant, stack3_loc);
+
+        // Modeled after the board string:
+        //let expected = concat!(
+        //" . . . . . .\n",
+        //". . 3 3 2 .\n",
+        //" . . A b . .\n",
+        //". . 2 . 2 .\n",
+        //" . s . . . .\n",
+        //". . L . . .\n",
+        //" . B . . . .\n",
+        //". . . . . .\n",
+        //);
+
+        let expected = concat!(
+            "3 - [ Q Q Q ]\n",
+            "3 - [ Q g A ]\n",
+            "2 - [ g g ]\n",
+            "2 - [ b m ]\n",
+            "2 - [ m m ]\n",
+        );
+        let board = grid.stacks_string();
+        println!("{}", board);
+
+        assert_eq!(board, expected);
+    }
+
+    #[test]
+    pub(crate) fn test_board_string_padding() {
+        let start = HexLocation::new(0, 0);
+        let ne = start.apply(Direction::NE);
+        let se = start.apply(Direction::SE);
+
+        let expected = concat!(". . .\n", " . Q .\n", ". Q .\n", " . Q .\n", ". . .\n",);
+
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        grid.add(white_queen, start);
+        grid.add(white_queen, ne);
+        grid.add(white_queen, se);
+
+        let board = grid.board_string();
+        println!("{}", board);
+        assert_eq!(board, expected);
+
+        let start = HexLocation::new(0, 1);
+        let nw = start.apply(Direction::NW);
+        let sw = start.apply(Direction::SW);
+
+        let expected = concat!(" . . .\n", ". Q .\n", " . Q .\n", ". Q .\n", " . . .\n",);
+
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        grid.add(white_queen, start);
+        grid.add(white_queen, nw);
+        grid.add(white_queen, sw);
+
+        let board = grid.board_string();
+        println!("{}", board);
+        assert_eq!(board, expected);
+    }
+
+    #[test]
+    pub(crate) fn test_start_string1() {
+        let start = HexLocation::new(0, 0);
+        let ne = start.apply(Direction::NE);
+        let se = start.apply(Direction::SE);
+
+        // The board looks like this:
+        //let expected = concat!(
+        //". . .\n",
+        //" . Q .\n",
+        //". Q .\n",
+        //" . Q .\n",
+        //". . .\n",
+        //);
+
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        grid.add(white_queen, start);
+        grid.add(white_queen, ne);
+        grid.add(white_queen, se);
+
+        let start_string = grid.start_string();
+        let expected = "start - [ 0 -2 ]";
+        assert_eq!(start_string, expected);
+    }
+
+    #[test]
+    pub(crate) fn test_start_string2() {
+        let start = HexLocation::new(5, -6);
+        let nw = start.apply(Direction::NW);
+        let sw = start.apply(Direction::SW);
+
+        // board  expected to look like:
+        //. . . .
+        // . Q . .
+        //. . Q .
+        // . Q . .
+        //. . . .
+
+        let mut grid = HexGrid::new();
+        let white_queen = Piece::new(PieceType::Queen, PieceColor::White);
+        grid.add(white_queen, start);
+        grid.add(white_queen, nw);
+        grid.add(white_queen, sw);
+
+        let start_string = grid.start_string();
+        let expected = "start - [ 4 -8 ]";
+        assert_eq!(start_string, expected);
+    }
+
+    #[test]
+    pub(crate) fn test_pinned_pieces_single() {
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . a . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . * . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        assert_eq!(grid.pinned(), answer);
+    }
+
+    #[test]
+    pub fn test_piece_pinned_boundary_conditions() {
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . a . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        assert_eq!(grid.pinned(), answer);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        // Vacuously true
+        assert_eq!(grid.pinned(), answer);
+    }
+
+    #[test]
+    pub fn test_no_existing_pieces_pinned() {
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". a a a . .\n",
+            " . a . a . .\n",
+            ". . a a a .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        assert_eq!(grid.pinned(), answer);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". a . . . .\n",
+            " . a . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        assert_eq!(grid.pinned(), answer);
+    }
+
+    #[test]
+    pub fn test_long_pins() {
+        let grid = HexGrid::from_dsl(concat!(
+            " . . a . . .\n",
+            ". a a . a .\n",
+            " . . a a . .\n",
+            ". . a . a .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". . * . . .\n",
+            " . . * * . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        assert_eq!(grid.pinned(), answer);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " a . . . . .\n",
+            ". a a . . .\n",
+            " a . a a . .\n",
+            ". . . . a a\n",
+            " . . . . . a\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let answer = HexGrid::selector(concat!(
+            " . . . . . .\n",
+            ". * * . . .\n",
+            " . . * * . .\n",
+            ". . . . * *\n",
+            " . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        assert_eq!(grid.pinned(), answer);
+    }
+
+    #[test]
+    pub fn test_outside() {
+        let board = HexGrid::from_dsl(concat!(
+            " . . . . . .\n",
+            ". . a . a .\n",
+            " . a a a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        let expected = HexGrid::selector(concat!(
+            " . * * * * .\n",
+            ". * a * a *\n",
+            " * a a a * .\n",
+            ". * a * * .\n",
+            " . * a a * .\n",
+            ". . * * * .\n\n",
+            "start - [0 0]\n\n",
+        ));
+
+        let set_expected = expected.iter().cloned().collect::<HashSet<_>>();
+        assert_eq!(board.outside().len(), set_expected.len());
+        for location in board.outside() {
+            assert!(
+                set_expected.contains(&location),
+                "Location {:?} not found in expected",
+                location
+            );
+        }
     }
 }

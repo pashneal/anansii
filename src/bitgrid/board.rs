@@ -171,57 +171,62 @@ impl Display for AxialBitboard {
     }
 }
 
-#[test]
-pub fn size_is_small() {
-    // Sanity checking rust sizes
-    assert_eq!(std::mem::size_of::<AxialBitboard>(), 8);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-#[test]
-pub fn test_directions() {
-    let start = AxialBitboard::from_u64(0x800000000);
-    let e = AxialBitboard::from_u64(0x400000000);
-    let w = AxialBitboard::from_u64(0x1000000000);
-    let nw = AxialBitboard::from_u64(0x80000000000);
-    let ne = AxialBitboard::from_u64(0x40000000000);
-    let sw = AxialBitboard::from_u64(0x10000000);
-    let se = AxialBitboard::from_u64(0x8000000);
+    #[test]
+    pub fn size_is_small() {
+        // Sanity checking rust sizes
+        assert_eq!(std::mem::size_of::<AxialBitboard>(), 8);
+    }
 
-    assert_eq!(start.shift_west(), w);
-    assert_eq!(start.shift_east(), e);
-    assert_eq!(start.shift_northwest(), nw);
-    assert_eq!(start.shift_northeast(), ne);
-    assert_eq!(start.shift_southwest(), sw);
-    assert_eq!(start.shift_southeast(), se);
-}
+    #[test]
+    pub fn test_directions() {
+        let start = AxialBitboard::from_u64(0x800000000);
+        let e = AxialBitboard::from_u64(0x400000000);
+        let w = AxialBitboard::from_u64(0x1000000000);
+        let nw = AxialBitboard::from_u64(0x80000000000);
+        let ne = AxialBitboard::from_u64(0x40000000000);
+        let sw = AxialBitboard::from_u64(0x10000000);
+        let se = AxialBitboard::from_u64(0x8000000);
 
-#[test]
-pub fn test_direction_cohesion() {
-    let start = AxialBitboard::from_u64(0x800000000);
-    let everywhere = start
-        .shift_west()
-        .shift_east()
-        .shift_northwest()
-        .shift_northeast()
-        .shift_southwest()
-        .shift_southeast();
-    assert_eq!(start, everywhere);
-}
+        assert_eq!(start.shift_west(), w);
+        assert_eq!(start.shift_east(), e);
+        assert_eq!(start.shift_northwest(), nw);
+        assert_eq!(start.shift_northeast(), ne);
+        assert_eq!(start.shift_southwest(), sw);
+        assert_eq!(start.shift_southeast(), se);
+    }
 
-#[test]
-pub fn test_display() {
-    let output = concat!(
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "□□□□□□□□\n",
-        "■□□□□□□□\n",
-    );
+    #[test]
+    pub fn test_direction_cohesion() {
+        let start = AxialBitboard::from_u64(0x800000000);
+        let everywhere = start
+            .shift_west()
+            .shift_east()
+            .shift_northwest()
+            .shift_northeast()
+            .shift_southwest()
+            .shift_southeast();
+        assert_eq!(start, everywhere);
+    }
 
-    let start = AxialBitboard::from_u64(0x80);
-    assert_eq!(format!("{}", start), output);
+    #[test]
+    pub fn test_display() {
+        let output = concat!(
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "□□□□□□□□\n",
+            "■□□□□□□□\n",
+        );
 
+        let start = AxialBitboard::from_u64(0x80);
+        assert_eq!(format!("{}", start), output);
+
+    }
 }

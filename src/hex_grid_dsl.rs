@@ -419,481 +419,487 @@ impl Parser {
     }
 }
 
-#[test]
-pub fn test_board_parse_simple() {
-    use PieceColor::*;
-    use PieceType::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let board_string = concat!(
-        ". . . . .\n",
-        " . Q 3 g .\n",
-        ". . A b .\n",
-        " . 2 . m .\n",
-        ". . . . .\n",
-    );
+    #[test]
+    pub fn test_board_parse_simple() {
+        use PieceColor::*;
+        use PieceType::*;
 
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
+        let board_string = concat!(
+            ". . . . .\n",
+            " . Q 3 g .\n",
+            ". . A b .\n",
+            " . 2 . m .\n",
+            ". . . . .\n",
+        );
 
-    let board = result.unwrap();
-    assert_eq!(board.len(), 7);
-    let white_queen = board.iter().find(|(input, _)| match input {
-        BoardInput::Piece(piece) => *piece == Piece::new(Queen, White),
-        _ => false,
-    });
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
 
-    assert!(white_queen.is_some(), "Couldn't find white queen on board");
-    let (_, white_queen_loc) = white_queen.unwrap();
-    let stack_3_loc = white_queen_loc.apply(Direction::E);
-    let black_grasshopper_loc = stack_3_loc.apply(Direction::E);
-    let white_ant_loc = white_queen_loc.apply(Direction::SE);
-    let black_beetle_loc = white_ant_loc.apply(Direction::E);
-    let stack_2_loc = white_ant_loc.apply(Direction::SW);
-    let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
+        let board = result.unwrap();
+        assert_eq!(board.len(), 7);
+        let white_queen = board.iter().find(|(input, _)| match input {
+            BoardInput::Piece(piece) => *piece == Piece::new(Queen, White),
+            _ => false,
+        });
 
-    let stack_3 = BoardInput::Stack(3);
-    let stack_2 = BoardInput::Stack(2);
-    let black_grasshopper = BoardInput::Piece(Piece::new(Grasshopper, Black));
-    let white_ant = BoardInput::Piece(Piece::new(Ant, White));
-    let black_beetle = BoardInput::Piece(Piece::new(Beetle, Black));
-    let black_mosquito = BoardInput::Piece(Piece::new(Mosquito, Black));
+        assert!(white_queen.is_some(), "Couldn't find white queen on board");
+        let (_, white_queen_loc) = white_queen.unwrap();
+        let stack_3_loc = white_queen_loc.apply(Direction::E);
+        let black_grasshopper_loc = stack_3_loc.apply(Direction::E);
+        let white_ant_loc = white_queen_loc.apply(Direction::SE);
+        let black_beetle_loc = white_ant_loc.apply(Direction::E);
+        let stack_2_loc = white_ant_loc.apply(Direction::SW);
+        let black_mosquito_loc = black_beetle_loc.apply(Direction::SE);
 
-    assert!(board.contains(&(stack_3, stack_3_loc)));
-    assert!(board.contains(&(stack_2, stack_2_loc)));
-    assert!(board.contains(&(black_grasshopper, black_grasshopper_loc)));
-    assert!(board.contains(&(white_ant, white_ant_loc)));
-    assert!(board.contains(&(black_beetle, black_beetle_loc)));
-    assert!(board.contains(&(black_mosquito, black_mosquito_loc)));
-}
+        let stack_3 = BoardInput::Stack(3);
+        let stack_2 = BoardInput::Stack(2);
+        let black_grasshopper = BoardInput::Piece(Piece::new(Grasshopper, Black));
+        let white_ant = BoardInput::Piece(Piece::new(Ant, White));
+        let black_beetle = BoardInput::Piece(Piece::new(Beetle, Black));
+        let black_mosquito = BoardInput::Piece(Piece::new(Mosquito, Black));
 
-#[test]
-pub fn test_board_parse_empty() {
-    let board_string = concat!(
-        ". . . . .\n",
-        " . . . . .\n",
-        ". . . . .\n",
-        " . . . . .\n",
-        ". . . . .\n",
-    );
-
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
-    let board = result.unwrap();
-    assert_eq!(board.len(), 0);
-}
-
-#[test]
-pub fn test_board_parse_single() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    let board_string = concat!(" . . . . .\n", ". . . . .\n", " A . . . .\n",);
-
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
-    let board = result.unwrap();
-    assert_eq!(board.len(), 1);
-    let (input, _) = board[0];
-    assert_eq!(input, BoardInput::Piece(Piece::new(Ant, White)));
-}
-
-#[test]
-pub fn test_board_parse_fitted() {
-    use PieceColor::*;
-    use PieceType::*;
-    let board_string = concat!(" . l m . 4\n", ". q . g 2\n", " A Q b 3 P\n",);
-
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
-
-    let board = result.unwrap();
-    assert_eq!(board.len(), 11);
-    let white_ant = board.iter().find(|(input, _)| match input {
-        BoardInput::Piece(piece) => *piece == Piece::new(Ant, White),
-        _ => false,
-    });
-
-    assert!(white_ant.is_some(), "Couldn't find white ant on board");
-    let (_, white_ant_loc) = white_ant.unwrap();
-    let white_queen_loc = white_ant_loc.apply(Direction::E);
-    let black_beetle_loc = white_queen_loc.apply(Direction::E);
-    let stack_3_loc = black_beetle_loc.apply(Direction::E);
-    let white_pillbug_loc = stack_3_loc.apply(Direction::E);
-    let black_queen_loc = white_ant_loc.apply(Direction::NE);
-    let black_ladybug_loc = black_queen_loc.apply(Direction::NE);
-    let black_mosquito_loc = black_ladybug_loc.apply(Direction::E);
-    let stack_4_loc = black_mosquito_loc.apply(Direction::E).apply(Direction::E);
-    let stack_2_loc = stack_4_loc.apply(Direction::SW);
-    let black_grasshopper_loc = stack_2_loc.apply(Direction::W);
-
-    let stack_4 = BoardInput::Stack(4);
-    let stack_3 = BoardInput::Stack(3);
-    let stack_2 = BoardInput::Stack(2);
-
-    let white_queen = BoardInput::Piece(Piece::new(Queen, White));
-    let black_beetle = BoardInput::Piece(Piece::new(Beetle, Black));
-    let white_pillbug = BoardInput::Piece(Piece::new(Pillbug, White));
-    let black_queen = BoardInput::Piece(Piece::new(Queen, Black));
-    let black_ladybug = BoardInput::Piece(Piece::new(Ladybug, Black));
-    let black_mosquito = BoardInput::Piece(Piece::new(Mosquito, Black));
-    let black_grasshopper = BoardInput::Piece(Piece::new(Grasshopper, Black));
-
-    assert!(board.contains(&(stack_4, stack_4_loc)));
-    assert!(board.contains(&(stack_3, stack_3_loc)));
-    assert!(board.contains(&(white_queen, white_queen_loc)));
-    assert!(board.contains(&(black_beetle, black_beetle_loc)));
-    assert!(board.contains(&(white_pillbug, white_pillbug_loc)));
-    assert!(board.contains(&(black_ladybug, black_ladybug_loc)));
-    assert!(board.contains(&(black_mosquito, black_mosquito_loc)));
-    assert!(board.contains(&(black_grasshopper, black_grasshopper_loc)));
-    assert!(board.contains(&(stack_2, stack_2_loc)));
-    assert!(board.contains(&(black_queen, black_queen_loc)));
-}
-
-#[test]
-pub fn test_board_follows_board_order() {
-    use PieceColor::*;
-    use PieceType::*;
-    let board_string = concat!(
-        " . l m . 4\n",
-        ". q . g 2\n",
-        " . . . . .\n",
-        "A Q b 3 P\n",
-        " . . . . .\n"
-    );
-
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
-
-    let board = result.unwrap();
-    assert_eq!(board.len(), 11);
-    let pieces = board
-        .into_iter()
-        .map(|(input, _)| input)
-        .collect::<Vec<_>>();
-    let expected = vec![
-        BoardInput::Piece(Piece::new(Ladybug, Black)),
-        BoardInput::Piece(Piece::new(Mosquito, Black)),
-        BoardInput::Stack(4),
-        BoardInput::Piece(Piece::new(Queen, Black)),
-        BoardInput::Piece(Piece::new(Grasshopper, Black)),
-        BoardInput::Stack(2),
-        BoardInput::Piece(Piece::new(Ant, White)),
-        BoardInput::Piece(Piece::new(Queen, White)),
-        BoardInput::Piece(Piece::new(Beetle, Black)),
-        BoardInput::Stack(3),
-        BoardInput::Piece(Piece::new(Pillbug, White)),
-    ];
-
-    assert_eq!(pieces, expected);
-}
-
-#[test]
-pub fn test_board_location_relative_to_top_left() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    let board_string = concat!(". l m . .\n", " 2 l m . .\n", "2 . . . .\n",);
-
-    let result = Parser::parse_board(board_string);
-    assert!(
-        result.is_ok(),
-        "expected parse_board to give result, got {:?}",
-        result
-    );
-
-    // Note: assuming "board order", (top to bottom, left to right)
-
-    let board = result.unwrap();
-    assert_eq!(board.len(), 6);
-    let pieces = board.into_iter().map(|(_, loc)| loc).collect::<Vec<_>>();
-    let top_left = HexLocation::new(0, 0);
-    let expected = vec![
-        top_left.apply(Direction::E),
-        top_left.apply(Direction::E).apply(Direction::E),
-        top_left.apply(Direction::SE),
-        top_left.apply(Direction::SE).apply(Direction::E),
-        top_left
-            .apply(Direction::SE)
-            .apply(Direction::E)
-            .apply(Direction::E),
-        top_left.apply(Direction::SE).apply(Direction::SW),
-    ];
-
-    assert_eq!(pieces, expected);
-}
-
-#[test]
-pub fn test_simple_start_loc() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    let start_string = "start - [ 3 -2 ]";
-    let pieces = vec![
-        (
-            BoardInput::Piece(Piece::new(Queen, White)),
-            HexLocation::new(0, 0),
-        ),
-        (
-            BoardInput::Piece(Piece::new(Grasshopper, Black)),
-            HexLocation::new(1, 0),
-        ),
-        (
-            BoardInput::Piece(Piece::new(Ant, White)),
-            HexLocation::new(0, 1),
-        ),
-    ];
-
-    let result = Parser::parse_start(start_string, &pieces);
-    assert!(
-        result.is_ok(),
-        "expected parse_start to give result, got {:?}",
-        result
-    );
-
-    // New locations should have been shifted by 3, -2 while preserving order
-    let expected = vec![
-        (
-            BoardInput::Piece(Piece::new(Queen, White)),
-            HexLocation::new(3, -2),
-        ),
-        (
-            BoardInput::Piece(Piece::new(Grasshopper, Black)),
-            HexLocation::new(4, -2),
-        ),
-        (
-            BoardInput::Piece(Piece::new(Ant, White)),
-            HexLocation::new(3, -1),
-        ),
-    ];
-
-    assert_eq!(result.unwrap(), expected);
-}
-
-#[test]
-pub fn test_parse_stacks() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    // Make sure that it fills in the stacks and leaves everything
-    // else alone
-    let board = concat!("2 3 a\n", " 4 5 A\n");
-
-    let parse_string = concat!(
-        "2-[m m]\n",
-        "3 -[ m m m]\n",
-        "4- [   m    m m  m]\n",
-        "5 -[m m m  m m  ]\n"
-    );
-
-    let pieces = Parser::parse_board(board).expect("Couldn't parse board");
-
-    let pieces = Parser::parse_stacks(parse_string, &pieces).expect("Couldn't parse stacks");
-
-    let stack_2 = BoardInput::StackPieces([
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        None,
-        None,
-        None,
-        None,
-        None,
-    ]);
-
-    let stack_3 = BoardInput::StackPieces([
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        None,
-        None,
-        None,
-        None,
-    ]);
-
-    let stack_4 = BoardInput::StackPieces([
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        None,
-        None,
-        None,
-    ]);
-
-    let stack_5 = BoardInput::StackPieces([
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        Some(Piece::new(Mosquito, Black)),
-        None,
-        None,
-    ]);
-
-    let white_ant = BoardInput::Piece(Piece::new(Ant, White));
-    let black_ant = BoardInput::Piece(Piece::new(Ant, Black));
-
-    let expected = vec![stack_2, stack_3, black_ant, stack_4, stack_5, white_ant];
-
-    let pieces = pieces
-        .into_iter()
-        .map(|(input, _)| input)
-        .collect::<Vec<_>>();
-    for (i, piece) in pieces.iter().enumerate() {
-        assert_eq!(piece, &expected[i]);
+        assert!(board.contains(&(stack_3, stack_3_loc)));
+        assert!(board.contains(&(stack_2, stack_2_loc)));
+        assert!(board.contains(&(black_grasshopper, black_grasshopper_loc)));
+        assert!(board.contains(&(white_ant, white_ant_loc)));
+        assert!(board.contains(&(black_beetle, black_beetle_loc)));
+        assert!(board.contains(&(black_mosquito, black_mosquito_loc)));
     }
-}
-#[test]
-pub fn test_parse_stacks_empty() {
-    use PieceColor::*;
-    use PieceType::*;
 
-    let board = concat!("A");
+    #[test]
+    pub fn test_board_parse_empty() {
+        let board_string = concat!(
+            ". . . . .\n",
+            " . . . . .\n",
+            ". . . . .\n",
+            " . . . . .\n",
+            ". . . . .\n",
+        );
 
-    let parse_string = "";
-
-    let pieces = Parser::parse_board(board).expect("Couldn't parse board");
-
-    let pieces = Parser::parse_stacks(parse_string, &pieces).expect("Couldn't parse stacks");
-
-    let white_ant = BoardInput::Piece(Piece::new(Ant, White));
-
-    let expected = vec![white_ant];
-
-    let pieces = pieces
-        .into_iter()
-        .map(|(input, _)| input)
-        .collect::<Vec<_>>();
-    for (i, piece) in pieces.iter().enumerate() {
-        assert_eq!(piece, &expected[i]);
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
+        let board = result.unwrap();
+        assert_eq!(board.len(), 0);
     }
-}
 
-#[test]
-pub fn test_conversion() {
-    let expected = concat!(". . .\n", " . A .\n", ". . .\n\n", "start - [ 0 0 ]\n\n",);
+    #[test]
+    pub fn test_board_parse_single() {
+        use PieceColor::*;
+        use PieceType::*;
 
-    let board = Parser::parse_hex_grid(expected)
-        .expect("Couldn't parse board")
-        .to_dsl();
-    assert_eq!(expected, board);
-}
+        let board_string = concat!(" . . . . .\n", ". . . . .\n", " A . . . .\n",);
 
-#[test]
-pub fn test_conversion_stack() {
-    let expected = concat!(
-        ". . .\n",
-        " . 2 .\n",
-        ". . .\n\n",
-        "start - [ 1 2 ]\n\n",
-        "2 - [ q q ]",
-    );
-    let acceptable = concat!(
-        " . . .\n",
-        ". 2 .\n",
-        " . . .\n\n",
-        "start - [ 1 2 ]\n\n",
-        "2 - [ q q ]",
-    );
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
+        let board = result.unwrap();
+        assert_eq!(board.len(), 1);
+        let (input, _) = board[0];
+        assert_eq!(input, BoardInput::Piece(Piece::new(Ant, White)));
+    }
 
-    let board = Parser::parse_hex_grid(expected)
-        .expect("Couldn't parse board")
-        .to_dsl();
-    assert!(expected == board.trim() || acceptable == board.trim());
-}
+    #[test]
+    pub fn test_board_parse_fitted() {
+        use PieceColor::*;
+        use PieceType::*;
+        let board_string = concat!(" . l m . 4\n", ". q . g 2\n", " A Q b 3 P\n",);
 
-#[test]
-pub fn test_conversion_larger() {
-    use PieceColor::*;
-    use PieceType::*;
-    let expected = concat!(
-        " . Q 3 g .\n",
-        ". . A b .\n",
-        " . 2 . m .\n",
-        ". . . . .\n\n",
-        "start - [ -3 -2 ]\n\n",
-        "3 - [G b B]\n",
-        "2 - [a M]\n",
-    );
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
 
-    let grid = Parser::parse_hex_grid(expected).expect("Couldn't parse board");
+        let board = result.unwrap();
+        assert_eq!(board.len(), 11);
+        let white_ant = board.iter().find(|(input, _)| match input {
+            BoardInput::Piece(piece) => *piece == Piece::new(Ant, White),
+            _ => false,
+        });
 
-    let mut location = HexLocation::new(-3, -2);
-    location = location.apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![Piece::new(Queen, White),]);
+        assert!(white_ant.is_some(), "Couldn't find white ant on board");
+        let (_, white_ant_loc) = white_ant.unwrap();
+        let white_queen_loc = white_ant_loc.apply(Direction::E);
+        let black_beetle_loc = white_queen_loc.apply(Direction::E);
+        let stack_3_loc = black_beetle_loc.apply(Direction::E);
+        let white_pillbug_loc = stack_3_loc.apply(Direction::E);
+        let black_queen_loc = white_ant_loc.apply(Direction::NE);
+        let black_ladybug_loc = black_queen_loc.apply(Direction::NE);
+        let black_mosquito_loc = black_ladybug_loc.apply(Direction::E);
+        let stack_4_loc = black_mosquito_loc.apply(Direction::E).apply(Direction::E);
+        let stack_2_loc = stack_4_loc.apply(Direction::SW);
+        let black_grasshopper_loc = stack_2_loc.apply(Direction::W);
 
-    location = location.apply(Direction::E);
-    assert_eq!(
-        grid.peek(location),
-        vec![
-            Piece::new(Grasshopper, White),
-            Piece::new(Beetle, Black),
-            Piece::new(Beetle, White),
-        ]
-    );
+        let stack_4 = BoardInput::Stack(4);
+        let stack_3 = BoardInput::Stack(3);
+        let stack_2 = BoardInput::Stack(2);
 
-    location = location.apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![Piece::new(Grasshopper, Black)]);
+        let white_queen = BoardInput::Piece(Piece::new(Queen, White));
+        let black_beetle = BoardInput::Piece(Piece::new(Beetle, Black));
+        let white_pillbug = BoardInput::Piece(Piece::new(Pillbug, White));
+        let black_queen = BoardInput::Piece(Piece::new(Queen, Black));
+        let black_ladybug = BoardInput::Piece(Piece::new(Ladybug, Black));
+        let black_mosquito = BoardInput::Piece(Piece::new(Mosquito, Black));
+        let black_grasshopper = BoardInput::Piece(Piece::new(Grasshopper, Black));
 
-    location = location.apply(Direction::SW);
-    assert_eq!(grid.peek(location), vec![Piece::new(Beetle, Black),]);
+        assert!(board.contains(&(stack_4, stack_4_loc)));
+        assert!(board.contains(&(stack_3, stack_3_loc)));
+        assert!(board.contains(&(white_queen, white_queen_loc)));
+        assert!(board.contains(&(black_beetle, black_beetle_loc)));
+        assert!(board.contains(&(white_pillbug, white_pillbug_loc)));
+        assert!(board.contains(&(black_ladybug, black_ladybug_loc)));
+        assert!(board.contains(&(black_mosquito, black_mosquito_loc)));
+        assert!(board.contains(&(black_grasshopper, black_grasshopper_loc)));
+        assert!(board.contains(&(stack_2, stack_2_loc)));
+        assert!(board.contains(&(black_queen, black_queen_loc)));
+    }
 
-    location = location.apply(Direction::W);
-    assert_eq!(grid.peek(location), vec![Piece::new(Ant, White),]);
+    #[test]
+    pub fn test_board_follows_board_order() {
+        use PieceColor::*;
+        use PieceType::*;
+        let board_string = concat!(
+            " . l m . 4\n",
+            ". q . g 2\n",
+            " . . . . .\n",
+            "A Q b 3 P\n",
+            " . . . . .\n"
+        );
 
-    location = location.apply(Direction::SW);
-    assert_eq!(
-        grid.peek(location),
-        vec![Piece::new(Ant, Black), Piece::new(Mosquito, White),]
-    );
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
 
-    location = location.apply(Direction::E).apply(Direction::E);
-    assert_eq!(grid.peek(location), vec![Piece::new(Mosquito, Black),]);
+        let board = result.unwrap();
+        assert_eq!(board.len(), 11);
+        let pieces = board
+            .into_iter()
+            .map(|(input, _)| input)
+            .collect::<Vec<_>>();
+        let expected = vec![
+            BoardInput::Piece(Piece::new(Ladybug, Black)),
+            BoardInput::Piece(Piece::new(Mosquito, Black)),
+            BoardInput::Stack(4),
+            BoardInput::Piece(Piece::new(Queen, Black)),
+            BoardInput::Piece(Piece::new(Grasshopper, Black)),
+            BoardInput::Stack(2),
+            BoardInput::Piece(Piece::new(Ant, White)),
+            BoardInput::Piece(Piece::new(Queen, White)),
+            BoardInput::Piece(Piece::new(Beetle, Black)),
+            BoardInput::Stack(3),
+            BoardInput::Piece(Piece::new(Pillbug, White)),
+        ];
 
-    assert_eq!(grid.num_pieces(), 10);
-}
+        assert_eq!(pieces, expected);
+    }
 
-#[test]
-pub fn test_parse_selector() {
-    let expected = concat!(
-        ". . . . .\n",
-        " . * A * .\n",
-        ". B * * .\n",
-        " . * 2 * .\n",
-        ". . . . .\n\n",
-        "start - [ 0 0 ]\n\n",
-        "2 - [ p p ]\n",
-    );
+    #[test]
+    pub fn test_board_location_relative_to_top_left() {
+        use PieceColor::*;
+        use PieceType::*;
 
-    let selectors = Parser::parse_selector(expected).expect("Couldn't parse selectors");
-    let expected = vec![
-        HexLocation::new(1, 1),
-        HexLocation::new(3, 1),
-        HexLocation::new(1, 2),
-        HexLocation::new(2, 2),
-        HexLocation::new(0, 3),
-        HexLocation::new(2, 3),
-    ];
+        let board_string = concat!(". l m . .\n", " 2 l m . .\n", "2 . . . .\n",);
 
-    assert_eq!(selectors, expected);
+        let result = Parser::parse_board(board_string);
+        assert!(
+            result.is_ok(),
+            "expected parse_board to give result, got {:?}",
+            result
+        );
+
+        // Note: assuming "board order", (top to bottom, left to right)
+
+        let board = result.unwrap();
+        assert_eq!(board.len(), 6);
+        let pieces = board.into_iter().map(|(_, loc)| loc).collect::<Vec<_>>();
+        let top_left = HexLocation::new(0, 0);
+        let expected = vec![
+            top_left.apply(Direction::E),
+            top_left.apply(Direction::E).apply(Direction::E),
+            top_left.apply(Direction::SE),
+            top_left.apply(Direction::SE).apply(Direction::E),
+            top_left
+                .apply(Direction::SE)
+                .apply(Direction::E)
+                .apply(Direction::E),
+            top_left.apply(Direction::SE).apply(Direction::SW),
+        ];
+
+        assert_eq!(pieces, expected);
+    }
+
+    #[test]
+    pub fn test_simple_start_loc() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        let start_string = "start - [ 3 -2 ]";
+        let pieces = vec![
+            (
+                BoardInput::Piece(Piece::new(Queen, White)),
+                HexLocation::new(0, 0),
+            ),
+            (
+                BoardInput::Piece(Piece::new(Grasshopper, Black)),
+                HexLocation::new(1, 0),
+            ),
+            (
+                BoardInput::Piece(Piece::new(Ant, White)),
+                HexLocation::new(0, 1),
+            ),
+        ];
+
+        let result = Parser::parse_start(start_string, &pieces);
+        assert!(
+            result.is_ok(),
+            "expected parse_start to give result, got {:?}",
+            result
+        );
+
+        // New locations should have been shifted by 3, -2 while preserving order
+        let expected = vec![
+            (
+                BoardInput::Piece(Piece::new(Queen, White)),
+                HexLocation::new(3, -2),
+            ),
+            (
+                BoardInput::Piece(Piece::new(Grasshopper, Black)),
+                HexLocation::new(4, -2),
+            ),
+            (
+                BoardInput::Piece(Piece::new(Ant, White)),
+                HexLocation::new(3, -1),
+            ),
+        ];
+
+        assert_eq!(result.unwrap(), expected);
+    }
+
+    #[test]
+    pub fn test_parse_stacks() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        // Make sure that it fills in the stacks and leaves everything
+        // else alone
+        let board = concat!("2 3 a\n", " 4 5 A\n");
+
+        let parse_string = concat!(
+            "2-[m m]\n",
+            "3 -[ m m m]\n",
+            "4- [   m    m m  m]\n",
+            "5 -[m m m  m m  ]\n"
+        );
+
+        let pieces = Parser::parse_board(board).expect("Couldn't parse board");
+
+        let pieces = Parser::parse_stacks(parse_string, &pieces).expect("Couldn't parse stacks");
+
+        let stack_2 = BoardInput::StackPieces([
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            None,
+            None,
+            None,
+            None,
+            None,
+        ]);
+
+        let stack_3 = BoardInput::StackPieces([
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            None,
+            None,
+            None,
+            None,
+        ]);
+
+        let stack_4 = BoardInput::StackPieces([
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            None,
+            None,
+            None,
+        ]);
+
+        let stack_5 = BoardInput::StackPieces([
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            Some(Piece::new(Mosquito, Black)),
+            None,
+            None,
+        ]);
+
+        let white_ant = BoardInput::Piece(Piece::new(Ant, White));
+        let black_ant = BoardInput::Piece(Piece::new(Ant, Black));
+
+        let expected = vec![stack_2, stack_3, black_ant, stack_4, stack_5, white_ant];
+
+        let pieces = pieces
+            .into_iter()
+            .map(|(input, _)| input)
+            .collect::<Vec<_>>();
+        for (i, piece) in pieces.iter().enumerate() {
+            assert_eq!(piece, &expected[i]);
+        }
+    }
+
+    #[test]
+    pub fn test_parse_stacks_empty() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        let board = concat!("A");
+
+        let parse_string = "";
+
+        let pieces = Parser::parse_board(board).expect("Couldn't parse board");
+
+        let pieces = Parser::parse_stacks(parse_string, &pieces).expect("Couldn't parse stacks");
+
+        let white_ant = BoardInput::Piece(Piece::new(Ant, White));
+
+        let expected = vec![white_ant];
+
+        let pieces = pieces
+            .into_iter()
+            .map(|(input, _)| input)
+            .collect::<Vec<_>>();
+        for (i, piece) in pieces.iter().enumerate() {
+            assert_eq!(piece, &expected[i]);
+        }
+    }
+
+    #[test]
+    pub fn test_conversion() {
+        let expected = concat!(". . .\n", " . A .\n", ". . .\n\n", "start - [ 0 0 ]\n\n",);
+
+        let board = Parser::parse_hex_grid(expected)
+            .expect("Couldn't parse board")
+            .to_dsl();
+        assert_eq!(expected, board);
+    }
+
+    #[test]
+    pub fn test_conversion_stack() {
+        let expected = concat!(
+            ". . .\n",
+            " . 2 .\n",
+            ". . .\n\n",
+            "start - [ 1 2 ]\n\n",
+            "2 - [ q q ]",
+        );
+        let acceptable = concat!(
+            " . . .\n",
+            ". 2 .\n",
+            " . . .\n\n",
+            "start - [ 1 2 ]\n\n",
+            "2 - [ q q ]",
+        );
+
+        let board = Parser::parse_hex_grid(expected)
+            .expect("Couldn't parse board")
+            .to_dsl();
+        assert!(expected == board.trim() || acceptable == board.trim());
+    }
+
+    #[test]
+    pub fn test_conversion_larger() {
+        use PieceColor::*;
+        use PieceType::*;
+        let expected = concat!(
+            " . Q 3 g .\n",
+            ". . A b .\n",
+            " . 2 . m .\n",
+            ". . . . .\n\n",
+            "start - [ -3 -2 ]\n\n",
+            "3 - [G b B]\n",
+            "2 - [a M]\n",
+        );
+
+        let grid = Parser::parse_hex_grid(expected).expect("Couldn't parse board");
+
+        let mut location = HexLocation::new(-3, -2);
+        location = location.apply(Direction::E);
+        assert_eq!(grid.peek(location), vec![Piece::new(Queen, White),]);
+
+        location = location.apply(Direction::E);
+        assert_eq!(
+            grid.peek(location),
+            vec![
+                Piece::new(Grasshopper, White),
+                Piece::new(Beetle, Black),
+                Piece::new(Beetle, White),
+            ]
+        );
+
+        location = location.apply(Direction::E);
+        assert_eq!(grid.peek(location), vec![Piece::new(Grasshopper, Black)]);
+
+        location = location.apply(Direction::SW);
+        assert_eq!(grid.peek(location), vec![Piece::new(Beetle, Black),]);
+
+        location = location.apply(Direction::W);
+        assert_eq!(grid.peek(location), vec![Piece::new(Ant, White),]);
+
+        location = location.apply(Direction::SW);
+        assert_eq!(
+            grid.peek(location),
+            vec![Piece::new(Ant, Black), Piece::new(Mosquito, White),]
+        );
+
+        location = location.apply(Direction::E).apply(Direction::E);
+        assert_eq!(grid.peek(location), vec![Piece::new(Mosquito, Black),]);
+
+        assert_eq!(grid.num_pieces(), 10);
+    }
+
+    #[test]
+    pub fn test_parse_selector() {
+        let expected = concat!(
+            ". . . . .\n",
+            " . * A * .\n",
+            ". B * * .\n",
+            " . * 2 * .\n",
+            ". . . . .\n\n",
+            "start - [ 0 0 ]\n\n",
+            "2 - [ p p ]\n",
+        );
+
+        let selectors = Parser::parse_selector(expected).expect("Couldn't parse selectors");
+        let expected = vec![
+            HexLocation::new(1, 1),
+            HexLocation::new(3, 1),
+            HexLocation::new(1, 2),
+            HexLocation::new(2, 2),
+            HexLocation::new(0, 3),
+            HexLocation::new(2, 3),
+        ];
+
+        assert_eq!(selectors, expected);
+    }
 }

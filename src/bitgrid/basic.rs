@@ -2,7 +2,7 @@ use super::*;
 use crate::location::*;
 use crate::piece::*;
 use crate::hex_grid::*;
-use crate::testing_utils::is_localized;
+use std::fmt::{Display , Formatter};
 use std::collections::HashSet;
 
 pub const CENTER_BOARD_INDEX: usize = 24;
@@ -10,8 +10,6 @@ pub const CENTER_BITBOARD_INDEX : usize = 28;
 pub const GRID_WIDTH: usize = 7;
 pub const GRID_HEIGHT: usize = 7;
 pub const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
-pub const MAX_WRAP_BEFORE_COLLISION: usize = 28;
-pub type GridLocation = usize;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug 
 /// that follow the One Hive rule and has no greater than 7 pieces atop the hive
@@ -460,6 +458,78 @@ impl TryInto<HexGrid> for BasicBitGrid{
     }
 }
 
+impl <'a> TryInto<HexGrid> for &'a BasicBitGrid{
+    type Error = HexGridError;
+    fn try_into(self) -> Result<HexGrid> {
+        let left = -((HEX_GRID_SIZE/2)  as i8);
+        let right = (HEX_GRID_SIZE/2)  as i8;
+        let top = -((HEX_GRID_SIZE/2)  as i8);
+        let bottom = (HEX_GRID_SIZE/2)  as i8;
+
+        let mut start = None;
+        for row in top..=bottom {
+            for col in left..=right {
+                let hex_location = HexLocation::new(row, col);
+                let bit_location : BitGridLocation = hex_location.into();
+                if self.peek(bit_location).len() > 0 {
+                    start = Some(hex_location); 
+                }
+            }
+        }
+
+        // TODO: we assume that if there *is* a piece on the board
+        // at least one must be within the bounds of the hex grid, check if 
+        // this is a valid assumption down the line
+        if start.is_none() {
+            return Ok(HexGrid::new()) 
+        }
+
+        // Since we know the position must follow the One Hive rule,
+        // we do a dfs starting from the start location to find all the pieces
+        //
+        // Note: the reason we can't convert directly is that there is 
+        // no guarantee that BasicBitLocation -> HexLocation is an injective mapping -
+        // there may be multiple BasicBitLocations that map to the same HexLocation
+        // due to wrapping
+        fn dfs(grid : &BasicBitGrid, current_loc: HexLocation, visited: &mut HashSet<HexLocation>, on_hive : &mut usize, result: &mut HexGrid) -> Result<()> {
+            if visited.contains(&current_loc) {
+                return Ok(());
+            }
+
+            let pieces = grid.peek(current_loc.into());
+
+            if pieces.is_empty() {
+                return Ok(());
+            }
+
+            *on_hive += pieces.len() - 1;
+
+            if *on_hive > 6 {
+                return Err(HexGridError::TooManyPiecesOnHive)
+            }
+
+            visited.insert(current_loc);
+            for piece in pieces {
+                result.add(piece, current_loc);
+            }
+            for direction in Direction::all() {
+                let next_loc = current_loc.apply(direction);
+                dfs(grid, next_loc, visited, on_hive, result)?;
+            }
+
+            return Ok(());
+        }
+
+        let mut visited = HashSet::new();
+        let mut on_hive = 0;
+        let mut result = HexGrid::new();
+        match dfs(&self, start.unwrap(), &mut visited, &mut on_hive, &mut result) {
+            Err(e) => Err(e),
+            _ => Ok(result)
+        }
+    }
+}
+
 // All basic bit grids are legal HexGrids
 impl From<HexGrid> for BasicBitGrid {
     fn from(hex_grid: HexGrid) -> Self {
@@ -474,239 +544,260 @@ impl From<HexGrid> for BasicBitGrid {
 }
 
 
-#[test]
-pub fn test_bitgrid_location() {
-    let hex = HexLocation::center();
-    let bitgrid = BitGridLocation::from_hex(hex);
-    assert_eq!(bitgrid, BitGridLocation::center());
+impl Display for BasicBitGrid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let hex_grid : HexGrid = self.try_into().expect("Could not convert to hex grid");
+        write!(f, "{}", hex_grid.to_dsl())?;
+        Ok(())
+    }
+    
 }
 
-#[test] 
-pub fn test_bitgrid_wrap() {
-    let start  = BitGridLocation::center();
-    let mut e = start;
-    let mut w = start;
-    let mut nw = start;
-    let mut ne = start;
-    let mut sw = start;
-    let mut se = start;
 
-    for _ in 0..BITBOARD_WIDTH {
-        e = e.shift_east();
-        w = w.shift_west();
-        nw = nw.shift_northwest();
-        ne = ne.shift_northeast();
-        sw = sw.shift_southwest();
-        se = se.shift_southeast();
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::BasicBitGrid;
+    use super::BitGridLocation;
+    use crate::testing_utils::is_localized;
+    pub const MAX_WRAP_BEFORE_COLLISION: usize = 28;
+
+    #[test]
+    pub fn test_bitgrid_location() {
+        let hex = HexLocation::center();
+        let bitgrid = BitGridLocation::from_hex(hex);
+        assert_eq!(bitgrid, BitGridLocation::center());
     }
 
-    assert_eq!(e.board_index , start.board_index - 1);
-    assert_eq!(w.board_index , start.board_index + 1);
-    assert_eq!(ne.board_index , start.board_index + GRID_WIDTH - 1);
-    assert_eq!(nw.board_index , start.board_index + GRID_WIDTH);
-    assert_eq!(se.board_index , start.board_index - GRID_WIDTH);
-    assert_eq!(sw.board_index , start.board_index - GRID_WIDTH + 1);
+    #[test] 
+    pub fn test_bitgrid_wrap() {
+        let start  = BitGridLocation::center();
+        let mut e = start;
+        let mut w = start;
+        let mut nw = start;
+        let mut ne = start;
+        let mut sw = start;
+        let mut se = start;
 
-    assert_eq!(e.bitboard_index, start.bitboard_index);
-    assert_eq!(w.bitboard_index, start.bitboard_index);
-    assert_eq!(ne.bitboard_index, start.bitboard_index);
-    assert_eq!(nw.bitboard_index, start.bitboard_index);
-    assert_eq!(se.bitboard_index, start.bitboard_index);
-    assert_eq!(sw.bitboard_index, start.bitboard_index);
+        for _ in 0..BITBOARD_WIDTH {
+            e = e.shift_east();
+            w = w.shift_west();
+            nw = nw.shift_northwest();
+            ne = ne.shift_northeast();
+            sw = sw.shift_southwest();
+            se = se.shift_southeast();
+        }
 
-    for _ in 0..BITBOARD_WIDTH {
-        e = e.shift_east();
-        w = w.shift_west();
-        nw = nw.shift_northwest();
-        ne = ne.shift_northeast();
-        sw = sw.shift_southwest();
-        se = se.shift_southeast();
+        assert_eq!(e.board_index , start.board_index - 1);
+        assert_eq!(w.board_index , start.board_index + 1);
+        assert_eq!(ne.board_index , start.board_index + GRID_WIDTH - 1);
+        assert_eq!(nw.board_index , start.board_index + GRID_WIDTH);
+        assert_eq!(se.board_index , start.board_index - GRID_WIDTH);
+        assert_eq!(sw.board_index , start.board_index - GRID_WIDTH + 1);
+
+        assert_eq!(e.bitboard_index, start.bitboard_index);
+        assert_eq!(w.bitboard_index, start.bitboard_index);
+        assert_eq!(ne.bitboard_index, start.bitboard_index);
+        assert_eq!(nw.bitboard_index, start.bitboard_index);
+        assert_eq!(se.bitboard_index, start.bitboard_index);
+        assert_eq!(sw.bitboard_index, start.bitboard_index);
+
+        for _ in 0..BITBOARD_WIDTH {
+            e = e.shift_east();
+            w = w.shift_west();
+            nw = nw.shift_northwest();
+            ne = ne.shift_northeast();
+            sw = sw.shift_southwest();
+            se = se.shift_southeast();
+        }
+
+        assert_eq!(e.board_index , start.board_index - 2);
+        assert_eq!(w.board_index , start.board_index + 2);
+        assert_eq!(ne.board_index , start.board_index + 2*GRID_WIDTH - 2);
+        assert_eq!(nw.board_index , start.board_index + 2*GRID_WIDTH);
+        assert_eq!(se.board_index , start.board_index - 2*GRID_WIDTH);
+        assert_eq!(sw.board_index , start.board_index - 2*GRID_WIDTH + 2);
+
+        assert_eq!(e.bitboard_index, start.bitboard_index);
+        assert_eq!(w.bitboard_index, start.bitboard_index);
+        assert_eq!(ne.bitboard_index, start.bitboard_index);
+        assert_eq!(nw.bitboard_index, start.bitboard_index);
+        assert_eq!(se.bitboard_index, start.bitboard_index);
+        assert_eq!(sw.bitboard_index, start.bitboard_index);
+
     }
 
-    assert_eq!(e.board_index , start.board_index - 2);
-    assert_eq!(w.board_index , start.board_index + 2);
-    assert_eq!(ne.board_index , start.board_index + 2*GRID_WIDTH - 2);
-    assert_eq!(nw.board_index , start.board_index + 2*GRID_WIDTH);
-    assert_eq!(se.board_index , start.board_index - 2*GRID_WIDTH);
-    assert_eq!(sw.board_index , start.board_index - 2*GRID_WIDTH + 2);
+    #[test]
+    pub fn test_hex_grid_convert() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a a a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
 
-    assert_eq!(e.bitboard_index, start.bitboard_index);
-    assert_eq!(w.bitboard_index, start.bitboard_index);
-    assert_eq!(ne.bitboard_index, start.bitboard_index);
-    assert_eq!(nw.bitboard_index, start.bitboard_index);
-    assert_eq!(se.bitboard_index, start.bitboard_index);
-    assert_eq!(sw.bitboard_index, start.bitboard_index);
+        println!("{:#?}", bit_grid.pieces());
+        println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
+        assert_eq!(bit_grid, hex_grid, "These board's pieces should match");
+    }
 
-}
+    #[test]
+    pub fn test_hex_grid_convert_with_stacks() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 3 a . .\n",
+            ". . a . . .\n",
+            " . . a 2 . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "3 - [a b M]\n",
+            "2 - [a b]\n",
+        ));
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
 
-#[test]
-pub fn test_hex_grid_convert() {
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a a a . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let mut bit_grid = BasicBitGrid::new();
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.add(piece, BitGridLocation::from_hex(loc));
+        println!("{:#?}", bit_grid.pieces());
+        println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
+        assert!(bit_grid == hex_grid, "These board's pieces should match");
+    }
+
+    #[test]
+    pub fn test_hex_grid_convert_with_max_stacks() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 7 a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "7 - [a b M B M b B]\n",
+        ));
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+
+        assert!(bit_grid == hex_grid, "These board's pieces should match");
+
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 2 a . .\n",
+            ". . 3 . . .\n",
+            " . . 3 a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "3 - [a b M]\n",
+            "3 - [a M B]\n",
+        ));
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+
+        println!("{:#?}", bit_grid.pieces());
+        println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
+        assert!(bit_grid == hex_grid, "These board's pieces should match");
+    }
+
+    #[test]
+    pub fn test_remove() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 7 a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "7 - [a b M B M b B]\n",
+        ));
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+
+        assert!(bit_grid == hex_grid, "These board's pieces should match");
+
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.remove(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+
+        assert_eq!(bit_grid.pieces().len(), 0, "There should be no pieces left");
+    }
+
+    #[test]
+    pub fn test_convert() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 7 a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "7 - [a b M B M b B]\n",
+        ));
+
+        let bit_grid : BasicBitGrid = hex_grid.clone().into();
+        let result : HexGrid = bit_grid.try_into().unwrap();
+
+        assert_eq!(result, hex_grid, "These board's pieces should match");
+    }
+
+    #[test]
+    pub fn test_center_localized() {
+        let reference = HexLocation::center();
+        let start : BitGridLocation = reference.into();
+
+        assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+    }
+
+    #[test]
+    pub fn test_few_locations_localized() {
+        for row in -5..5 {
+            for col in -5..5 {
+                let reference = HexLocation::new(row, col);
+                let start : BitGridLocation = reference.into();
+                assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+            }
         }
     }
 
-    println!("{:#?}", bit_grid.pieces());
-    println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
-    assert_eq!(bit_grid, hex_grid, "These board's pieces should match");
-}
-
-#[test]
-pub fn test_hex_grid_convert_with_stacks() {
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a 3 a . .\n",
-        ". . a . . .\n",
-        " . . a 2 . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "3 - [a b M]\n",
-        "2 - [a b]\n",
-    ));
-    let mut bit_grid = BasicBitGrid::new();
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.add(piece, BitGridLocation::from_hex(loc));
-        }
-    }
-
-    println!("{:#?}", bit_grid.pieces());
-    println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
-    assert!(bit_grid == hex_grid, "These board's pieces should match");
-}
-
-#[test]
-pub fn test_hex_grid_convert_with_max_stacks() {
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a 7 a . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "7 - [a b M B M b B]\n",
-    ));
-    let mut bit_grid = BasicBitGrid::new();
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.add(piece, BitGridLocation::from_hex(loc));
-        }
-    }
-
-    assert!(bit_grid == hex_grid, "These board's pieces should match");
-
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a 2 a . .\n",
-        ". . 3 . . .\n",
-        " . . 3 a . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a b]\n",
-        "3 - [a b M]\n",
-        "3 - [a M B]\n",
-    ));
-    let mut bit_grid = BasicBitGrid::new();
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.add(piece, BitGridLocation::from_hex(loc));
-        }
-    }
-
-    println!("{:#?}", bit_grid.pieces());
-    println!("{:#?}", hex_grid.pieces().into_iter().map(|(p, l)| (p, BitGridLocation::from_hex(l))).collect::<Vec<_>>());
-    assert!(bit_grid == hex_grid, "These board's pieces should match");
-}
-
-#[test]
-pub fn test_remove() {
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a 7 a . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "7 - [a b M B M b B]\n",
-    ));
-    let mut bit_grid = BasicBitGrid::new();
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.add(piece, BitGridLocation::from_hex(loc));
-        }
-    }
-
-    assert!(bit_grid == hex_grid, "These board's pieces should match");
-
-    for (stack, loc) in hex_grid.pieces() {
-        for piece in stack {
-            bit_grid.remove(piece, BitGridLocation::from_hex(loc));
-        }
-    }
-
-    assert_eq!(bit_grid.pieces().len(), 0, "There should be no pieces left");
-}
-
-#[test]
-pub fn test_convert() {
-    let hex_grid = HexGrid::from_dsl(concat!(
-        " . a . . . .\n",
-        ". . a . a .\n",
-        " . a 7 a . .\n",
-        ". . a . . .\n",
-        " . . a a . .\n",
-        ". . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "7 - [a b M B M b B]\n",
-    ));
-
-    let bit_grid : BasicBitGrid = hex_grid.clone().into();
-    let result : HexGrid = bit_grid.try_into().unwrap();
-
-    assert_eq!(result, hex_grid, "These board's pieces should match");
-}
-
-#[test]
-pub fn test_center_localized() {
-    let reference = HexLocation::center();
-    let start : BitGridLocation = reference.into();
-
-    assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
-}
-
-#[test]
-pub fn test_few_locations_localized() {
-    for row in -5..5 {
-        for col in -5..5 {
-            let reference = HexLocation::new(row, col);
-            let start : BitGridLocation = reference.into();
-            assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
-        }
-    }
-}
-#[ignore = "test is slow, be sure to run with --release -- --ignored"]
-#[test]
-pub fn test_many_locations_localized() {
-    for row in -30..30 {
-        for col in -30..30 {
-            let reference = HexLocation::new(row, col);
-            let start : BitGridLocation = reference.into();
-            assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+    #[ignore = "test is slow, be sure to run with --release -- --ignored"]
+    #[test]
+    pub fn test_many_locations_localized() {
+        for row in -30..30 {
+            for col in -30..30 {
+                let reference = HexLocation::new(row, col);
+                let start : BitGridLocation = reference.into();
+                assert!(is_localized::<BitGridLocation>(start, reference, MAX_WRAP_BEFORE_COLLISION - 1));
+            }
         }
     }
 }

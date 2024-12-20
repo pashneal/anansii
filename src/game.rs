@@ -218,110 +218,116 @@ pub trait Position {
     fn from_hex_grid(grid: &HexGrid) -> Self;
 }
 
-#[test]
-pub fn pinned_pieces() {}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::GameDebugger;
 
-#[test]
-pub fn test_win() {
-    let white_wins = [
-        String::from(r"wP"),
-        String::from(r"bL wP-"),
-        String::from(r"wB1 \wP"),
-        String::from(r"bQ bL/"),
-        String::from(r"wA1 /wB1"),
-        String::from(r"bA1 \bQ"),
-        String::from(r"wQ wA1\"),
-        String::from(r"bB1 bQ/"),
-        String::from(r"wB1 wP"),
-        String::from(r"bG1 bB1\"),
-        String::from(r"wA1 bQ\"),
-        String::from(r"bG2 bG1/"),
-        String::from(r"wB1 \bL"),
-    ];
+    #[test]
+    pub fn pinned_pieces() {}
 
-    let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
-    for pos in white_wins.iter() {
-        assert!(game.game_result().is_none());
-        game.make_move(pos).unwrap();
+    #[test]
+    pub fn test_win() {
+        let white_wins = [
+            String::from(r"wP"),
+            String::from(r"bL wP-"),
+            String::from(r"wB1 \wP"),
+            String::from(r"bQ bL/"),
+            String::from(r"wA1 /wB1"),
+            String::from(r"bA1 \bQ"),
+            String::from(r"wQ wA1\"),
+            String::from(r"bB1 bQ/"),
+            String::from(r"wB1 wP"),
+            String::from(r"bG1 bB1\"),
+            String::from(r"wA1 bQ\"),
+            String::from(r"bG2 bG1/"),
+            String::from(r"wB1 \bL"),
+        ];
+
+        let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+        for pos in white_wins.iter() {
+            assert!(game.game_result().is_none());
+            game.make_move(pos).unwrap();
+        }
+        assert_eq!(game.game_result(), Some(GameResult::WhiteWins));
+
+        let black_wins = [
+            String::from(r"wP"),
+            String::from(r"bL wP-"),
+            String::from(r"wB1 \wP"),
+            String::from(r"bQ bL/"),
+            String::from(r"wA1 /wB1"),
+            String::from(r"bA1 \bQ"),
+            String::from(r"wQ wA1\"),
+            String::from(r"bA2 bQ/"),
+            String::from(r"wB1 wP"),
+            String::from(r"bA1 /wA1"),
+            String::from(r"wB1 wP\"),
+            String::from(r"bA2 bA1\"),
+            String::from(r"wA2 \wP"),
+            String::from(r"bA3 bQ\"),
+            String::from(r"wA2 wQ\"),
+        ];
+
+        let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+        for move_ in black_wins.iter() {
+            assert!(game.game_result().is_none());
+            game.make_move(move_).unwrap();
+        }
+        assert_eq!(game.game_result(), Some(GameResult::BlackWins));
     }
-    assert_eq!(game.game_result(), Some(GameResult::WhiteWins));
 
-    let black_wins = [
-        String::from(r"wP"),
-        String::from(r"bL wP-"),
-        String::from(r"wB1 \wP"),
-        String::from(r"bQ bL/"),
-        String::from(r"wA1 /wB1"),
-        String::from(r"bA1 \bQ"),
-        String::from(r"wQ wA1\"),
-        String::from(r"bA2 bQ/"),
-        String::from(r"wB1 wP"),
-        String::from(r"bA1 /wA1"),
-        String::from(r"wB1 wP\"),
-        String::from(r"bA2 bA1\"),
-        String::from(r"wA2 \wP"),
-        String::from(r"bA3 bQ\"),
-        String::from(r"wA2 wQ\"),
-    ];
+    #[test]
+    pub fn test_draw() {
+        // Test three fold repetition
+        let draw = [
+            String::from(r"wA1"),
+            String::from(r"bA1 wA1-"),
+            String::from(r"wQ -wA1"),
+            String::from(r"bQ bA1-"),
+            String::from(r"wQ \wA1"),
+            String::from(r"bQ bA1/"),
+            String::from(r"wQ -wA1"),
+            String::from(r"bQ bA1-"),
+            String::from(r"wQ /wA1"),
+            String::from(r"bQ bA1\"),
+            String::from(r"wQ -wA1"),
+            String::from(r"bQ bA1-"),
+        ];
 
-    let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
-    for move_ in black_wins.iter() {
-        assert!(game.game_result().is_none());
-        game.make_move(move_).unwrap();
+        let game = GameDebugger::from_moves(&draw).unwrap();
+        println!("game\n:{}", game.position().to_dsl());
+        assert_eq!(game.game_result(), Some(GameResult::Draw));
     }
-    assert_eq!(game.game_result(), Some(GameResult::BlackWins));
-}
 
-#[test]
-pub fn test_draw() {
-    // Test three fold repetition
-    let draw = [
-        String::from(r"wA1"),
-        String::from(r"bA1 wA1-"),
-        String::from(r"wQ -wA1"),
-        String::from(r"bQ bA1-"),
-        String::from(r"wQ \wA1"),
-        String::from(r"bQ bA1/"),
-        String::from(r"wQ -wA1"),
-        String::from(r"bQ bA1-"),
-        String::from(r"wQ /wA1"),
-        String::from(r"bQ bA1\"),
-        String::from(r"wQ -wA1"),
-        String::from(r"bQ bA1-"),
-    ];
+    #[test]
+    pub fn test_double_surround_draw() {
+        // Test both queens surrounded at same time
+        let draw = [
+            String::from(r"wB1"),
+            String::from(r"bB1 wB1-"),
+            String::from(r"wG1 \wB1"),
+            String::from(r"bG1 bB1/"),
+            String::from(r"wM /wG1"),
+            String::from(r"bB2 bG1\"),
+            String::from(r"wQ wM\"),
+            String::from(r"bQ bB1\"),
+            String::from(r"wA1 wG1/"),
+            String::from(r"bL bB2/"),
+            String::from(r"wA1 /wM"),
+            String::from(r"bL bB2\"),
+            String::from(r"wA2 \wM"),
+            String::from(r"bA1 bB2/"),
+            String::from(r"wB2 wA1\"),
+            String::from(r"bG2 bQ\"),
+            String::from(r"wA1 wQ\"),
+            String::from(r"bA1 /bQ"),
+            String::from(r"wA2 \wB2"),
+            String::from(r"bG1 wB1\"),
+        ];
 
-    let game = GameDebugger::from_moves(&draw).unwrap();
-    println!("game\n:{}", game.position().to_dsl());
-    assert_eq!(game.game_result(), Some(GameResult::Draw));
-}
-
-#[test]
-pub fn test_double_surround_draw() {
-    // Test both queens surrounded at same time
-    let draw = [
-        String::from(r"wB1"),
-        String::from(r"bB1 wB1-"),
-        String::from(r"wG1 \wB1"),
-        String::from(r"bG1 bB1/"),
-        String::from(r"wM /wG1"),
-        String::from(r"bB2 bG1\"),
-        String::from(r"wQ wM\"),
-        String::from(r"bQ bB1\"),
-        String::from(r"wA1 wG1/"),
-        String::from(r"bL bB2/"),
-        String::from(r"wA1 /wM"),
-        String::from(r"bL bB2\"),
-        String::from(r"wA2 \wM"),
-        String::from(r"bA1 bB2/"),
-        String::from(r"wB2 wA1\"),
-        String::from(r"bG2 bQ\"),
-        String::from(r"wA1 wQ\"),
-        String::from(r"bA1 /bQ"),
-        String::from(r"wA2 \wB2"),
-        String::from(r"bG1 wB1\"),
-    ];
-
-    let game = GameDebugger::from_moves(&draw).unwrap();
-    println!("game\n:{}", game.position().to_dsl());
-    assert_eq!(game.game_result(), Some(GameResult::Draw));
+        let game = GameDebugger::from_moves(&draw).unwrap();
+        println!("game\n:{}", game.position().to_dsl());
+        assert_eq!(game.game_result(), Some(GameResult::Draw));
+    }
 }

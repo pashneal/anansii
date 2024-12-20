@@ -1,4 +1,3 @@
-use crate::testing_utils::compare_moves;
 use crate::hex_grid::*;
 use crate::piece::PIECE_COUNTS;
 use crate::uhp::GameType;
@@ -621,1183 +620,1193 @@ impl MoveGeneratorDebugger {
 }
 
 
-#[test]
-pub fn test_spider_gate() {
-    use PieceColor::*;
-    use PieceType::*;
-    // Testing with the "gate" structure that disallows free movement
-    // between adjacent locations
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . . a . . .\n",
-        " . a S a . . .\n",
-        ". . a a . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let legal_moves : Vec<_> = vec![];
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing_utils::compare_moves;
+    use super::MoveGeneratorDebugger;
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid
-        .find(Piece::new(PieceType::Spider, PieceColor::White))
-        .unwrap();
-    let spider_moves = generator.spider_moves(spider);
-
-    assert!(spider_moves.is_empty());
-    assert_eq!(spider_moves, legal_moves);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . . a a . .\n",
-        " . a . . a . .\n",
-        ". . a S a . .\n",
-        " . . a a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let legal_moves = vec![];
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid
-        .find(Piece::new(PieceType::Spider, PieceColor::White))
-        .unwrap();
-    let spider_moves = generator.spider_moves(spider);
-
-    assert!(spider_moves.is_empty());
-    assert_eq!(spider_moves, legal_moves);
-}
-
-#[test]
-pub fn test_spider_pinned() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . . a . . .\n",
-        " . a S a . . .\n",
-        ". . . . . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    assert!(spider_moves.is_empty());
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a . . . .\n",
-        " . a S . . . .\n",
-        ". . . a a . .\n",
-        " . . a . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    assert!(spider_moves.is_empty());
-}
-
-#[test]
-pub fn test_spider_door() {
-    // Testing with the "door" structure that allows spiders extra mobility than typical
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a S . .\n",
-        ". a . . . . .\n",
-        " . a a . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let selector = concat!(
-        " . . * . . . .\n",
-        ". . a a . . .\n",
-        " . a * a S . .\n",
-        ". a * . . . .\n",
-        " . a a * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    compare_moves(spider, selector, &grid, &spider_moves);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a . . S . .\n",
-        " . a a . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let selector = concat!(
-        " . . . * . . .\n",
-        ". . a a . . .\n",
-        " . a * a . . .\n",
-        ". a * . S . .\n",
-        " . a a . . . .\n",
-        ". . . * . . .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    compare_moves(spider, selector, &grid, &spider_moves);
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a a . .\n",
-        " . a S . a . .\n",
-        ". . a . a . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let selector = concat!(
-        " . . . . . . .\n",
-        ". . a a a . .\n",
-        " . a S . a . .\n",
-        ". . a . a . .\n",
-        " . * * * * . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    compare_moves(spider, selector, &grid, &spider_moves);
-}
-
-#[test]
-pub fn test_spider_typical_boards() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a . . S . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        " . . . * . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a * . S . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
-    let spider_moves = generator.spider_moves(spider);
-    compare_moves(spider, selector, &grid, &spider_moves);
-}
-
-#[test]
-pub fn test_grasshopper() {
-    use PieceColor::*;
-    use PieceType::*;
-    // Tests:
-    //  gaps,
-    //  multiple directions
-    //  0 pieces to jump over
-    //  1 piece to jump over
-    //  >1 pieces to jump over
-    let grid = HexGrid::from_dsl(concat!(
-        ". a a a . . .\n",
-        " . . . a . . .\n",
-        ". . a a . . .\n",
-        " . a G a a a .\n",
-        ". . . . . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-
-    let selector = concat!(
-        ". a a a * . .\n",
-        " . * . a . . .\n",
-        ". . a a . . .\n",
-        " * a G a a a *\n",
-        ". . . . . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
-    let grasshopper_moves = generator.grasshopper_moves(grasshopper);
-    compare_moves(grasshopper, selector, &grid, &grasshopper_moves);
-}
-
-#[test]
-pub fn test_grasshopper_pinned() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . a . . .\n",
-        " . . a a . . .\n",
-        ". . a . . . .\n",
-        " . a G a a a .\n",
-        ". . . a . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
-    let grasshopper_moves = generator.grasshopper_moves(grasshopper);
-    assert!(grasshopper_moves.is_empty());
-}
-
-#[test]
-pub fn test_queen_pinned() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a . . . .\n",
-        " . a . a . . .\n",
-        ". a . . Q . .\n",
-        " . a a a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
-    let queen_moves = generator.queen_moves(queen);
-    assert!(queen_moves.is_empty());
-}
-
-#[test]
-pub fn test_queen_moves() {
-    use PieceColor::*;
-    use PieceType::*;
-    // Test gate structure
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a . . Q . .\n",
-        " . a a a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a * . .\n",
-        ". a . . Q . .\n",
-        " . a a a * . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
-    let queen_moves = generator.queen_moves(queen);
-    compare_moves(queen, selector, &grid, &queen_moves);
-
-    // Testing typical # of moves
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a . . Q . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a * . .\n",
-        ". a . * Q . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
-    let queen_moves = generator.queen_moves(queen);
-    compare_moves(queen, selector, &grid, &queen_moves);
-
-    // Testing "door" structure
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a . a . . .\n",
-        ". a . Q . . .\n",
-        " . a a . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        " . . . . . . .\n",
-        ". . a a . . .\n",
-        " . a * a . . .\n",
-        ". a * Q * . .\n",
-        " . a a * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
-    let queen_moves = generator.queen_moves(queen);
-    compare_moves(queen, selector, &grid, &queen_moves);
-}
-#[test]
-fn test_queen_slide() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a a . .\n",
-        ". a . Q . a .\n",
-        " a . . a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . * a a . .\n",
-        ". a . Q . a .\n",
-        " a . * a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
-    let queen_moves = generator.queen_moves(queen);
-    compare_moves(queen, selector, &grid, &queen_moves);
-}
-
-#[test]
-pub fn test_ant_moves() {
-    //TODO: there may be some weird edge cases with
-    //the one hive move that necessitates it checking if
-    //it is still in contact with its original neighbors?
-    use PieceColor::*;
-    use PieceType::*;
-    // Test with doors, gates, and typical moves
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . . . .\n",
-        ". . . g g g . . .\n",
-        " . . g . . g g . .\n",
-        ". . . . . g . g .\n",
-        " . . g g g . g . .\n",
-        ". . . . A . . . .\n",
-        " . . . . . . . . .\n",
-        ". . . . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        " . . * * * * . . .\n",
-        ". . * g g g * * .\n",
-        " . * g . . g g * .\n",
-        ". . * . . g . g *\n",
-        " . * g g g * g * .\n",
-        ". . * * A * * * .\n",
-        " . . . . . . . . .\n",
-        ". . . . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
-    let ant_moves = generator.ant_moves(ant);
-    compare_moves(ant, selector, &grid, &ant_moves);
-}
-
-#[test]
-fn test_ant_pinned() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    let grid = HexGrid::from_dsl(concat!(
-        " . . . . . . . . .\n",
-        ". . . g g g . . .\n",
-        " . . g . . g g . .\n",
-        ". . . . . g . g .\n",
-        " . . g A g . g . .\n",
-        ". . . . . . . . .\n",
-        " . . . . . . . . .\n",
-        ". . . . . . . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
-    let ant_moves = generator.ant_moves(ant);
-    assert!(ant_moves.is_empty());
-}
-
-#[test]
-fn test_beetle_gate_lower_level() {
-    use PieceColor::*;
-    use PieceType::*;
-    // Tests slide, climb up (always unblocked if only lower level gates exist), down
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a a . .\n",
-        ". a . B . a .\n",
-        " a . . a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . * * a . .\n",
-        ". a . B . a .\n",
-        " a . * * a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-
-    // Can ignore lower level gate when climbing up
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a a . .\n",
-        ". a . B a a .\n",
-        " a . . a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . * * a . .\n",
-        ". a . B * a .\n",
-        " a . * * a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-
-    // Can ignore lower level gate when climbing down
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a . . .\n",
-        ". a . . 2 . .\n",
-        " a . . a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a B]\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . . * * . .\n",
-        ". a . * 2 * .\n",
-        " a . . * * . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a B]\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-}
-
-#[test]
-fn test_beetle_gate_upper_level() {
-    // Test when the beetle is on top of the hive with these situations:
-    // slide (blocked/unblocked), up (blocked/unblocked), down(blocked/unblocked)
-    use PieceColor::*;
-    use PieceType::*;
-
-    // slide unblocked
-    // climb up blocked
-    // climb up unblocked
-    // climb down unblocked
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . 5 a . .\n",
-        ". . . 4 2 a .\n",
-        " . . . 5 . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "5 - [a b b b b]\n",
-        "4 - [a b b b]\n",
-        "2 - [a B]\n",
-        "5 - [a b b b b]\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " . . . * * . .\n",
-        ". . . 4 2 * .\n",
-        " . . . * * . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-
-    // slide blocked
-    // climb down blocked
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . 2 . . .\n",
-        ". . . a 2 2 .\n",
-        " . . . 5 a . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a b]\n",
-        "2 - [a B]\n",
-        "2 - [a b]\n",
-        "5 - [a b b b b]\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " . . . * . . .\n",
-        ". . . a 2 * .\n",
-        " . . . * a . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-}
-
-#[test]
-fn test_beetle_pinned() {
-    // Test with a beetle that is pinned
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . a . . .\n",
-        ". . . . B . .\n",
-        " . . . a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    assert!(beetle_moves.is_empty());
-}
-
-#[test]
-fn test_beetle_pinned_top() {
-    // Test with a beetle that is on top of a pinned piece,
-    // but is not pinned itself
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . a . . .\n",
-        ". . . 2 . . .\n",
-        " . . . a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a B]\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " . . * * . . .\n",
-        ". . * 2 * . .\n",
-        " . . * * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
-    let beetle_moves = generator.beetle_moves(beetle);
-    compare_moves(beetle, selector, &grid, &beetle_moves);
-}
-
-#[test]
-fn test_ladybug_moves() {
-    //  Test when ladybug moves across the hive with several situations:
-    //  blocked climb up, blocked slide on upper level, blocked climb down
-    //  unblocked climb up, unblocked slide on upper level, unblocked climb down
-    use PieceColor::*;
-    use PieceType::*;
-
-    // unblocked slide
-    // blocked slide
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . 2 2 . . .\n",
-        ". . a a L . .\n",
-        " . . 2 a . . .\n",
-        ". . . . . . .\n\n",
-        " . . . . . a .\n",
-        "start - [0 0]\n\n",
-        "2 - [a b]\n",
-        "2 - [a b]\n",
-        "2 - [a b]\n",
-    ));
-    let selector = concat!(
-        ". . * * * . .\n",
-        " . * 2 2 * . .\n",
-        ". . a a L . .\n",
-        " . * 2 a * . .\n",
-        ". . * * * . .\n\n",
-        " . . . . . a .\n",
-        "start - [0 0]\n\n",
-        "2 - [a b]\n",
-        "2 - [a b]\n",
-        "2 - [a b]\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
-    let ladybug_moves = generator.ladybug_moves(ladybug);
-    compare_moves(ladybug, selector, &grid, &ladybug_moves);
-
-    // climb up blocked
-    // climb up unblocked
-    // climb down blocked
-    // climb down unblocked
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . a .\n",
-        " . . . 5 a . .\n",
-        ". . . . L 4 .\n",
-        " . . . 5 a . .\n",
-        ". . . . a 2 .\n",
-        " . . . . . a .\n\n",
-        "start - [0 0]\n\n",
-        "5 - [a b b b b]\n",
-        "4 - [a b b b]\n",
-        "5 - [a b b b b]\n",
-        "2 - [a b]\n"
-    ));
-    let selector = concat!(
-        ". . . . * a .\n",
-        " . . . 5 a * .\n",
-        ". . . . L 4 .\n",
-        " . . . 5 a . .\n",
-        ". . . * a 2 .\n",
-        " . . . * * a .\n\n",
-        "start - [0 0]\n\n",
-    );
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
-    let ladybug_moves = generator.ladybug_moves(ladybug);
-    compare_moves(ladybug, selector, &grid, &ladybug_moves);
-}
-
-#[test]
-fn test_ladybug_pinned() {
-    use PieceColor::*;
-    use PieceType::*;
-    // unblocked slide
-    // blocked slide
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . 2 . . .\n",
-        ". . a . L . .\n",
-        " . . 2 a . . .\n",
-        ". . . . . . .\n\n",
-        " . . . . . a .\n",
-        "start - [0 0]\n\n",
-        "2 - [a b]\n",
-        "2 - [a b]\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
-    let ladybug_moves = generator.ladybug_moves(ladybug);
-    assert!(ladybug_moves.is_empty());
-}
-
-#[test]
-fn test_pillbug_moves() {
-    use PieceColor::*;
-    use PieceType::*;
-    // Testing gates and when adjacent moves would break the One Hive Rule
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a a . .\n",
-        ". a . P . a .\n",
-        " a . . a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . * a a . .\n",
-        ". a . P . a .\n",
-        " a . * a a . .\n",
-        ". a a a . . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let pillbug_moves = generator.pillbug_moves(pillbug);
-    compare_moves(pillbug, selector, &grid, &pillbug_moves);
-
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " a . . a a . .\n",
-        ". a . P . a .\n",
-        " a . . . a . .\n",
-        ". a a a a . .\n\n",
-        "start - [0 0]\n\n"
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " a . * a a . .\n",
-        ". a . P * a .\n",
-        " a . . . a . .\n",
-        ". a a a a . .\n\n",
-        "start - [0 0]\n\n"
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let pillbug_moves = generator.pillbug_moves(pillbug);
-    compare_moves(pillbug, selector, &grid, &pillbug_moves);
-}
-
-#[test]
-fn test_pillbug_swaps() {
-    use PieceColor::*;
-    use PieceType::*;
-
-    // Testing strategy
-    //
-    // for pieces adjacent to the pillbug:
-    //   -  [x] Pinned/ [x] Unpinned
-    //   -  [x] a location disallowed vs [x] free
-    //   -  [x] Blocked entrance by upper level gate vs [x] Blocked exit vs [x] free
-    //   -  [x] Under stack vs [x] free
-    //   -  [x] 0 free spaces, [x] 1 free space, [x] >1 free spaces
-    // for pillbug:
-    //   - [x] unpinned/ [x] pinned
-
-    // tests covered:
-    //  -  >1 free space
-    //  -  pillbug pinned
-    //  -  Blocked exit by upper level gate
-    //  -  unblocked by upper level gate
-    //  -  adjacent piece is not pinned
-    //  -  under stack
-    //  -  not under stack
-    //  -  locations allowed
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . 2 . . .\n",
-        ". . 2 P . . .\n",
-        " . . l . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [q b]\n",
-        "2 - [m b]\n"
-    ));
-
-    let expected = vec![
-        HexGrid::from_dsl(concat!(
-            ". . . . . . .\n",
-            " . . . 2 . . .\n",
-            ". . 2 P l . .\n",
+    #[test]
+    pub fn test_spider_gate() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Testing with the "gate" structure that disallows free movement
+        // between adjacent locations
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . . a . . .\n",
+            " . a S a . . .\n",
+            ". . a a . . .\n",
             " . . . . . . .\n",
             ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let legal_moves : Vec<_> = vec![];
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid
+            .find(Piece::new(PieceType::Spider, PieceColor::White))
+            .unwrap();
+        let spider_moves = generator.spider_moves(spider);
+
+        assert!(spider_moves.is_empty());
+        assert_eq!(spider_moves, legal_moves);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . . a a . .\n",
+            " . a . . a . .\n",
+            ". . a S a . .\n",
+            " . . a a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let legal_moves = vec![];
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid
+            .find(Piece::new(PieceType::Spider, PieceColor::White))
+            .unwrap();
+        let spider_moves = generator.spider_moves(spider);
+
+        assert!(spider_moves.is_empty());
+        assert_eq!(spider_moves, legal_moves);
+    }
+
+    #[test]
+    pub fn test_spider_pinned() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . . a . . .\n",
+            " . a S a . . .\n",
+            ". . . . . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        assert!(spider_moves.is_empty());
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a . . . .\n",
+            " . a S . . . .\n",
+            ". . . a a . .\n",
+            " . . a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        assert!(spider_moves.is_empty());
+    }
+
+    #[test]
+    pub fn test_spider_door() {
+        // Testing with the "door" structure that allows spiders extra mobility than typical
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a S . .\n",
+            ". a . . . . .\n",
+            " . a a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let selector = concat!(
+            " . . * . . . .\n",
+            ". . a a . . .\n",
+            " . a * a S . .\n",
+            ". a * . . . .\n",
+            " . a a * . . .\n",
+            ". . . . . . .\n\n",
             "start - [0 0]\n\n",
-            "2 - [q b]\n",
-            "2 - [m b]\n"
-        )),
-        HexGrid::from_dsl(concat!(
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        compare_moves(spider, selector, &grid, &spider_moves);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a . . S . .\n",
+            " . a a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let selector = concat!(
+            " . . . * . . .\n",
+            ". . a a . . .\n",
+            " . a * a . . .\n",
+            ". a * . S . .\n",
+            " . a a . . . .\n",
+            ". . . * . . .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        compare_moves(spider, selector, &grid, &spider_moves);
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a a . .\n",
+            " . a S . a . .\n",
+            ". . a . a . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let selector = concat!(
+            " . . . . . . .\n",
+            ". . a a a . .\n",
+            " . a S . a . .\n",
+            ". . a . a . .\n",
+            " . * * * * . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        compare_moves(spider, selector, &grid, &spider_moves);
+    }
+
+    #[test]
+    pub fn test_spider_typical_boards() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a . . S . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            " . . . * . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a * . S . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
+        let spider_moves = generator.spider_moves(spider);
+        compare_moves(spider, selector, &grid, &spider_moves);
+    }
+
+    #[test]
+    pub fn test_grasshopper() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Tests:
+        //  gaps,
+        //  multiple directions
+        //  0 pieces to jump over
+        //  1 piece to jump over
+        //  >1 pieces to jump over
+        let grid = HexGrid::from_dsl(concat!(
+            ". a a a . . .\n",
+            " . . . a . . .\n",
+            ". . a a . . .\n",
+            " . a G a a a .\n",
+            ". . . . . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        let selector = concat!(
+            ". a a a * . .\n",
+            " . * . a . . .\n",
+            ". . a a . . .\n",
+            " * a G a a a *\n",
+            ". . . . . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
+        let grasshopper_moves = generator.grasshopper_moves(grasshopper);
+        compare_moves(grasshopper, selector, &grid, &grasshopper_moves);
+    }
+
+    #[test]
+    pub fn test_grasshopper_pinned() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . a . . .\n",
+            " . . a a . . .\n",
+            ". . a . . . .\n",
+            " . a G a a a .\n",
+            ". . . a . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
+        let grasshopper_moves = generator.grasshopper_moves(grasshopper);
+        assert!(grasshopper_moves.is_empty());
+    }
+
+    #[test]
+    pub fn test_queen_pinned() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a . . . .\n",
+            " . a . a . . .\n",
+            ". a . . Q . .\n",
+            " . a a a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+        let queen_moves = generator.queen_moves(queen);
+        assert!(queen_moves.is_empty());
+    }
+
+    #[test]
+    pub fn test_queen_moves() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Test gate structure
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a . . Q . .\n",
+            " . a a a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a * . .\n",
+            ". a . . Q . .\n",
+            " . a a a * . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+        let queen_moves = generator.queen_moves(queen);
+        compare_moves(queen, selector, &grid, &queen_moves);
+
+        // Testing typical # of moves
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a . . Q . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a * . .\n",
+            ". a . * Q . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+        let queen_moves = generator.queen_moves(queen);
+        compare_moves(queen, selector, &grid, &queen_moves);
+
+        // Testing "door" structure
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a . a . . .\n",
+            ". a . Q . . .\n",
+            " . a a . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            " . . . . . . .\n",
+            ". . a a . . .\n",
+            " . a * a . . .\n",
+            ". a * Q * . .\n",
+            " . a a * . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+        let queen_moves = generator.queen_moves(queen);
+        compare_moves(queen, selector, &grid, &queen_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_queen_slide() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a a . .\n",
+            ". a . Q . a .\n",
+            " a . . a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . * a a . .\n",
+            ". a . Q . a .\n",
+            " a . * a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
+        let queen_moves = generator.queen_moves(queen);
+        compare_moves(queen, selector, &grid, &queen_moves);
+    }
+
+    #[test]
+    pub fn test_ant_moves() {
+        //TODO: there may be some weird edge cases with
+        //the one hive move that necessitates it checking if
+        //it is still in contact with its original neighbors?
+        use PieceColor::*;
+        use PieceType::*;
+        // Test with doors, gates, and typical moves
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . . . .\n",
+            ". . . g g g . . .\n",
+            " . . g . . g g . .\n",
+            ". . . . . g . g .\n",
+            " . . g g g . g . .\n",
+            ". . . . A . . . .\n",
+            " . . . . . . . . .\n",
+            ". . . . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            " . . * * * * . . .\n",
+            ". . * g g g * * .\n",
+            " . * g . . g g * .\n",
+            ". . * . . g . g *\n",
+            " . * g g g * g * .\n",
+            ". . * * A * * * .\n",
+            " . . . . . . . . .\n",
+            ". . . . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
+        let ant_moves = generator.ant_moves(ant);
+        compare_moves(ant, selector, &grid, &ant_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_ant_pinned() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        let grid = HexGrid::from_dsl(concat!(
+            " . . . . . . . . .\n",
+            ". . . g g g . . .\n",
+            " . . g . . g g . .\n",
+            ". . . . . g . g .\n",
+            " . . g A g . g . .\n",
+            ". . . . . . . . .\n",
+            " . . . . . . . . .\n",
+            ". . . . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
+        let ant_moves = generator.ant_moves(ant);
+        assert!(ant_moves.is_empty());
+    }
+
+    #[test]
+    pub(crate) fn test_beetle_gate_lower_level() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Tests slide, climb up (always unblocked if only lower level gates exist), down
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a a . .\n",
+            ". a . B . a .\n",
+            " a . . a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . * * a . .\n",
+            ". a . B . a .\n",
+            " a . * * a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+
+        // Can ignore lower level gate when climbing up
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a a . .\n",
+            ". a . B a a .\n",
+            " a . . a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . * * a . .\n",
+            ". a . B * a .\n",
+            " a . * * a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+
+        // Can ignore lower level gate when climbing down
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a . . .\n",
+            ". a . . 2 . .\n",
+            " a . . a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a B]\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . . * * . .\n",
+            ". a . * 2 * .\n",
+            " a . . * * . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a B]\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_beetle_gate_upper_level() {
+        // Test when the beetle is on top of the hive with these situations:
+        // slide (blocked/unblocked), up (blocked/unblocked), down(blocked/unblocked)
+        use PieceColor::*;
+        use PieceType::*;
+
+        // slide unblocked
+        // climb up blocked
+        // climb up unblocked
+        // climb down unblocked
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 5 a . .\n",
+            ". . . 4 2 a .\n",
+            " . . . 5 . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "5 - [a b b b b]\n",
+            "4 - [a b b b]\n",
+            "2 - [a B]\n",
+            "5 - [a b b b b]\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . . * * . .\n",
+            ". . . 4 2 * .\n",
+            " . . . * * . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+
+        // slide blocked
+        // climb down blocked
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 2 . . .\n",
+            ". . . a 2 2 .\n",
+            " . . . 5 a . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a B]\n",
+            "2 - [a b]\n",
+            "5 - [a b b b b]\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . . * . . .\n",
+            ". . . a 2 * .\n",
+            " . . . * a . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_beetle_pinned() {
+        // Test with a beetle that is pinned
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . a . . .\n",
+            ". . . . B . .\n",
+            " . . . a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        assert!(beetle_moves.is_empty());
+    }
+
+    #[test]
+    pub(crate) fn test_beetle_pinned_top() {
+        // Test with a beetle that is on top of a pinned piece,
+        // but is not pinned itself
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . a . . .\n",
+            ". . . 2 . . .\n",
+            " . . . a . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a B]\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . * * . . .\n",
+            ". . * 2 * . .\n",
+            " . . * * . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_ladybug_moves() {
+        //  Test when ladybug moves across the hive with several situations:
+        //  blocked climb up, blocked slide on upper level, blocked climb down
+        //  unblocked climb up, unblocked slide on upper level, unblocked climb down
+        use PieceColor::*;
+        use PieceType::*;
+
+        // unblocked slide
+        // blocked slide
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . 2 2 . . .\n",
+            ". . a a L . .\n",
+            " . . 2 a . . .\n",
+            ". . . . . . .\n\n",
+            " . . . . . a .\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+        ));
+        let selector = concat!(
+            ". . * * * . .\n",
+            " . * 2 2 * . .\n",
+            ". . a a L . .\n",
+            " . * 2 a * . .\n",
+            ". . * * * . .\n\n",
+            " . . . . . a .\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+        let ladybug_moves = generator.ladybug_moves(ladybug);
+        compare_moves(ladybug, selector, &grid, &ladybug_moves);
+
+        // climb up blocked
+        // climb up unblocked
+        // climb down blocked
+        // climb down unblocked
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . a .\n",
+            " . . . 5 a . .\n",
+            ". . . . L 4 .\n",
+            " . . . 5 a . .\n",
+            ". . . . a 2 .\n",
+            " . . . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "5 - [a b b b b]\n",
+            "4 - [a b b b]\n",
+            "5 - [a b b b b]\n",
+            "2 - [a b]\n"
+        ));
+        let selector = concat!(
+            ". . . . * a .\n",
+            " . . . 5 a * .\n",
+            ". . . . L 4 .\n",
+            " . . . 5 a . .\n",
+            ". . . * a 2 .\n",
+            " . . . * * a .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+        let ladybug_moves = generator.ladybug_moves(ladybug);
+        compare_moves(ladybug, selector, &grid, &ladybug_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_ladybug_pinned() {
+        use PieceColor::*;
+        use PieceType::*;
+        // unblocked slide
+        // blocked slide
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 2 . . .\n",
+            ". . a . L . .\n",
+            " . . 2 a . . .\n",
+            ". . . . . . .\n\n",
+            " . . . . . a .\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+        let ladybug_moves = generator.ladybug_moves(ladybug);
+        assert!(ladybug_moves.is_empty());
+    }
+
+    #[test]
+    pub(crate) fn test_pillbug_moves() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Testing gates and when adjacent moves would break the One Hive Rule
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a a . .\n",
+            ". a . P . a .\n",
+            " a . . a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . * a a . .\n",
+            ". a . P . a .\n",
+            " a . * a a . .\n",
+            ". a a a . . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let pillbug_moves = generator.pillbug_moves(pillbug);
+        compare_moves(pillbug, selector, &grid, &pillbug_moves);
+
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " a . . a a . .\n",
+            ". a . P . a .\n",
+            " a . . . a . .\n",
+            ". a a a a . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " a . * a a . .\n",
+            ". a . P * a .\n",
+            " a . . . a . .\n",
+            ". a a a a . .\n\n",
+            "start - [0 0]\n\n"
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let pillbug_moves = generator.pillbug_moves(pillbug);
+        compare_moves(pillbug, selector, &grid, &pillbug_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_pillbug_swaps() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        // Testing strategy
+        //
+        // for pieces adjacent to the pillbug:
+        //   -  [x] Pinned/ [x] Unpinned
+        //   -  [x] a location disallowed vs [x] free
+        //   -  [x] Blocked entrance by upper level gate vs [x] Blocked exit vs [x] free
+        //   -  [x] Under stack vs [x] free
+        //   -  [x] 0 free spaces, [x] 1 free space, [x] >1 free spaces
+        // for pillbug:
+        //   - [x] unpinned/ [x] pinned
+
+        // tests covered:
+        //  -  >1 free space
+        //  -  pillbug pinned
+        //  -  Blocked exit by upper level gate
+        //  -  unblocked by upper level gate
+        //  -  adjacent piece is not pinned
+        //  -  under stack
+        //  -  not under stack
+        //  -  locations allowed
+        let grid = HexGrid::from_dsl(concat!(
             ". . . . . . .\n",
             " . . . 2 . . .\n",
             ". . 2 P . . .\n",
-            " . . . l . . .\n",
+            " . . l . . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
             "2 - [q b]\n",
             "2 - [m b]\n"
-        )),
-    ];
+        ));
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let pillbug_moves = generator.pillbug_swaps(pillbug, None);
-    assert_eq!(pillbug_moves.len(), expected.len());
-    for grid in expected {
-        assert!(
-            pillbug_moves.contains(&grid),
-            "Expected grid not found in pillbug_moves: \n{}",
-            grid.to_dsl()
-        );
-    }
+        let expected = vec![
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . 2 . . .\n",
+                ". . 2 P l . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [q b]\n",
+                "2 - [m b]\n"
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . 2 . . .\n",
+                ". . 2 P . . .\n",
+                " . . . l . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [q b]\n",
+                "2 - [m b]\n"
+            )),
+        ];
 
-    // adjacent piece pinned
-    // pillbug unpinned
-    // location disallowed
-    // 1 free space
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . b q . . .\n",
-        ". . 2 P a a .\n",
-        " . . l . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [m b]\n"
-    ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let pillbug_moves = generator.pillbug_swaps(pillbug, None);
+        assert_eq!(pillbug_moves.len(), expected.len());
+        for grid in expected {
+            assert!(
+                pillbug_moves.contains(&grid),
+                "Expected grid not found in pillbug_moves: \n{}",
+                grid.to_dsl()
+            );
+        }
 
-    let expected = vec![
-        HexGrid::from_dsl(concat!(
-            ". . . . . . .\n",
-            " . . . q . . .\n",
-            ". . 2 P a a .\n",
-            " . . l b . . .\n",
-            ". . . . . . .\n\n",
-            "start - [0 0]\n\n",
-            "2 - [m b]\n"
-        )),
-        HexGrid::from_dsl(concat!(
+        // adjacent piece pinned
+        // pillbug unpinned
+        // location disallowed
+        // 1 free space
+        let grid = HexGrid::from_dsl(concat!(
             ". . . . . . .\n",
             " . . b q . . .\n",
             ". . 2 P a a .\n",
-            " . . . l . . .\n",
+            " . . l . . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
             "2 - [m b]\n"
-        )),
-    ];
+        ));
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
-    let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
+        let expected = vec![
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . q . . .\n",
+                ". . 2 P a a .\n",
+                " . . l b . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [m b]\n"
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . b q . . .\n",
+                ". . 2 P a a .\n",
+                " . . . l . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [m b]\n"
+            )),
+        ];
 
-    assert_eq!(pillbug_moves.len(), expected.len());
-    for grid in expected {
-        assert!(
-            pillbug_moves.contains(&grid),
-            "Expected grid not found in pillbug_moves: \n{}",
-            grid.to_dsl()
-        );
-    }
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
+        let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
 
-    // 0 free space
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . b q . . .\n",
-        ". . 2 P a a .\n",
-        " . . l a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [m b]\n"
-    ));
+        assert_eq!(pillbug_moves.len(), expected.len());
+        for grid in expected {
+            assert!(
+                pillbug_moves.contains(&grid),
+                "Expected grid not found in pillbug_moves: \n{}",
+                grid.to_dsl()
+            );
+        }
 
-    let expected = vec![];
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
-    let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
-
-    assert_eq!(pillbug_moves.len(), expected.len());
-    for grid in expected {
-        assert!(
-            pillbug_moves.contains(&grid),
-            "Expected grid not found in pillbug_moves: \n{}",
-            grid.to_dsl()
-        );
-    }
-
-    // Blocked entrance by upper level gate
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . b 3 . . .\n",
-        ". . 2 P a . .\n",
-        " . . . a . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "3 - [m b b]\n",
-        "2 - [m b]\n",
-    ));
-
-    let expected = vec![
-        HexGrid::from_dsl(concat!(
+        // 0 free space
+        let grid = HexGrid::from_dsl(concat!(
             ". . . . . . .\n",
-            " . . b 3 . . .\n",
-            ". . 2 P . . .\n",
-            " . . a a . . .\n",
+            " . . b q . . .\n",
+            ". . 2 P a a .\n",
+            " . . l a . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
-            "3 - [m b b]\n",
-            "2 - [m b]\n",
-        )),
-        HexGrid::from_dsl(concat!(
+            "2 - [m b]\n"
+        ));
+
+        let expected = vec![];
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
+        let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
+
+        assert_eq!(pillbug_moves.len(), expected.len());
+        for grid in expected {
+            assert!(
+                pillbug_moves.contains(&grid),
+                "Expected grid not found in pillbug_moves: \n{}",
+                grid.to_dsl()
+            );
+        }
+
+        // Blocked entrance by upper level gate
+        let grid = HexGrid::from_dsl(concat!(
             ". . . . . . .\n",
             " . . b 3 . . .\n",
             ". . 2 P a . .\n",
-            " . . a . . . .\n",
+            " . . . a . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
             "3 - [m b b]\n",
             "2 - [m b]\n",
-        )),
-    ];
+        ));
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let pillbug_moves = generator.pillbug_swaps(pillbug, None);
-    assert_eq!(pillbug_moves.len(), expected.len());
-    for grid in expected {
-        assert!(
-            pillbug_moves.contains(&grid),
-            "Expected grid not found in pillbug_moves: \n{}",
-            grid.to_dsl()
-        );
-    }
-}
+        let expected = vec![
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . b 3 . . .\n",
+                ". . 2 P . . .\n",
+                " . . a a . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "3 - [m b b]\n",
+                "2 - [m b]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . b 3 . . .\n",
+                ". . 2 P a . .\n",
+                " . . a . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "3 - [m b b]\n",
+                "2 - [m b]\n",
+            )),
+        ];
 
-#[test]
-fn test_pillbug_pinned_moves() {
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . b . . . .\n",
-        ". . 2 P a . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [m b]\n",
-    ));
-
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
-    let pillbug_moves = generator.pillbug_moves(pillbug);
-    assert!(pillbug_moves.is_empty());
-}
-
-#[test]
-fn test_placements() {
-    use PieceColor::*;
-    // Tests interesting interactions with enemy pieces
-    // including stacks effectively change the color
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . A . A . . .\n",
-        ". 2 b a A . .\n",
-        " . b . 2 . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [A b]\n",
-        "2 - [m B]\n",
-    ));
-    let expected_black_placements = HexGrid::selector(concat!(
-        ". . . . . . .\n",
-        " . A . A . . .\n",
-        "* 2 b a A . .\n",
-        " * b . 2 . . .\n",
-        ". * * . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [A b]\n",
-        "2 - [m B]\n",
-    ));
-    let expected_white_placements = HexGrid::selector(concat!(
-        ". * * * * . .\n",
-        " . A . A * . .\n",
-        ". 2 b a A * .\n",
-        " . b . 2 * . .\n",
-        ". . . * * . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [A b]\n",
-        "2 - [m B]\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let white_placements = generator.placements(White);
-    let black_placements = generator.placements(Black);
-
-    assert_eq!(black_placements.len(), expected_black_placements.len());
-    assert_eq!(white_placements.len(), expected_white_placements.len());
-
-    for placement in expected_white_placements {
-        assert!(
-            white_placements.contains(&placement),
-            "Expected place not found in white_placements: \n{:?}",
-            placement
-        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let pillbug_moves = generator.pillbug_swaps(pillbug, None);
+        assert_eq!(pillbug_moves.len(), expected.len());
+        for grid in expected {
+            assert!(
+                pillbug_moves.contains(&grid),
+                "Expected grid not found in pillbug_moves: \n{}",
+                grid.to_dsl()
+            );
+        }
     }
 
-    for placement in expected_black_placements {
-        assert!(
-            black_placements.contains(&placement),
-            "Expected place not found in black_placements: \n{:?}",
-            placement
-        );
+    #[test]
+    pub(crate) fn test_pillbug_pinned_moves() {
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . b . . . .\n",
+            ". . 2 P a . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [m b]\n",
+        ));
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
+        let pillbug_moves = generator.pillbug_moves(pillbug);
+        assert!(pillbug_moves.is_empty());
     }
-}
 
-#[test]
-fn test_placements_empty() {
-    use PieceColor::*;
-    // Make sure you place at the center when the board is empty
-    let grid = HexGrid::from_dsl(concat!(".\n\n", "start - [0 0]\n\n",));
-    let selector = HexGrid::selector(concat!("*\n\n", "start - [0 0]\n\n",));
+    #[test]
+    pub(crate) fn test_placements() {
+        use PieceColor::*;
+        // Tests interesting interactions with enemy pieces
+        // including stacks effectively change the color
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . A . A . . .\n",
+            ". 2 b a A . .\n",
+            " . b . 2 . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [A b]\n",
+            "2 - [m B]\n",
+        ));
+        let expected_black_placements = HexGrid::selector(concat!(
+            ". . . . . . .\n",
+            " . A . A . . .\n",
+            "* 2 b a A . .\n",
+            " * b . 2 . . .\n",
+            ". * * . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [A b]\n",
+            "2 - [m B]\n",
+        ));
+        let expected_white_placements = HexGrid::selector(concat!(
+            ". * * * * . .\n",
+            " . A . A * . .\n",
+            ". 2 b a A * .\n",
+            " . b . 2 * . .\n",
+            ". . . * * . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [A b]\n",
+            "2 - [m B]\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let white_placements = generator.placements(White);
+        let black_placements = generator.placements(Black);
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let placements = generator.placements(White);
-    let expected = selector;
-    assert_eq!(placements, expected);
-}
+        assert_eq!(black_placements.len(), expected_black_placements.len());
+        assert_eq!(white_placements.len(), expected_white_placements.len());
 
-#[test]
-fn test_placements_single() {
-    use PieceColor::*;
-    // Regression test: placement allowed in any adjacent
-    // hex if the board has a single piece
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . . . . .\n",
-        ". . . A . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let expected = HexGrid::selector(concat!(
-        ". . . . . . .\n",
-        " . . * * . . .\n",
-        ". . * A * . .\n",
-        " . . * * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let placements = generator.placements(Black);
-    for placement in expected.iter() {
-        assert!(
-            placements.contains(&placement),
-            "Expected place not found in placements: \n{:?}",
-            placement
-        );
+        for placement in expected_white_placements {
+            assert!(
+                white_placements.contains(&placement),
+                "Expected place not found in white_placements: \n{:?}",
+                placement
+            );
+        }
+
+        for placement in expected_black_placements {
+            assert!(
+                black_placements.contains(&placement),
+                "Expected place not found in black_placements: \n{:?}",
+                placement
+            );
+        }
     }
-    assert_eq!(placements.len(), expected.len());
-}
-#[test]
-fn test_mosquito_mosquito_no_moves() {
-    // Mosquitos beside only other mosquitoes have no moves
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . . . . .\n",
-        ". a m M . . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
-    let mosquito_moves = generator.mosquito_moves(mosquito);
-    assert!(mosquito_moves.is_empty());
-}
-#[test]
-fn test_lower_level_mosquito_moves() {
-    // A mosquito on the lower level adopts the moves of surrounding pieces
-    // Mosquitos next to stacks
-    use PieceColor::*;
-    use PieceType::*;
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . q g . . .\n",
-        ". a b M 2 . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a S]\n",
-    ));
-    let selector = concat!(
-        ". . * . * . .\n",
-        " . . * * . . .\n",
-        "* a * M * * .\n",
-        " * . * * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a S]\n",
-    );
 
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
-    let mosquito_moves = generator.mosquito_moves(mosquito);
-    compare_moves(mosquito, selector, &grid, &mosquito_moves);
-}
+    #[test]
+    pub(crate) fn test_placements_empty() {
+        use PieceColor::*;
+        // Make sure you place at the center when the board is empty
+        let grid = HexGrid::from_dsl(concat!(".\n\n", "start - [0 0]\n\n",));
+        let selector = HexGrid::selector(concat!("*\n\n", "start - [0 0]\n\n",));
 
-#[test]
-fn test_upper_level_mosquito_moves() {
-    use PieceColor::*;
-    use PieceType::*;
-    // A mosquito on the upper level is functionally a beetle
-    // A top level mosquito on top of a pinned piece may still move
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . q . . . .\n",
-        ". a b 2 2 . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a M]\n",
-        "2 - [a S]\n",
-    ));
-    let selector = concat!(
-        ". . . . . . .\n",
-        " . . * * . . .\n",
-        ". a * 2 * . .\n",
-        " . . * * . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a M]\n",
-        "2 - [a S]\n",
-    );
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
-    let mosquito_moves = generator.mosquito_moves(mosquito);
-    compare_moves(mosquito, selector, &grid, &mosquito_moves);
-}
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let placements = generator.placements(White);
+        let expected = selector;
+        assert_eq!(placements, expected);
+    }
 
-#[test]
-fn test_pinned_mosquito() {
-    use PieceColor::*;
-    use PieceType::*;
-    // A lower level mosquito may be pinned and have no moves
-    let grid = HexGrid::from_dsl(concat!(
-        ". . . . . . .\n",
-        " . . . g . . .\n",
-        ". a b M 2 . .\n",
-        " . . . . . . .\n",
-        ". . . . . . .\n\n",
-        "start - [0 0]\n\n",
-        "2 - [a B]\n",
-    ));
-    let generator = MoveGeneratorDebugger::from_default_grid(&grid);
-    let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
-    let mosquito_moves = generator.mosquito_moves(mosquito);
-    assert!(mosquito_moves.is_empty());
+    #[test]
+    pub(crate) fn test_placements_single() {
+        use PieceColor::*;
+        // Regression test: placement allowed in any adjacent
+        // hex if the board has a single piece
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . . . . .\n",
+            ". . . A . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let expected = HexGrid::selector(concat!(
+            ". . . . . . .\n",
+            " . . * * . . .\n",
+            ". . * A * . .\n",
+            " . . * * . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let placements = generator.placements(Black);
+        for placement in expected.iter() {
+            assert!(
+                placements.contains(&placement),
+                "Expected place not found in placements: \n{:?}",
+                placement
+            );
+        }
+        assert_eq!(placements.len(), expected.len());
+    }
+
+    #[test]
+    pub(crate) fn test_mosquito_mosquito_no_moves() {
+        // Mosquitos beside only other mosquitoes have no moves
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . . . . .\n",
+            ". a m M . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+        let mosquito_moves = generator.mosquito_moves(mosquito);
+        assert!(mosquito_moves.is_empty());
+    }
+
+    #[test]
+    pub(crate) fn test_lower_level_mosquito_moves() {
+        // A mosquito on the lower level adopts the moves of surrounding pieces
+        // Mosquitos next to stacks
+        use PieceColor::*;
+        use PieceType::*;
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . q g . . .\n",
+            ". a b M 2 . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a S]\n",
+        ));
+        let selector = concat!(
+            ". . * . * . .\n",
+            " . . * * . . .\n",
+            "* a * M * * .\n",
+            " * . * * . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a S]\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+        let mosquito_moves = generator.mosquito_moves(mosquito);
+        compare_moves(mosquito, selector, &grid, &mosquito_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_upper_level_mosquito_moves() {
+        use PieceColor::*;
+        use PieceType::*;
+        // A mosquito on the upper level is functionally a beetle
+        // A top level mosquito on top of a pinned piece may still move
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . q . . . .\n",
+            ". a b 2 2 . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a M]\n",
+            "2 - [a S]\n",
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . * * . . .\n",
+            ". a * 2 * . .\n",
+            " . . * * . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a M]\n",
+            "2 - [a S]\n",
+        );
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+        let mosquito_moves = generator.mosquito_moves(mosquito);
+        compare_moves(mosquito, selector, &grid, &mosquito_moves);
+    }
+
+    #[test]
+    pub(crate) fn test_pinned_mosquito() {
+        use PieceColor::*;
+        use PieceType::*;
+        // A lower level mosquito may be pinned and have no moves
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . g . . .\n",
+            ". a b M 2 . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a B]\n",
+        ));
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
+        let mosquito_moves = generator.mosquito_moves(mosquito);
+        assert!(mosquito_moves.is_empty());
+    }
 }

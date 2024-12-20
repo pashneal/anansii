@@ -268,17 +268,26 @@ impl BitGridLocation {
     fn wrap(&self, board : i8, x : i8, y : i8) -> BitGridLocation {
         let width = BITBOARD_WIDTH as i8;
         let height = BITBOARD_HEIGHT as i8;
-        let grid_length = GRID_SIZE as i8;
 
-        let mut dx = if x < 0 { -1 } else { 0 };
-        dx = if x >= width { 1 } else { dx };
+        let board_x = board % GRID_WIDTH as i8;
+        let board_y = board / GRID_HEIGHT as i8;
 
-        let mut dy = if y < 0 { -(GRID_WIDTH as i8) } else { 0 };
-        dy = if y >= height { GRID_WIDTH as i8} else { dy };
+        let dx = match x {
+            x if x < 0 => -1,
+            x if x >= width => 1,
+            _ => 0
+        };
 
-        let new_board_index = board + dx + dy;
-        let new_board_index = new_board_index.rem_euclid(grid_length);
+        let dy = match y {
+            y if y < 0 => -1,
+            y if y >= height => 1,
+            _ => 0
+        };
 
+        let board_x = (board_x + dx).rem_euclid(GRID_WIDTH as i8);
+        let board_y = (board_y + dy).rem_euclid(GRID_HEIGHT as i8);
+
+        let new_board_index = board_y * GRID_HEIGHT as i8 + board_x;
         let new_bitboard_index = y.rem_euclid(height) * height + x.rem_euclid(width);
 
         BitGridLocation::new(new_board_index as usize, new_bitboard_index as usize)
@@ -298,9 +307,11 @@ impl FromHex for BitGridLocation {
         let bit_y = ( center_y - hex.y + BITBOARD_HEIGHT as i8 ).rem_euclid(BITBOARD_HEIGHT as i8);
 
         let board_x = -hex.x + (board_center_x * BITBOARD_WIDTH as i8) + center_x;
+        let board_x = board_x.rem_euclid((BITBOARD_WIDTH * GRID_WIDTH) as i8);
         let board_x = board_x / BITBOARD_WIDTH as i8;
 
         let board_y = -hex.y + (board_center_y * BITBOARD_HEIGHT as i8) + center_y;
+        let board_y = board_y.rem_euclid((BITBOARD_HEIGHT * GRID_HEIGHT) as i8);
         let board_y = board_y / BITBOARD_HEIGHT as i8;
 
         let board_index = (board_y * GRID_HEIGHT as i8 + board_x) as usize;

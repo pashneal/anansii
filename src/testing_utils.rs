@@ -1,5 +1,4 @@
 use crate::hex_grid::*;
-use crate::location::*;
 use std::collections::HashSet;
 
 pub fn compare_moves(

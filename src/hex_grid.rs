@@ -71,7 +71,7 @@ impl HexGrid {
         }
         visited.insert(current_location);
         for neighbor in self.get_neighbors(current_location) {
-            if self.peek(neighbor).len() > 0 {
+            if !self.peek(neighbor).is_empty() {
                 self.dfs(visited, disallowed, neighbor);
             }
         }
@@ -85,7 +85,7 @@ impl HexGrid {
             for direction in Direction::all().iter() {
                 let neighbor = location.apply(*direction);
                 let stack = self.peek(neighbor);
-                if stack.len() == 0 {
+                if stack.is_empty() {
                     outside.insert(neighbor);
                 }
             }
@@ -110,7 +110,7 @@ impl HexGrid {
         for &candidate in hive.iter() {
             let mut visited = HashSet::new();
             let neighbors = self.get_neighbors(candidate);
-            if neighbors.len() >= 1 {
+            if !neighbors.is_empty() {
                 self.dfs(&mut visited, candidate, neighbors[0])
             }
 
@@ -127,7 +127,7 @@ impl HexGrid {
         let mut neighbors = vec![];
         for direction in Direction::all().iter() {
             let loc = location.apply(*direction);
-            if self.peek(loc).len() == 0 {
+            if self.peek(loc).is_empty() {
                 neighbors.push(loc);
             }
         }
@@ -138,7 +138,7 @@ impl HexGrid {
         let mut neighbors = vec![];
         for direction in Direction::all().iter() {
             let loc = location.apply(*direction);
-            if self.peek(loc).len() > 0 {
+            if !self.peek(loc).is_empty() {
                 neighbors.push(loc);
             }
         }
@@ -177,7 +177,7 @@ impl HexGrid {
             let destination_neighbors = self.get_neighbors(destination);
             // maintains contact if the destination has a piece
             // or if the location has a piece under it
-            let mut maintains_contact = self.peek(destination).len() > 0;
+            let mut maintains_contact = !self.peek(destination).is_empty();
             maintains_contact = maintains_contact || effective_height > 1;
 
             for destination_neighbor in destination_neighbors.iter() {
@@ -214,7 +214,7 @@ impl HexGrid {
         let all_locations = self.slidable_locations_3d_height(location, 1);
         all_locations
             .into_iter()
-            .filter(|&loc| self.peek(loc).len() == 0)
+            .filter(|&loc| self.peek(loc).is_empty())
             .collect()
     }
 
@@ -249,7 +249,7 @@ impl HexGrid {
     /// Adds a piece to the top of the stack at the given location
     pub fn add(&mut self, piece: Piece, location: HexLocation) {
         let (x, y) = HexGrid::centralize(location);
-        self.fast_grid.entry((x, y)).or_insert(vec![]).push(piece);
+        self.fast_grid.entry((x, y)).or_default().push(piece);
     }
 
     /// Removes the top-most piece from the stack at the given location
@@ -361,7 +361,7 @@ impl HexGrid {
 
         let mut start = "start - [".to_owned();
         start.push_str(&format!(" {} {} ", left, top));
-        start.push_str("]");
+        start.push(']');
         start
     }
 
@@ -390,7 +390,7 @@ impl HexGrid {
                     stack_string.push_str(&format!("{} - [ ", pieces.len()));
                     for piece in pieces {
                         stack_string.push_str(&piece.to_str());
-                        stack_string.push_str(" ");
+                        stack_string.push(' ');
                     }
                     stack_string.push_str("]\n");
                 }
@@ -429,25 +429,25 @@ impl HexGrid {
 
         for row in top..=bottom {
             if row % 2 == 1 {
-                board.push_str(" ");
+                board.push(' ');
             }
             for col in left..=right {
                 let pieces = self.oddr(row, col);
 
                 match pieces.len() {
-                    0 => board.push_str("."),
+                    0 => board.push('.'),
                     1 => board.push_str(&pieces[0].to_str()),
                     _ => board.push_str(&format!("{}", pieces.len())),
                 }
                 // Do not add a space after the last column
                 if col != right {
-                    board.push_str(" ");
+                    board.push(' ');
                 }
             }
-            board.push_str("\n");
+            board.push('\n');
         }
 
-        return board;
+        board
     }
 
     /// Returns a bounding box around all present pieces
@@ -487,12 +487,12 @@ impl PieceIterator for HexGrid {
             pieces.push(((row, col), stack.clone(), location));
         }
         pieces.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-        let pieces = pieces
-            .into_iter()
-            .map(|(_, stack, loc)| (stack, loc))
-            .collect::<Vec<_>>();
+        
 
         pieces
+            .into_iter()
+            .map(|(_, stack, loc)| (stack, loc))
+            .collect::<Vec<_>>()
     }
 }
 

@@ -161,15 +161,14 @@ impl Annotator {
         ids: &HashMap<HexLocation, StackIds>,
     ) -> String {
         let stack = hex_grid.peek(location);
-        debug_assert!(stack.len() > 0, "There should be a piece here!");
+        debug_assert!(!stack.is_empty(), "There should be a piece here!");
         if stack.len() > 1 {
             // If the piece climbs atop the hive, use the piece below it as the anchor
             let piece_below = stack[stack.len() - 2];
             let id_below = ids
                 .get(&location)
                 .unwrap()
-                .iter()
-                .nth(stack.len() - 2)
+                .get(stack.len() - 2)
                 .unwrap()
                 .unwrap();
             return piece_below.to_uhp(id_below);
@@ -193,37 +192,37 @@ impl Annotator {
             }
         }
 
-        return if hex_grid.peek(nw).len() > 0 {
+        return if !hex_grid.peek(nw).is_empty() {
             let piece = hex_grid.peek(nw);
             let piece = piece.last().unwrap();
             let id = ids.get(&nw).unwrap().last().unwrap().unwrap();
 
             relative_direction(Direction::NW, &piece.to_uhp(id))
-        } else if hex_grid.peek(sw).len() > 0 {
+        } else if !hex_grid.peek(sw).is_empty() {
             let piece = hex_grid.peek(sw);
             let piece = piece.last().unwrap();
             let id = ids.get(&sw).unwrap().last().unwrap().unwrap();
 
             relative_direction(Direction::SW, &piece.to_uhp(id))
-        } else if hex_grid.peek(ne).len() > 0 {
+        } else if !hex_grid.peek(ne).is_empty() {
             let piece = hex_grid.peek(ne);
             let piece = piece.last().unwrap();
             let id = ids.get(&ne).unwrap().last().unwrap().unwrap();
 
             relative_direction(Direction::NE, &piece.to_uhp(id))
-        } else if hex_grid.peek(se).len() > 0 {
+        } else if !hex_grid.peek(se).is_empty() {
             let piece = hex_grid.peek(se);
             let piece = piece.last().unwrap();
             let id = ids.get(&se).unwrap().last().unwrap().unwrap();
 
             relative_direction(Direction::SE, &piece.to_uhp(id))
-        } else if hex_grid.peek(e).len() > 0 {
+        } else if !hex_grid.peek(e).is_empty() {
             let piece = hex_grid.peek(e);
             let piece = piece.last().unwrap();
             let id = ids.get(&e).unwrap().last().unwrap().unwrap();
 
             relative_direction(Direction::E, &piece.to_uhp(id))
-        } else if hex_grid.peek(w).len() > 0 {
+        } else if !hex_grid.peek(w).is_empty() {
             let piece = hex_grid.peek(w);
             let piece = piece.last().unwrap();
             let id = ids.get(&w).unwrap().last().unwrap().unwrap();
@@ -261,7 +260,7 @@ impl Annotator {
 
         let mut new_ids = self.ids.clone();
         let ids = new_ids
-            .get_mut(&old_loc)
+            .get_mut(old_loc)
             .expect("Non ambiguous state should identify all pieces");
         // Should be the top of the stack
         debug_assert!(ids.len() == old_height + 1);
@@ -269,7 +268,7 @@ impl Annotator {
         let id = ids[*old_height];
         ids.remove(*old_height);
 
-        let ids = new_ids.entry(*new_loc).or_insert(vec![]);
+        let ids = new_ids.entry(*new_loc).or_default();
 
         // Should be the top of the stack
         debug_assert!(ids.len() == *new_height);
@@ -304,7 +303,7 @@ impl Annotator {
         };
 
         let mut new_ids = self.ids.clone();
-        let ids = new_ids.entry(*loc).or_insert(vec![]);
+        let ids = new_ids.entry(*loc).or_default();
 
         let new_id = new_piece_counts.entry(*piece).or_insert(0);
         *new_id += 1;
@@ -316,7 +315,7 @@ impl Annotator {
         let piece_string = piece.to_uhp(*new_id);
 
         let move_string = if self.prev_grid.is_empty() {
-            format!("{}", piece_string)
+            piece_string.to_string()
         } else {
             let anchor = Annotator::anchor_reference(grid, *loc, &new_ids);
             format!("{} {}", piece_string, anchor)
@@ -350,7 +349,7 @@ impl Annotator {
         // 2 diffs and it's removing the same piece from one location and adding it to another
 
         // 0 diffs happy path
-        if diffs.len() == 0 {
+        if diffs.is_empty() {
             let mut moves = self.moves.clone();
             moves.push("pass".to_string());
 
@@ -369,7 +368,7 @@ impl Annotator {
         if diffs.len() == 1 {
             let diff = &diffs[0];
             return match diff {
-                Diff::Added { .. } => Ok(self.piece_placed(diff, &current_grid)),
+                Diff::Added { .. } => Ok(self.piece_placed(diff, current_grid)),
                 _ => Err(UHPError::InvariantError),
             };
         }
@@ -389,7 +388,7 @@ impl Annotator {
                 _ => todo!("this should return an ambigous state instead of an error"),
             };
 
-            return Ok(self.piece_moved(removed, added, &current_grid));
+            return Ok(self.piece_moved(removed, added, current_grid));
         }
 
         // If we have more than 2 diffs, we can't infer the state, but can return an
@@ -406,7 +405,7 @@ impl Annotator {
         if self.ambiguous {
             return None;
         }
-        if self.moves.len() == 0 {
+        if self.moves.is_empty() {
             return None;
         }
 
@@ -447,7 +446,7 @@ impl Annotator {
     ///
     /// Returns the resulting state of the annotator after the move is applied
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
-        debug_assert!(self.ambiguous == false);
+        debug_assert!(!self.ambiguous);
         debug_assert!(move_string.trim() == move_string);
 
         if move_string == "pass" {
@@ -551,10 +550,10 @@ impl Annotator {
     /// with unique identifiers appended to all the pieces
     fn uhp_to_standard(move_string: &str) -> String {
         move_string
-            .replace("P", "P1")
-            .replace("M", "M1")
-            .replace("L", "L1")
-            .replace("Q", "Q1")
+            .replace('P', "P1")
+            .replace('M', "M1")
+            .replace('L', "L1")
+            .replace('Q', "Q1")
     }
 
     /// Give a UHP-compatible MoveString representation of the moves
@@ -623,7 +622,7 @@ impl UHPInterface {
         UHPInterface {
             annotations: vec![Annotator::new()],
             game_type: GameType::Standard,
-            game: GameDebugger::from_moves(&vec![]).unwrap(),
+            game: GameDebugger::from_moves(&[]).unwrap(),
             player_to_move: PieceColor::White,
         }
     }
@@ -688,11 +687,11 @@ impl UHPInterface {
             return Err("Invalid game type".to_string());
         }
 
-        if !input.contains(";") {
+        if !input.contains(';') {
             self.set_game_type(&input[8..])?;
         } else {
             let rest = input[8..].to_string();
-            let mut delimited = rest.split(";");
+            let mut delimited = rest.split(';');
 
             let base = delimited
                 .next()
@@ -716,7 +715,7 @@ impl UHPInterface {
                 .parse::<u8>()
                 .map_err(|_| "Expected number at position 2 of GameString")?;
 
-            while let Some(move_string) = delimited.next() {
+            for move_string in delimited {
                 self.make_move(move_string)?;
             }
 
@@ -788,7 +787,7 @@ impl UHPInterface {
             return Err("Invalid move string for play command".to_string());
         }
 
-        self.make_move(&input[5..].trim())
+        self.make_move(input[5..].trim())
     }
 
     /// Returns a list of all valid moves for the current player
@@ -893,14 +892,14 @@ impl UHPInterface {
         };
 
         debug_assert!(
-            if response.len() > 0 {
-                response.chars().last().unwrap() != '\n'
+            if !response.is_empty() {
+                !response.ends_with('\n')
             } else {
                 true
             },
             "Non-empty response should not end with a newline"
         );
-        if response.len() == 0 {
+        if response.is_empty() {
             "ok\n".to_string()
         } else {
             response + "\nok\n"
@@ -1136,15 +1135,13 @@ mod tests {
         annotator = result.expect("Climb off should be handled correctly");
 
         let standard_moves = annotator.standard_move_strings();
-        let possible_standard_moves = vec![
-            vec![String::from("wB1")],
+        let possible_standard_moves = [vec![String::from("wB1")],
             vec![String::from("bA1 wB1-")],
             vec![String::from(r"wQ1 \wB1")],
             vec![String::from("bA1 -wQ1")],
             vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
             vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
-            vec![String::from("wB1 /bA1")],
-        ];
+            vec![String::from("wB1 /bA1")]];
         assert!(possible_standard_moves.len() == standard_moves.len());
         for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
             assert!(
@@ -1155,15 +1152,13 @@ mod tests {
             );
         }
         let uhp_moves = annotator.uhp_move_strings();
-        let possible_uhp_moves = vec![
-            vec![String::from("wB1")],
+        let possible_uhp_moves = [vec![String::from("wB1")],
             vec![String::from("bA1 wB1-")],
             vec![String::from(r"wQ \wB1")],
             vec![String::from("bA1 -wQ")],
             vec![String::from("wB1 bA1-"), String::from("wB1 wQ")],
             vec![String::from("wB1 -wQ"), String::from("wB1 bA1")],
-            vec![String::from("wB1 /bA1")],
-        ];
+            vec![String::from("wB1 /bA1")]];
         assert!(possible_uhp_moves.len() == uhp_moves.len());
         for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
             assert!(
@@ -1377,7 +1372,7 @@ mod tests {
                 String::from(r"wG1 wL1"),
             ],
         ];
-        assert_eq!(possible_moves.len() == moves.len(), true);
+        assert!(possible_moves.len() == moves.len());
 
         for (expected, actual) in possible_moves.iter().zip(moves.iter()) {
             assert!(
@@ -1439,7 +1434,7 @@ mod tests {
                 String::from(r"wG1 wL"),
             ],
         ];
-        assert_eq!(possible_uhp_moves.len() == uhp_moves.len(), true);
+        assert!(possible_uhp_moves.len() == uhp_moves.len());
 
         for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
             assert!(
@@ -1853,9 +1848,7 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_some_moves() {
-        let moves = vec![
-            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-        ];
+        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
         let final_position = HexGrid::from_dsl(concat!(
             ". . . . . .\n",
             " . A . b . .\n",
@@ -1882,9 +1875,7 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_play() {
-        let moves = vec![
-            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-        ];
+        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
         let final_position = HexGrid::from_dsl(concat!(
             ". . . . . .\n",
             " . A . b . .\n",
@@ -1930,9 +1921,7 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_undo() {
-        let moves = vec![
-            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
-        ];
+        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
 
         let mut uhp = UHPInterface::new();
         uhp.command("newgame Base+PML;NotStarted;White[1]");
@@ -1980,10 +1969,10 @@ mod tests {
         let output = uhp.command(&format!("play {}", black_wins_last_move));
         let output = output.to_string();
         let black_wins_complete = black_wins_complete.to_string();
-        println!("{}", output[8..].to_string());
+        println!("{}", &output[8..]);
         println!(
             "{}",
-            format!("{}\nok\n", black_wins_complete)[8..].to_string()
+            &format!("{}\nok\n", black_wins_complete)[8..]
         );
         assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
 

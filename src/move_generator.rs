@@ -90,7 +90,7 @@ impl MoveGeneratorDebugger {
     /// (ignores pillbug swaps)
     pub fn spider_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
-        debug_assert!(stack.len() == 1 as usize);
+        debug_assert!(stack.len() == 1_usize);
         debug_assert!(stack[0].piece_type == PieceType::Spider || stack[0].piece_type == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
@@ -208,8 +208,8 @@ impl MoveGeneratorDebugger {
 
             for slidable_location in grid.slidable_locations_2d(location).iter() {
                 // In contact with the hive
-                if grid.get_neighbors(*slidable_location).len() > 0 {
-                    dfs(*slidable_location, visited, &grid);
+                if !grid.get_neighbors(*slidable_location).is_empty() {
+                    dfs(*slidable_location, visited, grid);
                 }
             }
         }
@@ -311,22 +311,20 @@ impl MoveGeneratorDebugger {
 
         // Then climb across the hive
         let climb_atop = neighbors
-            .map(|loc| {
+            .flat_map(|loc| {
                 // The height must account for an imaginary ladybug now being on top of
                 // the existing board
                 let effective_height = ladybug_removed.peek(*loc).len() + 1;
                 ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
-            })
-            .flatten();
+            });
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
         // Then climb off the hive
         let climb_down = climb_atop
-            .map(|loc| {
+            .flat_map(|loc| {
                 let height = ladybug_removed.peek(loc).len() + 1;
                 ladybug_removed.slidable_locations_3d_height(loc, height)
-            })
-            .flatten();
+            });
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
         let unique_final_moves = climb_down.collect::<HashSet<HexLocation>>();
@@ -425,16 +423,16 @@ impl MoveGeneratorDebugger {
             }
         }
 
-        let result = itertools::iproduct!(empty_neighbors, swappable)
+        
+
+        itertools::iproduct!(empty_neighbors, swappable)
             .map(|(destination, source)| {
                 let mut new_grid = self.grid.clone();
                 let piece = new_grid.remove(source).unwrap();
                 new_grid.add(piece, destination);
                 new_grid
             })
-            .collect();
-
-        result
+            .collect()
     }
 
     /// Returns locations that follow the typical placement rules for a given
@@ -531,8 +529,7 @@ impl MoveGeneratorDebugger {
         let all_pieces = self.grid.pieces();
         let friendly_pieces = all_pieces
             .iter()
-            .map(|(stack, _)| stack)
-            .flatten()
+            .flat_map(|(stack, _)| stack)
             .filter(|piece| piece.color == color)
             .collect::<Vec<_>>();
         let mut result = Vec::new();
@@ -558,14 +555,13 @@ impl MoveGeneratorDebugger {
         let all_pieces = self.grid.pieces();
         let friendly_pieces = all_pieces
             .iter()
-            .map(|(stack, _)| stack)
-            .flatten()
+            .flat_map(|(stack, _)| stack)
             .filter(|piece| piece.color == color)
             .collect::<Vec<_>>();
         let num_friendly_pieces = friendly_pieces.len();
 
         // Queen not placed
-        if let None = queen {
+        if queen.is_none() {
             // Forced to place a queen by 4th turn
             if num_friendly_pieces == 3 {
                 for placement in self.placements(color) {
@@ -633,8 +629,8 @@ mod tests {
 
     #[test]
     pub fn test_spider_gate() {
-        use PieceColor::*;
-        use PieceType::*;
+        
+        
         // Testing with the "gate" structure that disallows free movement
         // between adjacent locations
         let grid = HexGrid::from_dsl(concat!(
@@ -1727,7 +1723,7 @@ mod tests {
         let placements = generator.placements(Black);
         for placement in expected.iter() {
             assert!(
-                placements.contains(&placement),
+                placements.contains(placement),
                 "Expected place not found in placements: \n{:?}",
                 placement
             );

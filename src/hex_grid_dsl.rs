@@ -377,7 +377,7 @@ impl Parser {
             result.push((*piece, new_loc));
         }
 
-        return Ok(result);
+        Ok(result)
     }
 
     /// Given a HexGrid stack string according to the DSL specification,
@@ -422,7 +422,7 @@ impl Parser {
             };
 
             if num != stack_num {
-                return Err(ParserError::StackParseError(format!("Stack number mismatch, check that stack string is in board order. Expected {} Got {} on line {}", num, stack_num, line.to_string())));
+                return Err(ParserError::StackParseError(format!("Stack number mismatch, check that stack string is in board order. Expected {} Got {} on line {}", num, stack_num, line)));
             }
 
             let mut stack = [None; 7];
@@ -653,8 +653,8 @@ mod tests {
 
     #[test]
     pub fn test_board_location_relative_to_top_left() {
-        use PieceColor::*;
-        use PieceType::*;
+        
+        
 
         let board_string = concat!(". l m . .\n", " 2 l m . .\n", "2 . . . .\n",);
 
@@ -796,7 +796,7 @@ mod tests {
         let white_ant = BoardInput::Piece(Piece::new(Ant, White));
         let black_ant = BoardInput::Piece(Piece::new(Ant, Black));
 
-        let expected = vec![stack_2, stack_3, black_ant, stack_4, stack_5, white_ant];
+        let expected = [stack_2, stack_3, black_ant, stack_4, stack_5, white_ant];
 
         let pieces = pieces
             .into_iter()
@@ -822,7 +822,7 @@ mod tests {
 
         let white_ant = BoardInput::Piece(Piece::new(Ant, White));
 
-        let expected = vec![white_ant];
+        let expected = [white_ant];
 
         let pieces = pieces
             .into_iter()

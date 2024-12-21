@@ -94,7 +94,7 @@ impl GameDebugger {
         };
 
         // Must begin with the empty board
-        debug_assert!(positions.len() > 0 && positions[0].to_hex_grid() == HexGrid::new());
+        debug_assert!(!positions.is_empty() && positions[0].to_hex_grid() == HexGrid::new());
 
         // Skip the first position, as it is the empty board
         for pos in positions.iter().skip(1) {
@@ -122,8 +122,8 @@ impl GameDebugger {
     pub fn make_move(&mut self, move_string: &str) -> Result<()> {
         let mut annotator = self.annotations.last().unwrap().clone();
         annotator = annotator
-            .next_uhp_move(&move_string)
-            .map_err(|e| GameDebuggerError::AnnotationError(e))?;
+            .next_uhp_move(move_string)
+            .map_err(GameDebuggerError::AnnotationError)?;
 
         self.append_position(annotator.position())
     }
@@ -147,7 +147,7 @@ impl GameDebugger {
         let annotator = self.annotations.last().unwrap().clone();
         let annotator = annotator
             .next_state(&grid)
-            .map_err(|e| GameDebuggerError::AnnotationError(e))?;
+            .map_err(GameDebuggerError::AnnotationError)?;
 
         self.generator = MoveGeneratorDebugger::from_grid(
             annotator.position(),

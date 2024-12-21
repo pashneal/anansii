@@ -16,6 +16,7 @@ pub const PRESENCE_MASK: u32 = 1 << 17;
 ///
 /// Supports operations for BasicBitGrids.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
     /// 3 bits for height (can represent 2 - 7)
@@ -136,9 +137,10 @@ impl BasicBitStackEntry {
     }
 }
 
-impl Default for BasicBitStackEntry {
+
+impl Default for BasicBitStack {
     fn default() -> Self {
-        BasicBitStackEntry { data: 0 }
+        Self::new()
     }
 }
 
@@ -203,8 +205,8 @@ impl BasicBitStack {
         }
 
         indices.sort();
-        let indices = indices.into_iter().map(|(_, index)| index).collect();
-        indices
+        
+        indices.into_iter().map(|(_, index)| index).collect()
     }
 }
 

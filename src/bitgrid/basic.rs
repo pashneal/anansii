@@ -53,6 +53,12 @@ pub struct BasicBitGrid {
 }
 
 
+impl Default for BasicBitGrid {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BasicBitGrid {
     pub fn new() -> Self {
         BasicBitGrid {
@@ -98,10 +104,10 @@ impl BasicBitGrid {
                 let index = self.stacks.find_one(loc.into());
                 let height = if let Some(index) = index {
                     let entry = self.stacks.get(index);
-                    let height = entry.height();
-                    height
+                    
+                    entry.height()
                 }else {
-                    2 as u8
+                    2_u8
                 };
 
                 let entry = BasicBitStackEntry::new(piece.into(), height, loc.into(), color.into());
@@ -182,7 +188,7 @@ impl BasicBitGrid {
         ];
 
         let mut piece_type = None;
-        let color;
+        
         for p in piece_types.iter() {
             let board = self.get_piece(*p)[loc.board_index];
             if board.peek(loc.bitboard_index) {
@@ -190,7 +196,7 @@ impl BasicBitGrid {
             }
         }
 
-        color = if self.white_pieces[loc.board_index].peek(loc.bitboard_index) {
+        let color = if self.white_pieces[loc.board_index].peek(loc.bitboard_index) {
             PieceColor::White
         } else {
             PieceColor::Black
@@ -397,7 +403,7 @@ impl TryInto<HexGrid> for BasicBitGrid{
             for col in left..=right {
                 let hex_location = HexLocation::new(row, col);
                 let bit_location : BitGridLocation = hex_location.into();
-                if self.peek(bit_location).len() > 0 {
+                if !self.peek(bit_location).is_empty() {
                     start = Some(hex_location); 
                 }
             }
@@ -441,7 +447,7 @@ impl TryInto<HexGrid> for BasicBitGrid{
                 dfs(grid, next_loc, visited, on_hive, result)?;
             }
 
-            return Ok(());
+            Ok(())
         }
 
         let mut visited = HashSet::new();
@@ -467,7 +473,7 @@ impl <'a> TryInto<HexGrid> for &'a BasicBitGrid{
             for col in left..=right {
                 let hex_location = HexLocation::new(row, col);
                 let bit_location : BitGridLocation = hex_location.into();
-                if self.peek(bit_location).len() > 0 {
+                if !self.peek(bit_location).is_empty() {
                     start = Some(hex_location); 
                 }
             }
@@ -511,13 +517,13 @@ impl <'a> TryInto<HexGrid> for &'a BasicBitGrid{
                 dfs(grid, next_loc, visited, on_hive, result)?;
             }
 
-            return Ok(());
+            Ok(())
         }
 
         let mut visited = HashSet::new();
         let mut on_hive = 0;
         let mut result = HexGrid::new();
-        match dfs(&self, start.unwrap(), &mut visited, &mut on_hive, &mut result) {
+        match dfs(self, start.unwrap(), &mut visited, &mut on_hive, &mut result) {
             Err(e) => Err(e),
             _ => Ok(result)
         }

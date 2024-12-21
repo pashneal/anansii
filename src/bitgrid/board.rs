@@ -165,7 +165,7 @@ impl Display for AxialBitboard {
                     write!(f, "□")?;
                 }
             }
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }

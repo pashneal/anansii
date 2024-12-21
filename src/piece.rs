@@ -1,5 +1,5 @@
-use crate::uhp::GameType;
 use crate::hex_grid::HexGridError;
+use crate::uhp::GameType;
 
 type Result<T> = std::result::Result<T, HexGridError>;
 
@@ -115,7 +115,10 @@ pub struct Piece {
 
 impl Piece {
     pub fn new(piece: PieceType, color: PieceColor) -> Piece {
-        Piece { piece_type: piece, color }
+        Piece {
+            piece_type: piece,
+            color,
+        }
     }
 
     /// Uppercase letter for white, lowercase for black
@@ -158,4 +161,3 @@ pub trait PieceIterator {
     type Output;
     fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
 }
-

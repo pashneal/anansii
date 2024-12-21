@@ -1,6 +1,6 @@
-use std::iter::IntoIterator;
-use crate::piece::*;
 use super::*;
+use crate::piece::*;
+use std::iter::IntoIterator;
 pub const PIECE_BITS: u8 = 1;
 pub const HEIGHT_BITS: u8 = 3;
 pub const HEIGHT_MASK: u8 = 0b111;
@@ -15,8 +15,7 @@ pub const PRESENCE_MASK: u32 = 1 << 17;
 /// pieces, their height, color all in a few bytes!
 ///
 /// Supports operations for BasicBitGrids.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
     /// 3 bits for height (can represent 2 - 7)
@@ -35,7 +34,9 @@ impl BasicBitStackEntry {
     }
 
     pub fn color(&self) -> StackColor {
-        unsafe { std::mem::transmute((self.data >> (PIECE_BITS + HEIGHT_BITS + LOCATION_BITS)) as u8) }
+        unsafe {
+            std::mem::transmute((self.data >> (PIECE_BITS + HEIGHT_BITS + LOCATION_BITS)) as u8)
+        }
     }
 }
 
@@ -45,25 +46,24 @@ pub struct BasicBitStack {
     stack: [BasicBitStackEntry; 6],
 }
 
-
 #[repr(u8)]
 pub enum StackPiece {
     Beetle = 0,
     Mosquito = 1,
 }
 
-impl From<PieceType> for  StackPiece{
-    fn from(piece : PieceType) -> Self {
+impl From<PieceType> for StackPiece {
+    fn from(piece: PieceType) -> Self {
         match piece {
             PieceType::Beetle => StackPiece::Beetle,
             PieceType::Mosquito => StackPiece::Mosquito,
-            _ => panic!("Invalid piece type")
+            _ => panic!("Invalid piece type"),
         }
     }
 }
 
 impl From<StackPiece> for PieceType {
-    fn from(piece : StackPiece) -> Self {
+    fn from(piece: StackPiece) -> Self {
         match piece {
             StackPiece::Beetle => PieceType::Beetle,
             StackPiece::Mosquito => PieceType::Mosquito,
@@ -78,16 +78,16 @@ pub enum StackColor {
 }
 
 impl From<StackColor> for PieceColor {
-    fn from(color : StackColor) -> Self {
+    fn from(color: StackColor) -> Self {
         match color {
             StackColor::White => PieceColor::White,
             StackColor::Black => PieceColor::Black,
         }
     }
-} 
+}
 
 impl From<PieceColor> for StackColor {
-    fn from(color : PieceColor) -> Self {
+    fn from(color: PieceColor) -> Self {
         match color {
             PieceColor::White => StackColor::White,
             PieceColor::Black => StackColor::Black,
@@ -137,7 +137,6 @@ impl BasicBitStackEntry {
     }
 }
 
-
 impl Default for BasicBitStack {
     fn default() -> Self {
         Self::new()
@@ -160,7 +159,7 @@ impl BasicBitStack {
     pub fn remove(&mut self, index: usize) {
         self.bitset.remove_index(index);
     }
-    
+
     pub fn get_height(&mut self, index: usize) -> u8 {
         let entry = self.stack[index];
         (entry.data >> PIECE_BITS) as u8 & 0b111
@@ -205,7 +204,7 @@ impl BasicBitStack {
         }
 
         indices.sort();
-        
+
         indices.into_iter().map(|(_, index)| index).collect()
     }
 }
@@ -266,4 +265,3 @@ impl IntoIterator for SmallBitset {
         SmallBitsetIterator { set: self.set }
     }
 }
-

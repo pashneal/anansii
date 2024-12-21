@@ -16,7 +16,6 @@ pub enum HexGridError {
 
 pub type Result<T> = std::result::Result<T, HexGridError>;
 
-
 pub type Height = usize;
 pub const HEX_GRID_SIZE: usize = 60;
 pub const HEX_GRID_CENTER: (usize, usize) = (HEX_GRID_SIZE / 2, HEX_GRID_SIZE / 2);
@@ -231,7 +230,6 @@ impl HexGrid {
         }
         None
     }
-
 
     fn uncentralize(x: usize, y: usize) -> HexLocation {
         HexLocation::new(
@@ -486,7 +484,6 @@ impl PieceIterator for HexGrid {
             pieces.push(((row, col), stack.clone(), location));
         }
         pieces.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
-        
 
         pieces
             .into_iter()
@@ -525,9 +522,9 @@ impl Position for HexGrid {
 
 #[cfg(test)]
 mod tests {
+    use super::HexGrid;
     use super::*;
     use std::collections::HashSet;
-    use super::HexGrid;
 
     #[test]
     pub(crate) fn test_board_string_empty() {

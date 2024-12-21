@@ -238,7 +238,6 @@ impl Annotator {
             piece: _,
             height: old_height,
         } = old
-
         else {
             panic!("Expected a removed piece");
         };
@@ -487,7 +486,7 @@ impl Annotator {
 
         let mut new_grid = self.prev_grid.clone();
 
-        // Account for either a existing piece being moved or one being placed 
+        // Account for either a existing piece being moved or one being placed
         match self.find(piece_string) {
             Some((piece, old_loc, height)) => {
                 new_grid.remove(old_loc);
@@ -897,8 +896,8 @@ impl UHPInterface {
 
 #[cfg(test)]
 mod tests {
-    use super::UHPInterface;
     use super::Annotator;
+    use super::UHPInterface;
     use super::*;
 
     #[test]
@@ -1123,13 +1122,15 @@ mod tests {
         annotator = result.expect("Climb off should be handled correctly");
 
         let standard_moves = annotator.standard_move_strings();
-        let possible_standard_moves = [vec![String::from("wB1")],
+        let possible_standard_moves = [
+            vec![String::from("wB1")],
             vec![String::from("bA1 wB1-")],
             vec![String::from(r"wQ1 \wB1")],
             vec![String::from("bA1 -wQ1")],
             vec![String::from("wB1 bA1-"), String::from("wB1 wQ1")],
             vec![String::from("wB1 -wQ1"), String::from("wB1 bA1")],
-            vec![String::from("wB1 /bA1")]];
+            vec![String::from("wB1 /bA1")],
+        ];
         assert!(possible_standard_moves.len() == standard_moves.len());
         for (expected, actual) in possible_standard_moves.iter().zip(standard_moves.iter()) {
             assert!(
@@ -1140,13 +1141,15 @@ mod tests {
             );
         }
         let uhp_moves = annotator.uhp_move_strings();
-        let possible_uhp_moves = [vec![String::from("wB1")],
+        let possible_uhp_moves = [
+            vec![String::from("wB1")],
             vec![String::from("bA1 wB1-")],
             vec![String::from(r"wQ \wB1")],
             vec![String::from("bA1 -wQ")],
             vec![String::from("wB1 bA1-"), String::from("wB1 wQ")],
             vec![String::from("wB1 -wQ"), String::from("wB1 bA1")],
-            vec![String::from("wB1 /bA1")]];
+            vec![String::from("wB1 /bA1")],
+        ];
         assert!(possible_uhp_moves.len() == uhp_moves.len());
         for (expected, actual) in possible_uhp_moves.iter().zip(uhp_moves.iter()) {
             assert!(
@@ -1836,7 +1839,9 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_some_moves() {
-        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
+        let moves = [
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
         let final_position = HexGrid::from_dsl(concat!(
             ". . . . . .\n",
             " . A . b . .\n",
@@ -1863,7 +1868,9 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_play() {
-        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
+        let moves = [
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
         let final_position = HexGrid::from_dsl(concat!(
             ". . . . . .\n",
             " . A . b . .\n",
@@ -1909,7 +1916,9 @@ mod tests {
 
     #[test]
     pub fn test_uhp_interface_undo() {
-        let moves = [r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\"];
+        let moves = [
+            r"wL", r"bP wL-", r"wA1 \wL", r"bB1 bP/", r"wQ /wA1", r"bQ bB1\",
+        ];
 
         let mut uhp = UHPInterface::new();
         uhp.command("newgame Base+PML;NotStarted;White[1]");
@@ -1958,10 +1967,7 @@ mod tests {
         let output = output.to_string();
         let black_wins_complete = black_wins_complete.to_string();
         println!("{}", &output[8..]);
-        println!(
-            "{}",
-            &format!("{}\nok\n", black_wins_complete)[8..]
-        );
+        println!("{}", &format!("{}\nok\n", black_wins_complete)[8..]);
         assert!(output[8..] == format!("{}\nok\n", black_wins_complete)[8..]);
 
         uhp.command(&format!("newgame {}", white_wins_before));

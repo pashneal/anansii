@@ -38,7 +38,7 @@ pub enum ParserError {
 /// ```
 ///
 /// - The board string specifies visually which pieces are where on the board.
-/// - The start string specifies where the (0,0) coordinate is in terms of [# eastward moves, # north-westward moves] 
+/// - The start string specifies where the (0,0) coordinate is in terms of [# eastward moves, # north-westward moves]
 /// starting from the lower left hex.
 /// - The stack specifies which pieces are in which stacks, going in "board order" that is first by row, then by column.
 ///
@@ -47,9 +47,9 @@ pub enum ParserError {
 ///
 /// ```
 /// (All rules ignore whitespace unless specifically in quotes)
-/// (Rules are defined in the following format ===> <rulename>: REGEX) 
+/// (Rules are defined in the following format ===> <rulename>: REGEX)
 /// (Rules can also have one or more integers associated with it ===> <rulename>(n): REGEX{n}
-///  This rule means that the regex is repeated n times) 
+///  This rule means that the regex is repeated n times)
 ///
 ///     whitespace: ' '
 ///     newline: '\n'
@@ -653,9 +653,6 @@ mod tests {
 
     #[test]
     pub fn test_board_location_relative_to_top_left() {
-        
-        
-
         let board_string = concat!(". l m . .\n", " 2 l m . .\n", "2 . . . .\n",);
 
         let result = Parser::parse_board(board_string);

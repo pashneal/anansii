@@ -36,25 +36,32 @@ pub fn compare_moves(
 
 /// Checks to see if the representation of the board is "localized"
 /// that is, for all locations within a certain given *distance* moves
-/// away from given *start* location without backtracking , there are no duplicate locations. 
+/// away from given *start* location without backtracking , there are no duplicate locations.
 ///
 /// Additionally, checks that the HexLocation -> H mapping is preserved under shifting.
 ///
 /// This is useful for checking the minimum safe size of a wrapping board,
 /// as wrapping boards eventually must collide with itself.
-pub fn is_localized<H : Shiftable + FromHex>(start : H, reference : HexLocation, distance : usize) -> bool {
+pub fn is_localized<H: Shiftable + FromHex>(
+    start: H,
+    reference: HexLocation,
+    distance: usize,
+) -> bool {
     if H::from_hex(reference) != start {
-        println!("error -> start: {:?}, converted reference: {:?}", start, H::from_hex(reference));
+        println!(
+            "error -> start: {:?}, converted reference: {:?}",
+            start,
+            H::from_hex(reference)
+        );
         return false;
     }
 
-
-    pub fn dfs<H : Shiftable + FromHex>(
-        visited_references : &mut HashSet<HexLocation>,
-        dfs_stack : &mut Vec<H>,
-        reference : HexLocation,
-        current : H,
-        distance : usize,
+    pub fn dfs<H: Shiftable + FromHex>(
+        visited_references: &mut HashSet<HexLocation>,
+        dfs_stack: &mut Vec<H>,
+        reference: HexLocation,
+        current: H,
+        distance: usize,
     ) -> bool {
         if visited_references.contains(&reference) {
             return true;
@@ -62,7 +69,10 @@ pub fn is_localized<H : Shiftable + FromHex>(start : H, reference : HexLocation,
         visited_references.insert(reference);
 
         if dfs_stack.contains(&current) {
-            println!("the board wraps and collides with itself, stack is : {:?}", dfs_stack);
+            println!(
+                "the board wraps and collides with itself, stack is : {:?}",
+                dfs_stack
+            );
             println!("current: {:?}, reference: {:?}", current, reference);
             return false;
         }
@@ -87,7 +97,13 @@ pub fn is_localized<H : Shiftable + FromHex>(start : H, reference : HexLocation,
 
         dfs_stack.push(current);
         for (neighbor, new_reference) in neighbors {
-            if !dfs(visited_references, dfs_stack, new_reference, neighbor, distance - 1) {
+            if !dfs(
+                visited_references,
+                dfs_stack,
+                new_reference,
+                neighbor,
+                distance - 1,
+            ) {
                 return false;
             }
         }
@@ -95,5 +111,11 @@ pub fn is_localized<H : Shiftable + FromHex>(start : H, reference : HexLocation,
         true
     }
 
-    dfs(&mut HashSet::new(), &mut Vec::new(), reference, start, distance)
+    dfs(
+        &mut HashSet::new(),
+        &mut Vec::new(),
+        reference,
+        start,
+        distance,
+    )
 }

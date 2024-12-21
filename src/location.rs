@@ -106,13 +106,13 @@ impl Shiftable for HexLocation {
 }
 
 impl FromHex for HexLocation {
-    fn from_hex(hex : HexLocation) -> HexLocation {
+    fn from_hex(hex: HexLocation) -> HexLocation {
         hex
     }
 }
 
-pub trait FromHex : PartialEq + std::fmt::Debug {
-    fn from_hex(hex : HexLocation) -> Self;
+pub trait FromHex: PartialEq + std::fmt::Debug {
+    fn from_hex(hex: HexLocation) -> Self;
 }
 
 pub trait Shiftable {

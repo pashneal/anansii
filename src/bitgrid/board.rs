@@ -1,5 +1,5 @@
-use std::ops;
 use std::fmt::{Display, Formatter};
+use std::ops;
 
 /// Represents a internal part of the Hive grid
 ///
@@ -39,9 +39,8 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct AxialBitboard(u64);
 
-pub const BITBOARD_HEIGHT : usize = 8;
-pub const BITBOARD_WIDTH : usize = 8;
-
+pub const BITBOARD_HEIGHT: usize = 8;
+pub const BITBOARD_WIDTH: usize = 8;
 
 impl AxialBitboard {
     #[inline(always)]
@@ -85,7 +84,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    pub fn peek(&self, index : usize) -> bool {
+    pub fn peek(&self, index: usize) -> bool {
         (self.0 & (1 << index)) != 0
     }
 }
@@ -227,6 +226,5 @@ mod tests {
 
         let start = AxialBitboard::from_u64(0x80);
         assert_eq!(format!("{}", start), output);
-
     }
 }

@@ -91,7 +91,9 @@ impl MoveGeneratorDebugger {
     pub fn spider_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1_usize);
-        debug_assert!(stack[0].piece_type == PieceType::Spider || stack[0].piece_type == PieceType::Mosquito);
+        debug_assert!(
+            stack[0].piece_type == PieceType::Spider || stack[0].piece_type == PieceType::Mosquito
+        );
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -281,9 +283,7 @@ impl MoveGeneratorDebugger {
         debug_assert!(height == 1);
 
         let piece_type = self.grid.top(location).unwrap().piece_type;
-        debug_assert!(
-            piece_type == PieceType::Ladybug || piece_type == PieceType::Mosquito
-        );
+        debug_assert!(piece_type == PieceType::Ladybug || piece_type == PieceType::Mosquito);
 
         if self.pinned.contains(&location) {
             return vec![];
@@ -310,21 +310,19 @@ impl MoveGeneratorDebugger {
         let neighbors = slidable_locs.iter().filter(|loc| hive.contains(loc));
 
         // Then climb across the hive
-        let climb_atop = neighbors
-            .flat_map(|loc| {
-                // The height must account for an imaginary ladybug now being on top of
-                // the existing board
-                let effective_height = ladybug_removed.peek(*loc).len() + 1;
-                ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
-            });
+        let climb_atop = neighbors.flat_map(|loc| {
+            // The height must account for an imaginary ladybug now being on top of
+            // the existing board
+            let effective_height = ladybug_removed.peek(*loc).len() + 1;
+            ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
+        });
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
         // Then climb off the hive
-        let climb_down = climb_atop
-            .flat_map(|loc| {
-                let height = ladybug_removed.peek(loc).len() + 1;
-                ladybug_removed.slidable_locations_3d_height(loc, height)
-            });
+        let climb_down = climb_atop.flat_map(|loc| {
+            let height = ladybug_removed.peek(loc).len() + 1;
+            ladybug_removed.slidable_locations_3d_height(loc, height)
+        });
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
         let unique_final_moves = climb_down.collect::<HashSet<HexLocation>>();
@@ -422,8 +420,6 @@ impl MoveGeneratorDebugger {
                 empty_neighbors.push(candidate_loc);
             }
         }
-
-        
 
         itertools::iproduct!(empty_neighbors, swappable)
             .map(|(destination, source)| {
@@ -534,7 +530,10 @@ impl MoveGeneratorDebugger {
         let mut result = Vec::new();
 
         for piece in PieceType::all(self.game_type) {
-            let num_placed = friendly_pieces.iter().filter(|p| p.piece_type == piece).count();
+            let num_placed = friendly_pieces
+                .iter()
+                .filter(|p| p.piece_type == piece)
+                .count();
             let (_, total) = PIECE_COUNTS
                 .iter()
                 .find(|(piece_type, _)| *piece_type == piece)
@@ -619,17 +618,14 @@ impl MoveGeneratorDebugger {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::MoveGeneratorDebugger;
     use super::*;
     use crate::testing_utils::compare_moves;
-    use super::MoveGeneratorDebugger;
 
     #[test]
     pub fn test_spider_gate() {
-        
-        
         // Testing with the "gate" structure that disallows free movement
         // between adjacent locations
         let grid = HexGrid::from_dsl(concat!(
@@ -641,7 +637,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         ));
-        let legal_moves : Vec<_> = vec![];
+        let legal_moves: Vec<_> = vec![];
 
         let generator = MoveGeneratorDebugger::from_default_grid(&grid);
         let (spider, _) = grid

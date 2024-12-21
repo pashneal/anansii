@@ -209,8 +209,8 @@ pub trait Position {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::GameDebugger;
+    use super::*;
 
     #[test]
     pub fn pinned_pieces() {}

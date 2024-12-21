@@ -227,7 +227,7 @@ impl Parser {
                         return Err(RowError("Invalid piece placement".to_string()));
                     }
 
-                    let piece_type = PieceType::try_from_char(&input);
+                    let piece_type = input.try_into();
                     if piece_type.is_err() {
                         return Err(RowError("Invalid piece type found".to_string()));
                     }
@@ -244,7 +244,7 @@ impl Parser {
                         return Err(RowError("Invalid piece placement".to_string()));
                     }
 
-                    let piece_type = PieceType::try_from_char(&input);
+                    let piece_type = input.try_into();
                     if piece_type.is_err() {
                         return Err(RowError("Invalid piece type found".to_string()));
                     }
@@ -427,13 +427,14 @@ impl Parser {
 
             let mut stack = [None; 7];
             for (i, piece) in captures[2].split_whitespace().enumerate() {
-                let piece_type = PieceType::try_from_char(&piece.chars().next().unwrap());
+                let piece_type = piece.chars().next().unwrap().try_into();
                 if piece_type.is_err() {
                     return Err(ParserError::StackParseError(format!(
                         "Invalid piece type: {}",
                         piece
                     )));
                 }
+                let piece_type = piece_type.unwrap();
 
                 let color = if piece.chars().nth(0).unwrap().is_lowercase() {
                     PieceColor::Black
@@ -441,7 +442,7 @@ impl Parser {
                     PieceColor::White
                 };
 
-                let piece = Piece::new(piece_type.unwrap(), color);
+                let piece = Piece::new(piece_type, color);
                 stack[i] = Some(piece)
             }
 

@@ -1,6 +1,14 @@
 use crate::hex_grid::*;
 use std::collections::HashSet;
 
+/// Compares the moves of a piece at a start location to the expected moves:
+///
+/// start_location - location of the piece to move
+/// expected - a "selector" string of destiation locations that are valid moves, see HexGrid::selector
+///
+/// original_position - the original game position that contians this piece
+/// test_positions - a list of game positions that resulted from the move generator being applied.
+/// These will be compared to the expected positions from the selector
 pub fn compare_moves(
     start_location: HexLocation,
     expected: &str,

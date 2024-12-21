@@ -21,21 +21,17 @@ type StackIds = Vec<Option<u8>>;
 /// Responsible for annotation of moves in UHP format
 /// given a board history fed into the annotator state by state
 ///
-/// Invariant : The unambigious Annotator assumes that Hive pieces can only be placed or moved
+/// Invariant : The Annotator assumes that Hive pieces can only be placed or moved
 /// but never removed from the board. Furthermore, it assumes that piece movements observe the
 /// One Hive Rule. If this is the case, all legal moves will be annotated correctly as
 /// UHP MoveStrings.
 ///
-/// Unambiguous changes to the Annotator from state to state are as follows:
+/// valid changes to the Annotator from state to state are as follows:
 ///
 /// - pass : no additions or removals made from the board
 /// - placement : a single piece is added to top of the board which did not previously exist
 /// - movement : a single piece is moved from the top of one location to top of another.
 /// The resulting board has greater than 1 piece on the board's lowest level
-///
-/// If the state becomes ambiguous, some moves may not have correct unique identifiers
-/// (such as bG1, bG2, etc) and the annotator may instead return moves with question marks
-/// (bG?, bG?, etc) to indicate that the piece's identity is ambiguous.
 #[derive(Debug, Clone)]
 pub struct Annotator {
     /// An array of locations that we can currently identify
@@ -47,8 +43,6 @@ pub struct Annotator {
     piece_counts: HashMap<Piece, u8>,
     /// The previous state of the grid
     prev_grid: HexGrid,
-    /// Whether each piece can be uniquely identified
-    ambiguous: bool,
     /// Move strings (not necessarily UHP-compatible)
     moves: Vec<String>,
 }
@@ -75,7 +69,6 @@ impl Annotator {
             ids: HashMap::new(),
             piece_counts: HashMap::new(),
             prev_grid: HexGrid::new(),
-            ambiguous: false,
             moves: Vec::new(),
         }
     }
@@ -229,10 +222,6 @@ impl Annotator {
     /// Given a piece that was removed and a piece that was added,
     /// annotate the move in UHP format and return the new state of the annotator
     fn piece_moved(&self, old: &Diff, new: &Diff, grid: &HexGrid) -> Annotator {
-        if self.ambiguous {
-            todo!()
-        }
-
         let Diff::Removed {
             loc: old_loc,
             piece: _,
@@ -254,7 +243,7 @@ impl Annotator {
         let mut new_ids = self.ids.clone();
         let ids = new_ids
             .get_mut(old_loc)
-            .expect("Non ambiguous state should identify all pieces");
+            .expect("valid state should identify all pieces");
         // Should be the top of the stack
         debug_assert!(ids.len() == old_height + 1);
 
@@ -278,7 +267,6 @@ impl Annotator {
             ids: new_ids,
             piece_counts: self.piece_counts.clone(),
             prev_grid: grid.clone(),
-            ambiguous: false,
             moves,
         }
     }
@@ -286,10 +274,6 @@ impl Annotator {
     /// Given a piece that was placed, annotate the move in UHP format
     /// and return the new state of the annotator
     fn piece_placed(&self, position: &Diff, grid: &HexGrid) -> Annotator {
-        if self.ambiguous {
-            todo!()
-        }
-
         let mut new_piece_counts = self.piece_counts.clone();
         let Diff::Added { loc, piece, height } = position else {
             panic!("Expected an added piece in piece_placed()");
@@ -321,7 +305,6 @@ impl Annotator {
             ids: new_ids,
             piece_counts: new_piece_counts,
             prev_grid: grid.clone(),
-            ambiguous: false,
             moves,
         }
     }
@@ -350,7 +333,6 @@ impl Annotator {
                 ids: self.ids.clone(),
                 piece_counts: self.piece_counts.clone(),
                 prev_grid: current_grid.clone(),
-                ambiguous: false,
                 moves,
             };
 
@@ -378,26 +360,21 @@ impl Annotator {
                 (Diff::Removed { .. }, Diff::Removed { .. }) => {
                     return Err(UHPError::InvariantError)
                 }
-                _ => todo!("this should return an ambigous state instead of an error"),
+                _ => Err(UHPError::IllegalMove)?,
             };
 
             return Ok(self.piece_moved(removed, added, current_grid));
         }
 
-        // If we have more than 2 diffs, we can't infer the state, but can return an
-        // ambiguous state if the diffs are purely additions
-
+        // If we have more than 2 diffs, we can't infer the state
         println!("Unhappy path diffs: {:?}", diffs);
         println!("Unhappy position state: \n{}", current_grid.to_dsl());
         println!("Unhappy previous state: \n{}", self.prev_grid.to_dsl());
-        todo!("ambiguous state with only additions (thereby resulted from legal state transitions")
+        Err(UHPError::InvariantError)
     }
 
     /// Returns the location last move made by the most recent player if any
     pub fn last_move(&self) -> Option<HexLocation> {
-        if self.ambiguous {
-            return None;
-        }
         if self.moves.is_empty() {
             return None;
         }
@@ -414,7 +391,7 @@ impl Annotator {
         Some(location)
     }
 
-    /// Assuming an unambiguous state, find the piece, locataion and height
+    /// Assuming an valid annotator, find the piece, locataion and height
     /// uniquely described by the given piece string. examples "wQ1", "bM1", etc
     fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
         for (loc, stack) in &self.ids {
@@ -439,7 +416,6 @@ impl Annotator {
     ///
     /// Returns the resulting state of the annotator after the move is applied
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
-        debug_assert!(!self.ambiguous);
         debug_assert!(move_string.trim() == move_string);
 
         if move_string == "pass" {

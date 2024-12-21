@@ -65,11 +65,11 @@ impl PieceType {
         }
     }
 
-    pub fn try_from_char(c: &char) -> Result<PieceType> {
+    fn try_from_char(c: &char) -> Result<PieceType> {
         let string = c.to_string();
         PieceType::try_from_str(&string)
     }
-    pub fn try_from_str(string: &str) -> Result<PieceType> {
+    fn try_from_str(string: &str) -> Result<PieceType> {
         use PieceType::*;
         match string.to_uppercase().as_str() {
             "Q" => Ok(Queen),
@@ -84,6 +84,21 @@ impl PieceType {
         }
     }
 }
+
+impl TryFrom<char> for PieceType {
+    type Error = HexGridError;
+    fn try_from(c: char) -> Result<PieceType> {
+        PieceType::try_from_char(&c)
+    }
+}
+
+impl TryFrom<&str> for PieceType {
+    type Error = HexGridError;
+    fn try_from(s: &str) -> Result<PieceType> {
+        PieceType::try_from_str(s)
+    }
+}
+
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PieceColor {

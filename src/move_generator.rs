@@ -372,7 +372,7 @@ impl MoveGeneratorDebugger {
     ///
     /// - a piece at the specified *disallowed* location
     /// - pieces in a stack of height > 1
-    /// - pieces whose movement would violate the One Hive Rule
+    /// - pieces whose absence would violate the One Hive Rule
     /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
     pub fn pillbug_swaps(
         &self,
@@ -437,7 +437,7 @@ impl MoveGeneratorDebugger {
     ///  2) not adjacent to a piece of the opposite color
     ///  3) unoccupied
     ///
-    /// If the board has no pieces, placement occurs at location HexLocation(0,0)
+    /// If the board has no pieces, placement occurs at the center HexLocation
     /// If the board has one piece, placement only needs follow rule 1
     pub fn placements(&self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
@@ -460,7 +460,7 @@ impl MoveGeneratorDebugger {
         }
 
         if self.grid.is_empty() {
-            placements.insert(HexLocation { x: 0, y: 0 });
+            placements.insert(HexLocation::center());
         }
 
         placements.into_iter().collect()
@@ -546,7 +546,8 @@ impl MoveGeneratorDebugger {
         result
     }
 
-    /// Returns each move translated to a new position for a given player's color.
+    /// Returns unique legal positions reachable from the current board state
+    /// given that it is the turn of the specified color.
     pub fn all_moves_for(&self, color: PieceColor) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
@@ -571,7 +572,7 @@ impl MoveGeneratorDebugger {
             }
         }
 
-        // Calculate placements
+        // 1. Calculate placements
         itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
             |(piece, placement)| {
                 let placement_disallowed =
@@ -585,7 +586,7 @@ impl MoveGeneratorDebugger {
             },
         );
 
-        // Calculate moves
+        // Then 2. Calculate moves
         for (stack, location) in all_pieces {
             let top = stack.last().unwrap();
             if top.color != color {

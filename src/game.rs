@@ -13,7 +13,7 @@ pub enum GameDebuggerError {
 
 pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 
-/// Represents a game of Hive with only legal moves taken and positions resulted
+/// Represents a game of Hive with only legal moves taken and positions resulting
 /// from legal moves.
 ///
 /// It is intended that game positions, moves, locations and other game state
@@ -25,9 +25,6 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 /// from the first version of this project. It leaves optimized code to more easily
 /// be iterated on.
 pub struct GameDebugger {
-    /// All Hive positions in order arrived through the game but
-    /// through the lens of the Annotator which translates
-    /// moves to human-readable formats
     annotations: Vec<Annotator>,
     generator: MoveGeneratorDebugger,
     game_type: GameType,
@@ -42,12 +39,17 @@ pub enum GameResult {
 
 impl GameDebugger {
     /// Give a list of legal UHP moves starting from the empty board,
-    /// create and return a GameDebugger with the moves accounted for.
+    /// create and return a GameDebugger with positions after the moves are
+    /// played on the board.
+    ///
     /// assumes Base+MLP
     pub fn from_moves(moves: &[String]) -> Result<Self> {
         GameDebugger::from_moves_custom(moves, GameType::MLP)
     }
 
+    /// Give a list of legal UHP moves starting from the empty board and a game type,
+    /// create and return a GameDebugger with positions after the moves are
+    /// played on the board.
     pub fn from_moves_custom(moves: &[String], game_type: GameType) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
@@ -64,7 +66,7 @@ impl GameDebugger {
     }
 
     /// Given all positions arrived at within the game create
-    /// and return a GameDebugger with the positions.
+    /// and return a GameDebugger with the positions accounted for.
     /// assumes Base+MLP
     pub fn from_positions<P: Position>(positions: &Vec<P>) -> Result<Self> {
         GameDebugger::from_positions_custom(positions, GameType::MLP)
@@ -93,6 +95,7 @@ impl GameDebugger {
         Ok(game)
     }
 
+    /// Undoes the last move made in the game if possible
     pub fn undo_move(&mut self) -> Result<()> {
         if self.annotations.len() == 1 {
             return Err(GameDebuggerError::AnnotationError(UHPError::UndoError));
@@ -124,8 +127,8 @@ impl GameDebugger {
         }
     }
 
-    /// Adds a new position to the game, assuming it arrived from a legal move
-    /// from the last position stored in the game.
+    /// Adds a new position to the game, assuming it arrived after a legal move
+    /// made on the last position stored in this GameDebugger
     pub fn append_position<P: Position>(&mut self, position: &P) -> Result<()> {
         let grid = position.to_hex_grid();
 
@@ -148,6 +151,8 @@ impl GameDebugger {
         Ok(())
     }
 
+    /// Returns a set of legal positions that can be arrived at 
+    /// from the current position
     pub fn legal_positions(&self) -> HashSet<HexGrid> {
         // If the game is over, no legal moves
         match self.game_result() {

@@ -17,8 +17,6 @@ pub const GRID_SIZE: usize = GRID_WIDTH*GRID_HEIGHT;
 /// Only beetles and mosquitos can be at height > 1 in this representation
 /// as opposed to HexGrid which is more relaxed in its constraints.
 ///
-/// TODO: may have to refactor tests
-///
 /// See the documentation of the bit grid's AxialBitboard to
 /// understand how the grid is represented at the bit level
 ///
@@ -405,10 +403,8 @@ impl TryInto<HexGrid> for BasicBitGrid{
             }
         }
 
-        // TODO: we assume that if there *is* a piece on the board
-        // at least one must be within the bounds of the hex grid, check if 
-        // this is a valid assumption down the line
         if start.is_none() {
+            debug_assert!(self.pieces().is_empty(), "Somehow pieces exist outside the bounds of the hex grid (-{}/+{})", HEX_GRID_SIZE/2, HEX_GRID_SIZE/2);
             return Ok(HexGrid::new()) 
         }
 
@@ -477,10 +473,8 @@ impl <'a> TryInto<HexGrid> for &'a BasicBitGrid{
             }
         }
 
-        // TODO: we assume that if there *is* a piece on the board
-        // at least one must be within the bounds of the hex grid, check if 
-        // this is a valid assumption down the line
         if start.is_none() {
+            debug_assert!(self.pieces().is_empty(), "Somehow pieces exist outside the bounds of the hex grid (-{}/+{})", HEX_GRID_SIZE/2, HEX_GRID_SIZE/2);
             return Ok(HexGrid::new()) 
         }
 
@@ -550,9 +544,7 @@ impl Display for BasicBitGrid {
         write!(f, "{}", hex_grid.to_dsl())?;
         Ok(())
     }
-    
 }
-
 
 
 #[cfg(test)]

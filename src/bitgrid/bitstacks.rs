@@ -15,15 +15,6 @@ pub const PRESENCE_MASK: u32 = 1 << 17;
 /// pieces, their height, color all in a few bytes!
 ///
 /// Supports operations for BasicBitGrids.
-///
-/// TODO: can we do better for more complicated structures
-/// if we don't have to worry about board num,
-/// height, presence, or piece (for example in games without mosquitos)
-/// we could even shave a bit off locations if we assume things can't be
-/// further than 32 from any other? more expensive computation though
-///
-/// Another idea is to assign holes to white mosquito, black beetle etc,
-///
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
@@ -103,8 +94,6 @@ impl From<PieceColor> for StackColor {
     }
 }
 
-// TODO: Perhaps experiment with smaller representation of
-// location
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct BasicBitLocation {
     pub x: u32,
@@ -120,11 +109,9 @@ impl From<BitGridLocation> for BasicBitLocation {
             board_num: location.board_index as u32,
         }
     }
-
 }
 
 impl BasicBitStackEntry {
-    // TODO: check how how this gets translated to assembly
     pub fn new(
         piece: StackPiece,
         height: u8,
@@ -181,7 +168,6 @@ impl BasicBitStack {
         self.stack[index]
     }
 
-    /// TODO: transmute shenanigans
     pub fn find_one(&self, location: BasicBitLocation) -> Option<usize> {
         for index in self.bitset.into_iter() {
             let entry = self.stack[index];

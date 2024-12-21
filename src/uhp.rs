@@ -454,7 +454,6 @@ impl Annotator {
             return self.next_state(&self.prev_grid);
         }
 
-        // TODO: cleanup logic - this function is a little long
         let mut parts = move_string.split_whitespace();
 
         let piece_string = parts.next().expect("Expected a piece");
@@ -470,12 +469,12 @@ impl Annotator {
 
         let length = anchor_piece_string.len();
 
-        // direction either at front, end or neither
         let first_last = (
             anchor_piece_string.chars().next().unwrap(),
             anchor_piece_string.chars().last().unwrap(),
         );
 
+        // direction either at front, end or neither
         let (direction, anchor_piece_string) = match first_last {
             ('-', _) => (Some(Direction::W), &anchor_piece_string[1..]),
             (_, '-') => (Some(Direction::E), &anchor_piece_string[..length - 1]),
@@ -495,6 +494,7 @@ impl Annotator {
 
         let mut new_grid = self.prev_grid.clone();
 
+        // Account for either a existing piece being moved or one being placed 
         match self.find(piece_string) {
             Some((piece, old_loc, height)) => {
                 new_grid.remove(old_loc);
@@ -507,7 +507,9 @@ impl Annotator {
         }
 
         let result = self.next_state(&new_grid);
-        // Replace last move with verbatim move string
+
+        // Replace last move with verbatim move string so annotator
+        // uhp move strings are predicable given string input
         result.map(|annotator| {
             let mut moves = annotator.moves.clone();
             moves.pop();
@@ -688,7 +690,6 @@ impl UHPInterface {
 
         if !input.contains(";") {
             self.set_game_type(&input[8..])?;
-            // TODO: do other things?
         } else {
             let rest = input[8..].to_string();
             let mut delimited = rest.split(";");
@@ -1452,7 +1453,6 @@ mod tests {
 
     #[test]
     pub fn test_annotator_climb_across() {
-        //TODO: climbing across distinct stacks
         let mut annotator = Annotator::new();
         let positions = vec![
             HexGrid::from_dsl(concat!(
@@ -2016,8 +2016,9 @@ mod tests {
         assert!(output[7..] == format!("{}\nok\n", white_wins)[7..]);
     }
 
+    #[ignore = "be sure to manually test using nokamute uhp test suite"]
     #[test]
     pub fn test_valid_moves() {
-        //TODO
+        //Note: we use nokamute for testing!
     }
 }

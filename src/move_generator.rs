@@ -276,22 +276,23 @@ impl MoveGeneratorDebugger {
     /// Returns a list of all possible moves for a beetle at a given location
     /// if the beetle is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    ///
-    /// TODO: clean up, this is a little jank
     pub fn ladybug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();
         debug_assert!(height == 1);
+
+        let piece_type = self.grid.top(location).unwrap().piece_type;
         debug_assert!(
-            self.grid.top(location).unwrap().piece_type == PieceType::Ladybug
-                || self.grid.top(location).unwrap().piece_type == PieceType::Mosquito
+            piece_type == PieceType::Ladybug || piece_type == PieceType::Mosquito
         );
 
         if self.pinned.contains(&location) {
             return vec![];
         }
 
+        // The grid without a "ladybug" on it
         let mut ladybug_removed = self.grid.clone();
         let ladybug = ladybug_removed.remove(location).unwrap();
+
         let mut outside = ladybug_removed.outside();
         outside.remove(&location);
 
@@ -302,18 +303,24 @@ impl MoveGeneratorDebugger {
             .collect::<HashSet<HexLocation>>();
 
         let mut result = vec![];
-        // Two moves on the hive
-        let neighbors = ladybug_removed.slidable_locations_3d_height(location, 1);
-        let neighbors = neighbors.iter().filter(|loc| hive.contains(loc));
+
+        // First move unto the hive
+        let height = 1;
+        let slidable_locs = ladybug_removed.slidable_locations_3d_height(location, height);
+        let neighbors = slidable_locs.iter().filter(|loc| hive.contains(loc));
+
+        // Then climb across the hive
         let climb_atop = neighbors
             .map(|loc| {
-                let height = ladybug_removed.peek(*loc).len() + 1;
-                ladybug_removed.slidable_locations_3d_height(*loc, height)
+                // The height must account for an imaginary ladybug now being on top of
+                // the existing board
+                let effective_height = ladybug_removed.peek(*loc).len() + 1;
+                ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
             })
             .flatten();
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
-        // One move off it
+        // Then climb off the hive
         let climb_down = climb_atop
             .map(|loc| {
                 let height = ladybug_removed.peek(loc).len() + 1;
@@ -322,9 +329,9 @@ impl MoveGeneratorDebugger {
             .flatten();
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
-        let final_moves = climb_down.collect::<HashSet<HexLocation>>();
+        let unique_final_moves = climb_down.collect::<HashSet<HexLocation>>();
 
-        for final_move in final_moves {
+        for final_move in unique_final_moves {
             let mut new_grid = ladybug_removed.clone();
             new_grid.add(ladybug, final_move);
             result.push(new_grid);
@@ -520,7 +527,6 @@ impl MoveGeneratorDebugger {
         grids.into_iter().collect()
     }
 
-    /// TODO: refactor cause this kinda ugly
     fn pieces_in_hand(&self, color: PieceColor) -> Vec<Piece> {
         let all_pieces = self.grid.pieces();
         let friendly_pieces = all_pieces
@@ -533,12 +539,11 @@ impl MoveGeneratorDebugger {
 
         for piece in PieceType::all(self.game_type) {
             let num_placed = friendly_pieces.iter().filter(|p| p.piece_type == piece).count();
-            let total = PIECE_COUNTS
+            let (_, total) = PIECE_COUNTS
                 .iter()
                 .find(|(piece_type, _)| *piece_type == piece)
-                .unwrap()
-                .1;
-            if num_placed < total {
+                .unwrap();
+            if num_placed < *total {
                 result.push(Piece::new(piece, color));
             }
         }
@@ -1000,9 +1005,6 @@ mod tests {
 
     #[test]
     pub fn test_ant_moves() {
-        //TODO: there may be some weird edge cases with
-        //the one hive move that necessitates it checking if
-        //it is still in contact with its original neighbors?
         use PieceColor::*;
         use PieceType::*;
         // Test with doors, gates, and typical moves
@@ -1137,26 +1139,51 @@ mod tests {
         use PieceType::*;
 
         // slide unblocked
-        // climb up blocked
+        // slide blocked
         // climb up unblocked
         // climb down unblocked
         let grid = HexGrid::from_dsl(concat!(
             ". . . . . . .\n",
-            " . . . 5 a . .\n",
-            ". . . 4 2 a .\n",
-            " . . . 5 . . .\n",
+            " . . . 3 a . .\n",
+            ". . . a 2 a .\n",
+            " . . . 3 . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
-            "5 - [a b b b b]\n",
-            "4 - [a b b b]\n",
+            "3 - [a b b]\n",
             "2 - [a B]\n",
-            "5 - [a b b b b]\n"
+            "3 - [a b b]\n"
         ));
         let selector = concat!(
             ". . . . . . .\n",
             " . . . * * . .\n",
-            ". . . 4 2 * .\n",
+            ". . . a 2 * .\n",
             " . . . * * . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        );
+
+        let generator = MoveGeneratorDebugger::from_default_grid(&grid);
+        let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
+        let beetle_moves = generator.beetle_moves(beetle);
+        compare_moves(beetle, selector, &grid, &beetle_moves);
+
+        // climb up blocked
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 3 a . .\n",
+            ". . . 2 B a .\n",
+            " . . . 4 . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "3 - [a b b]\n",
+            "2 - [a b]\n",
+            "4 - [a b b b]\n"
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . . * * . .\n",
+            ". . . 2 B * .\n",
+            " . . . * . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
         );
@@ -1172,13 +1199,13 @@ mod tests {
             ". . . . . . .\n",
             " . . . 2 . . .\n",
             ". . . a 2 2 .\n",
-            " . . . 5 a . .\n",
+            " . . . 4 a . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a B]\n",
             "2 - [a b]\n",
-            "5 - [a b b b b]\n"
+            "4 - [a b b b]\n"
         ));
         let selector = concat!(
             ". . . . . . .\n",
@@ -1290,24 +1317,24 @@ mod tests {
         // climb down unblocked
         let grid = HexGrid::from_dsl(concat!(
             ". . . . . a .\n",
-            " . . . 5 a . .\n",
-            ". . . . L 4 .\n",
-            " . . . 5 a . .\n",
+            " . . . 2 a . .\n",
+            ". . . . L 2 .\n",
+            " . . . 2 a . .\n",
             ". . . . a 2 .\n",
             " . . . . . a .\n\n",
             "start - [0 0]\n\n",
-            "5 - [a b b b b]\n",
-            "4 - [a b b b]\n",
-            "5 - [a b b b b]\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
             "2 - [a b]\n"
         ));
         let selector = concat!(
-            ". . . . * a .\n",
-            " . . . 5 a * .\n",
-            ". . . . L 4 .\n",
-            " . . . 5 a . .\n",
-            ". . . * a 2 .\n",
-            " . . . * * a .\n\n",
+            ". . . . * . .\n",
+            " . . . . . * .\n",
+            ". . . . L . .\n",
+            " . . . . . . .\n",
+            ". . . * . . .\n",
+            " . . . * * . .\n\n",
             "start - [0 0]\n\n",
         );
 

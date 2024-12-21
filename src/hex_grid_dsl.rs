@@ -37,6 +37,43 @@ pub enum ParserError {
 ///
 /// ```
 ///
+/// - The board string specifies visually which pieces are where on the board.
+/// - The start string specifies where the (0,0) coordinate is in terms of [# eastward moves, # north-westward moves] 
+/// starting from the lower left hex.
+/// - The stack specifies which pieces are in which stacks, going in "board order" that is first by row, then by column.
+///
+///
+/// More concretely, the syntax for a valid_board is as follows:
+///
+/// ```
+/// (All rules ignore whitespace unless specifically in quotes)
+/// (Rules are defined in the following format ===> <rulename>: REGEX) 
+/// (Rules can also have one or more integers associated with it ===> <rulename>(n): REGEX{n}
+///  This rule means that the regex is repeated n times) 
+///
+///     whitespace: ' '
+///     newline: '\n'
+///     piece: ( [a-z] | [A-Z] )
+///     stack: ( [2-7] )
+///     integer: '-'?[0-9]+
+///     empty: '.'
+///
+///     hex: <empty> | <stack> | <piece>
+///     aligned_row(n): (<hex> <whitespace>){n} <newline>
+///     unaligned_row(n): <whitespace> (<hex> <whitespace>){n} <newline>
+///
+///     board(n): (
+///         <aligned_row(n)> (<unaligned_row(n)> <aligned_row(n)>)* <unaligned_row(n)>? <newline> |
+///         <unaligned_row(n)> (<aligned_row(n)> <unaligned_row(n)>)* <aligned_row(n)>? <newline>
+///     )
+///
+///     start_desc: "start" "-" "[" <integer> <whitespace> <integer> "]" <newline> <newline>
+///     stack_desc(n): n "-" "[" (<piece> <whitespace>){n} "]" <newline>
+///
+///     valid_board: <board> <start_desc> (<stack_desc>)*
+///
+/// ```
+///
 /// The above string can also be used not to create a HexGrid, but instead to
 /// produce locations at certain marked spots in the grid with the following format:
 ///
@@ -54,8 +91,10 @@ pub enum ParserError {
 /// Where the "*" characters will be interpreted as HexLocations relative to the
 /// start location in the top left corner.
 ///
-/// TODO: concrete specs for DSL, for now it's vibes
-///
+/// In which case the syntax above is augmented to include the following:
+/// ```
+/// hex: <empty> | <stack> | <piece> | "*"
+/// ```
 pub struct Parser {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

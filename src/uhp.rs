@@ -30,8 +30,7 @@ type StackIds = Vec<Option<u8>>;
 ///
 /// - pass : no additions or removals made from the board
 /// - placement : a single piece is added to top of the board which did not previously exist
-/// - movement : a single piece is moved from the top of one location to top of another.
-/// The resulting board has greater than 1 piece on the board's lowest level
+/// - movement : a single piece is moved from the top of one location to top of another. The resulting board must have greater than 1 piece on the board's lowest level
 #[derive(Debug, Clone)]
 pub struct Annotator {
     /// An array of locations that we can currently identify
@@ -74,9 +73,7 @@ impl Annotator {
     }
 
     /// Computes differences between the last state fed into this Annotator
-    /// via next_state() and the given current_grid. Assumes
-    /// any removal or addition at a height necessarily
-    /// constitutes removal or addition of heights above that height
+    /// via next_state() and the given current_grid.
     fn get_differences(&self, current_grid: &HexGrid) -> Vec<Diff> {
         let mut diffs = Vec::new();
 
@@ -138,21 +135,21 @@ impl Annotator {
     }
 
     /// Computes the second part of a UHP MoveString, the anchor.
-    /// location - the piece's new location,
+    /// destination - the piece's new location after moving
     /// hex_grid - the newest state of the hexgrid
     /// ids - mappings from the newest state of the board to unique identifiers for each piece
     fn anchor_reference(
         hex_grid: &HexGrid,
-        location: HexLocation,
+        destination: HexLocation,
         ids: &HashMap<HexLocation, StackIds>,
     ) -> String {
-        let stack = hex_grid.peek(location);
+        let stack = hex_grid.peek(destination);
         debug_assert!(!stack.is_empty(), "There should be a piece here!");
         if stack.len() > 1 {
             // If the piece climbs atop the hive, use the piece below it as the anchor
             let piece_below = stack[stack.len() - 2];
             let id_below = ids
-                .get(&location)
+                .get(&destination)
                 .unwrap()
                 .get(stack.len() - 2)
                 .unwrap()
@@ -160,12 +157,12 @@ impl Annotator {
             return piece_below.to_uhp(id_below);
         }
 
-        let nw = location.apply(Direction::NW);
-        let sw = location.apply(Direction::SW);
-        let ne = location.apply(Direction::NE);
-        let se = location.apply(Direction::SE);
-        let e = location.apply(Direction::E);
-        let w = location.apply(Direction::W);
+        let nw = destination.apply(Direction::NW);
+        let sw = destination.apply(Direction::SW);
+        let ne = destination.apply(Direction::NE);
+        let se = destination.apply(Direction::SE);
+        let e = destination.apply(Direction::E);
+        let w = destination.apply(Direction::W);
 
         fn relative_direction(direction: Direction, uhp: &str) -> String {
             match direction {
@@ -219,14 +216,15 @@ impl Annotator {
         };
     }
 
-    /// Given a piece that was removed and a piece that was added,
-    /// annotate the move in UHP format and return the new state of the annotator
-    fn piece_moved(&self, old: &Diff, new: &Diff, grid: &HexGrid) -> Annotator {
+    /// Given a pair of differences representing a piece being removed and added
+    /// to a destination on the resulting *grid*, return a new annotator
+    /// that accounts for this move.
+    fn piece_moved(&self, removed: &Diff, added: &Diff, grid: &HexGrid) -> Annotator {
         let Diff::Removed {
             loc: old_loc,
             piece: _,
             height: old_height,
-        } = old
+        } = removed
         else {
             panic!("Expected a removed piece");
         };
@@ -235,7 +233,7 @@ impl Annotator {
             loc: new_loc,
             piece: new_piece,
             height: new_height,
-        } = new
+        } = added
         else {
             panic!("Expected an added piece");
         };
@@ -271,8 +269,8 @@ impl Annotator {
         }
     }
 
-    /// Given a piece that was placed, annotate the move in UHP format
-    /// and return the new state of the annotator
+    /// Given a Diff representing a single piece that was placed from a player's
+    /// hand, and return the new state of the annotator after this move was made
     fn piece_placed(&self, position: &Diff, grid: &HexGrid) -> Annotator {
         let mut new_piece_counts = self.piece_counts.clone();
         let Diff::Added { loc, piece, height } = position else {
@@ -373,7 +371,7 @@ impl Annotator {
         Err(UHPError::InvariantError)
     }
 
-    /// Returns the location last move made by the most recent player if any
+    /// Returns the destination location of the last move recorded by the annotator.
     pub fn last_move(&self) -> Option<HexLocation> {
         if self.moves.is_empty() {
             return None;
@@ -391,8 +389,10 @@ impl Annotator {
         Some(location)
     }
 
-    /// Assuming an valid annotator, find the piece, locataion and height
-    /// uniquely described by the given piece string. examples "wQ1", "bM1", etc
+    /// Assuming an valid annotator, find the piece, location and height
+    /// uniquely described by the given piece string. 
+    ///
+    /// examples of piece strings are "wQ1", "bM1", etc
     fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
         for (loc, stack) in &self.ids {
             for (height, piece_id) in stack.iter().enumerate() {
@@ -407,14 +407,15 @@ impl Annotator {
         None
     }
 
-    /// Add a new state to the annotator, representing a move string expect with identifiers
-    /// appended to all pieces. (e.g. wQ1, bM1, etc). Preserves the move's text verbatim to
-    /// be accessed later by the standard_move_strings() or uhp_move_strings() functions.
+    /// Add a new state to the annotator, representing a "standard" move string with unique
+    /// identifiers appended to all pieces. (e.g. wQ1, bM1, etc). 
     ///
-    /// The move must represent a legal Hive move from the last state of the board
-    /// to the current state.
+    /// Preserves the input move's text verbatim to be accessed later by the 
+    /// standard_move_strings() or uhp_move_strings() functions.
     ///
-    /// Returns the resulting state of the annotator after the move is applied
+    /// The move must represent a legal Hive move from the last state of the annotator.
+    ///
+    /// Returns the resulting state of the annotator after the move is applied.
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
         debug_assert!(move_string.trim() == move_string);
 
@@ -505,7 +506,7 @@ impl Annotator {
         self.moves.clone()
     }
 
-    /// Convert a legal standard hive move to a UHP-compatible move string
+    /// Convert a legal "standard" hive move to a UHP-compatible move string
     /// without unique identifiers appended to relevant pieces
     fn standard_to_uhp(move_string: &str) -> String {
         move_string
@@ -515,7 +516,7 @@ impl Annotator {
             .replace("Q1", "Q")
     }
 
-    /// Convert a legal UHP-compatible move string to standard hive move string
+    /// Convert a legal UHP-compatible move string to "standard" hive move string
     /// with unique identifiers appended to all the pieces
     fn uhp_to_standard(move_string: &str) -> String {
         move_string

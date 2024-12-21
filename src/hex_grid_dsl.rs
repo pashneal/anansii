@@ -18,7 +18,7 @@ pub enum ParserError {
     StackParseError(String),
 }
 
-/// Domain specific language interpreter for HexGrids
+/// Domain Specific language interpreter for HexGrids
 ///
 /// The idea is to take a string of a format such as the following, and to
 /// interpret it deterministically as a HexGrid:
@@ -37,13 +37,16 @@ pub enum ParserError {
 ///
 /// ```
 ///
+/// Domain Specific Language (DSL) Specification:
+///
 /// - The board string specifies visually which pieces are where on the board.
-/// - The start string specifies where the (0,0) coordinate is in terms of [# eastward moves, # north-westward moves]
-/// starting from the lower left hex.
-/// - The stack specifies which pieces are in which stacks, going in "board order" that is first by row, then by column.
+/// - The start string specifies where the [0,0] coordinate is in terms of 
+///   [number of eastward moves, number of north-westward moves] starting from the lower left hex.
+/// - The stack specifies which pieces are in which stacks, listed in "board order". 
+///   That is, first by row, top to bottom, then by column, left to right. 
 ///
 ///
-/// More concretely, the syntax for a valid_board is as follows:
+/// More concretely, the syntax for a valid_dsl is as follows:
 ///
 /// ```
 /// (All rules ignore whitespace unless specifically in quotes)
@@ -70,7 +73,7 @@ pub enum ParserError {
 ///     start_desc: "start" "-" "[" <integer> <whitespace> <integer> "]" <newline> <newline>
 ///     stack_desc(n): n "-" "[" (<piece> <whitespace>){n} "]" <newline>
 ///
-///     valid_board: <board> <start_desc> (<stack_desc>)*
+///     valid_dsl: <board> <start_desc> (<stack_desc>)*
 ///
 /// ```
 ///
@@ -158,11 +161,11 @@ impl Parser {
         Ok(grid)
     }
 
-    /// Parses the "head", that is, the "board" and "start" parts of the DSL
+    /// Parses the "head", that is, the "board" and "start_desc" parts of the DSL
     /// specification and returns inputs found in "board order" -
     /// first by top to bottom, then by left to right.
     ///
-    /// Also returns the index pointing to the "stack" part of the DSL
+    /// Also returns the index pointing to the expected "stack_desc" part of the input
     fn parse_head(input: &str) -> Result<(Vec<(BoardInput, HexLocation)>, usize)> {
         // Assume that the board starts the input, and is terminated
         // but a double newline
@@ -194,11 +197,9 @@ impl Parser {
         Parser::parse_start(start, &pieces).map(|pieces| (pieces, start_end + 2))
     }
 
-    /// Parses a row of dots, numbers, asterixes, or letters and attempts
+    /// Parses an "unaligned_row(n)" or "aligned_row(n)" for some n according to the DSL specification
     /// to convert to BoardInputs and Alignment.
     /// Numbers are convertered to Stacks, letters to Pieces, and dots to Empty.
-    ///
-    /// The board row must follow the DSL specification.
     fn parse_row(row: &str) -> Result<(Vec<BoardInput>, Alignment)> {
         use ParserError::*;
         let mut alignment = Alignment::Standard;
@@ -280,13 +281,13 @@ impl Parser {
     }
 
     /// Given a HexGrid board string according to the DSL specification,
-    /// interpret it as a set of board inputs with locations
-    /// correct relative to each other and the top left corner of the board
+    /// interpret it as a set of board inputs with HexLocations
+    /// correct relative to each other and the top left corner of the DSL specification
     /// assigned to (0,0).
     ///
-    /// In other words, while the HexLocation may be incorrect relative to the
+    /// In other words, while the output HexLocations of this function may be incorrect relative to the
     /// ultimate HexGrid, all directions and distances between pieces should be
-    /// correct.
+    /// correct before shifting.
     ///
     /// The pieces must be returned in "board order", that is,
     /// pieces are return first by row, then by column.
@@ -351,7 +352,7 @@ impl Parser {
         Ok(result)
     }
 
-    /// Given a HexGrid start string according to the DSL specification,
+    /// Given a HexGrid "start_desc" string according to the DSL specification,
     /// interpret it as a HexLocation.
     ///
     /// Create a new array with the given (piece, hex location)
@@ -380,7 +381,7 @@ impl Parser {
         Ok(result)
     }
 
-    /// Given a HexGrid stack string according to the DSL specification,
+    /// Given a HexGrid "stack_spec" string according to the DSL specification,
     /// convert the match Stack -> StackPieces in a given tuple of (BoardInput,
     /// HexLocation) pairs and return the new array with everything else unchanged.
     fn parse_stacks(

@@ -12,10 +12,11 @@ pub const GRID_HEIGHT: usize = 7;
 pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug
-/// that follow the One Hive rule and has no greater than 7 pieces atop the hive
+/// that follow the One Hive rule and has no greater than 6 pieces with height > 1
 ///
 /// Only beetles and mosquitos can be at height > 1 in this representation
 /// as opposed to HexGrid which is more relaxed in its constraints.
+/// As a result, all BasicBitGrids can be converted to HexGrids.
 ///
 /// See the documentation of the bit grid's AxialBitboard to
 /// understand how the grid is represented at the bit level
@@ -23,7 +24,7 @@ pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 /// Zooming out, the grid is represented instead as
 /// a 7x7 grid of AxialBitboards
 ///
-/// The grid is represented as follows:
+/// The grid indices are laid out in the conventional x-y axis follows:
 /// ```
 ///    48 47 46 45 44 43 42
 ///    41 40 39 38 37 36 35
@@ -559,7 +560,8 @@ impl<'a> TryInto<HexGrid> for &'a BasicBitGrid {
     }
 }
 
-// All basic bit grids are legal HexGrids
+// Note: All basic bit grids are legal HexGrids,
+// thus there is no TryFrom implementation
 impl From<HexGrid> for BasicBitGrid {
     fn from(hex_grid: HexGrid) -> Self {
         let mut bit_grid = BasicBitGrid::new();

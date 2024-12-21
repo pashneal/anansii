@@ -21,8 +21,6 @@ impl Direction {
     }
 
     /// Returns the two directions that are adjacent to this one.
-    /// These directions are "gates" that pieces are not allowed to squeeze
-    /// between if both gates are occupied
     ///
     /// Edges are labeled as follows:
     ///
@@ -32,6 +30,7 @@ impl Direction {
     ///   \     /
     ///   SW - SE
     ///
+    /// For example, the adjacent directions of `NW` are `W` and `NE`.
     pub fn adjacent(&self) -> (Direction, Direction) {
         use Direction::*;
         match self {
@@ -50,6 +49,7 @@ impl HexLocation {
         HexLocation { x, y }
     }
 
+    /// Applies a direction to this location, returning the new location.
     pub fn apply(&self, direction: Direction) -> Self {
         use Direction::*;
         let (mut x, mut y) = (self.x, self.y);

@@ -901,7 +901,7 @@ impl UHPInterface {
             "Non-empty response should not end with a newline"
         );
         if response.len() == 0 {
-            return "ok\n".to_string();
+            "ok\n".to_string()
         } else {
             response + "\nok\n"
         }

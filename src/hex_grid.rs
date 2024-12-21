@@ -288,7 +288,7 @@ impl HexGrid {
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
     fn axial(&self, x: usize, y: usize) -> Vec<Piece> {
         let location = HexLocation::new(x as i8, y as i8);
-        if x < 0 || x >= HEX_GRID_SIZE || y < 0 || y >= HEX_GRID_SIZE {
+        if x >= HEX_GRID_SIZE || y >= HEX_GRID_SIZE {
             return vec![];
         }
         self.fast_grid.get(&(x, y)).unwrap_or(&vec![]).clone()

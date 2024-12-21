@@ -390,7 +390,7 @@ impl Annotator {
     }
 
     /// Assuming an valid annotator, find the piece, location and height
-    /// uniquely described by the given piece string. 
+    /// uniquely described by the given piece string.
     ///
     /// examples of piece strings are "wQ1", "bM1", etc
     fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
@@ -408,9 +408,9 @@ impl Annotator {
     }
 
     /// Add a new state to the annotator, representing a "standard" move string with unique
-    /// identifiers appended to all pieces. (e.g. wQ1, bM1, etc). 
+    /// identifiers appended to all pieces. (e.g. wQ1, bM1, etc).
     ///
-    /// Preserves the input move's text verbatim to be accessed later by the 
+    /// Preserves the input move's text verbatim to be accessed later by the
     /// standard_move_strings() or uhp_move_strings() functions.
     ///
     /// The move must represent a legal Hive move from the last state of the annotator.

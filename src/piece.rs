@@ -99,7 +99,6 @@ impl TryFrom<&str> for PieceType {
     }
 }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum PieceColor {
     Black,

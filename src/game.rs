@@ -151,7 +151,7 @@ impl GameDebugger {
         Ok(())
     }
 
-    /// Returns a set of legal positions that can be arrived at 
+    /// Returns a set of legal positions that can be arrived at
     /// from the current position
     pub fn legal_positions(&self) -> HashSet<HexGrid> {
         // If the game is over, no legal moves

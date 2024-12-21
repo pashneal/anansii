@@ -40,17 +40,6 @@ pub enum GameResult {
     Draw,
 }
 
-impl GameResult {
-    pub fn to_str(&self) -> &str {
-        use GameResult::*;
-        match self {
-            WhiteWins => "WhiteWins",
-            BlackWins => "BlackWins",
-            Draw => "Draw",
-        }
-    }
-}
-
 impl GameDebugger {
     /// Give a list of legal UHP moves starting from the empty board,
     /// create and return a GameDebugger with the moves accounted for.

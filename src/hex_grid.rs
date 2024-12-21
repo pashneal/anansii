@@ -287,7 +287,6 @@ impl HexGrid {
     /// with only the pieces that are present at the location
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-cube
     fn axial(&self, x: usize, y: usize) -> Vec<Piece> {
-        let location = HexLocation::new(x as i8, y as i8);
         if x >= HEX_GRID_SIZE || y >= HEX_GRID_SIZE {
             return vec![];
         }
@@ -459,7 +458,7 @@ impl HexGrid {
         let mut max_row = 0;
         let mut max_col = 0;
 
-        for (stack, location) in self.pieces() {
+        for (_, location) in self.pieces() {
             let (x, y) = HexGrid::centralize(location);
             let (row, col) = HexGrid::axial_to_oddr(x as i8, y as i8);
             min_row = min_row.min(row);

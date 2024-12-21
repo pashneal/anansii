@@ -6,8 +6,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum UHPError {
-    #[error("Too many pieces changed at once")]
-    AmbiguousState(Annotator),
     #[error("Inference is not possible because the annotator invariant was violated")]
     InvariantError,
     #[error("Could not undo move")]
@@ -18,11 +16,6 @@ pub enum UHPError {
 
 pub type Result<T> = std::result::Result<T, UHPError>;
 pub type CommandResult = std::result::Result<String, String>;
-
-/// This struct represents UHP (Universal Hive Protocol) interface
-/// https://github.com/jonthysell/Mzinga/wiki/UniversalHiveProtocol
-pub struct UHP {}
-
 type StackIds = Vec<Option<u8>>;
 
 /// Responsible for annotation of moves in UHP format
@@ -242,9 +235,10 @@ impl Annotator {
 
         let Diff::Removed {
             loc: old_loc,
-            piece: old_piece,
+            piece: _,
             height: old_height,
         } = old
+
         else {
             panic!("Expected a removed piece");
         };
@@ -635,11 +629,6 @@ impl UHPInterface {
         Err("Unknown command, cannot parse".to_string())
     }
 
-    /// Returns the location of the move made by the last player if any
-    fn get_last_move(&self) -> Option<HexLocation> {
-        self.annotations.last().unwrap().last_move()
-    }
-
     /// Parse a GameTypeString (see Universal Hive Protocol wiki)
     /// and set the game type accordingly
     fn set_game_type(&mut self, input: &str) -> CommandResult {
@@ -766,7 +755,6 @@ impl UHPInterface {
     /// move is legal assuming self.game_type is updated
     fn make_move(&mut self, move_string: &str) -> CommandResult {
         let annotator = self.annotations.last().unwrap();
-        let position = annotator.position();
 
         let annotator = annotator
             .next_uhp_move(move_string)
@@ -811,7 +799,7 @@ impl UHPInterface {
         self.make_move("pass")
     }
 
-    fn best_move(&mut self, input: &str) -> CommandResult {
+    fn best_move(&mut self, _input: &str) -> CommandResult {
         todo!()
     }
 
@@ -856,7 +844,7 @@ impl UHPInterface {
         game_string
     }
 
-    fn options(&mut self, input: &str) -> CommandResult {
+    fn options(&mut self, _input: &str) -> CommandResult {
         todo!()
     }
 

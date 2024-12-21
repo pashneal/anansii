@@ -7,7 +7,7 @@ pub const HEIGHT_MASK: u8 = 0b111;
 pub const COORD_MASK: u32 = 0b111;
 pub const LOCATION_BITS: u8 = 12;
 pub const LOCATION_MASK: u8 = 0b111111;
-pub const COLOR_BITS: u8 = 1;
+//pub const COLOR_BITS: u8 = 1;
 pub const PRESENCE_MASK: u32 = 1 << 17;
 
 /// A densly packed representation of pieces in a stack
@@ -232,11 +232,6 @@ impl SmallBitset {
         let empty = 1 << self.set.trailing_ones() as u8;
         debug_assert!(empty & self.set == 0);
         empty
-    }
-
-    #[inline(always)]
-    pub fn has_index(&self, index: u8) -> bool {
-        (self.set & (1 << index)) != 0
     }
 
     #[inline(always)]

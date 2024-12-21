@@ -303,7 +303,7 @@ impl Parser {
             let (board_inputs, row_alignment) = Parser::parse_row(row)?;
             match first_row_alignment {
                 None => first_row_alignment = Some(row_alignment),
-                Some(alignment) => {}
+                Some(_) => {}
             }
 
             // Be sure row size is consitent throughout the board

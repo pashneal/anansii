@@ -518,7 +518,6 @@ impl MoveGeneratorDebugger {
                 Pillbug => {
                     grids.extend(self.pillbug_moves(location).into_iter());
                 }
-                _ => unreachable!(),
             }
         }
 

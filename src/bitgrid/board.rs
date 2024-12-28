@@ -47,6 +47,13 @@ pub struct BitboardCoords{
     pub x: usize, 
     pub y: usize
 }
+
+impl BitboardCoords {
+    pub fn index(&self) -> usize {
+        self.y * BITBOARD_WIDTH + self.x
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct BitboardBounds{
     pub top_left : BitboardCoords,
@@ -129,6 +136,37 @@ impl AxialBitboard {
             top_left: BitboardCoords{x: max_x, y: max_y},
             bottom_right: BitboardCoords{x: min_x, y: min_y}
         })
+    }
+}
+
+pub struct AxialBitboardIter {
+    board: AxialBitboard
+}
+
+impl Iterator for AxialBitboardIter {
+    type Item = BitboardCoords;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.board.is_empty() {
+            return None;
+        }
+
+        let lsb = self.board.0.trailing_zeros() as usize;
+        let x = lsb % BITBOARD_WIDTH;
+        let y = lsb / BITBOARD_WIDTH;
+
+        self.board.0 &= self.board.0 - 1;
+
+        Some(BitboardCoords{x, y})
+    }
+}
+
+impl IntoIterator for AxialBitboard {
+    type Item = BitboardCoords;
+    type IntoIter = AxialBitboardIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        AxialBitboardIter{board: self}
     }
 }
 
@@ -269,5 +307,29 @@ mod tests {
 
         let start = AxialBitboard::from_u64(0x80);
         assert_eq!(format!("{}", start), output);
+    }
+
+    #[test]
+    pub fn test_bounding_box() {
+        let board = AxialBitboard::from_u64(0x705018121e0400);
+        let bounds = board.bounding_box().unwrap();
+        assert_eq!(bounds.top_left.x, 6);
+        assert_eq!(bounds.top_left.y, 6);
+        assert_eq!(bounds.bottom_right.x, 1);
+        assert_eq!(bounds.bottom_right.y, 1);
+
+        let board = AxialBitboard::from_u64(0x200000080000);
+        let bounds = board.bounding_box().unwrap();
+        assert_eq!(bounds.top_left.x, 5);
+        assert_eq!(bounds.top_left.y, 5);
+        assert_eq!(bounds.bottom_right.x, 3);
+        assert_eq!(bounds.bottom_right.y, 2);
+    }
+
+    #[test]
+    pub fn test_bounding_box_empty() {
+        let board = AxialBitboard::from_u64(0);
+        assert!(board.is_empty());
+        assert!(board.bounding_box().is_none());
     }
 }

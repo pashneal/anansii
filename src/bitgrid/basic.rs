@@ -38,6 +38,7 @@ pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 ///
 /// The center is assigned to board index 24 at the bitboard index 28
 pub type Grid = [AxialBitboard; GRID_SIZE];
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridBounds {
     pub top_left : BitGridLocation,
     pub bottom_right : BitGridLocation,
@@ -55,14 +56,15 @@ impl GridBounds {
             self.bottom_right.board_index % GRID_WIDTH
         );
 
-        let board_difference = max_board_x - min_board_x;
-        let extra_padding = (board_difference - 1) * BITBOARD_WIDTH;
+        let board_difference = max_board_x as i8 - min_board_x as i8;
+        let extra_padding = (board_difference - 1) * BITBOARD_WIDTH as i8;
 
         // Contribution from left width of rightmost bitboard
-        let mut width = right_x.rem_euclid(BITBOARD_WIDTH) as i8 + 1;
+        let mut width = (BITBOARD_WIDTH - right_x) as i8;
+
 
         width += extra_padding as i8;
-        width += left_x as i8;
+        width += left_x as i8 + 1;
 
         width as usize
     }
@@ -78,14 +80,14 @@ impl GridBounds {
             self.bottom_right.board_index / GRID_HEIGHT
         );
 
-        let board_difference = max_board_y - min_board_y;
-        let extra_padding = (board_difference - 1) * BITBOARD_HEIGHT;
+        let board_difference = max_board_y as i8 - min_board_y as i8;
+        let extra_padding = (board_difference - 1) * BITBOARD_HEIGHT as i8;
 
         // Contribution from top height of bottommost bitboard
-        let mut height = bottom_y.rem_euclid(BITBOARD_HEIGHT) as i8 + 1;
+        let mut height = (BITBOARD_HEIGHT - bottom_y) as i8;
 
         height += extra_padding as i8;
-        height += top_y as i8;
+        height += top_y as i8 + 1;
         
         height as usize
     }
@@ -991,5 +993,218 @@ mod tests {
                 ));
             }
         }
+    }
+
+    fn add_board_to_grid(grid: &mut BasicBitGrid, board_index: usize, bitboard: AxialBitboard) {
+        for coords in bitboard.into_iter() {
+            let bit_index = coords.y * BITBOARD_WIDTH + coords.x;
+            let loc = BitGridLocation::new(board_index, bit_index);
+            let filler_piece = Piece::new(PieceType::Ant, PieceColor::Black);
+            grid.add(filler_piece, loc);
+        }
+    }
+
+    #[test]
+    pub fn test_small_bounding_box() {
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        let bottom_board = AxialBitboard::from_u64(0x10705018121e0400);
+        let top_board = AxialBitboard::from_u64(0xf80808081010);
+
+        let mut grid = BasicBitGrid::new();
+        let center = CENTER_BOARD_INDEX;
+        let above_center = center + GRID_WIDTH;
+
+        add_board_to_grid(&mut grid, center, bottom_board);
+        add_board_to_grid(&mut grid, above_center, top_board);
+
+        let bounds = grid.bounding_box().unwrap();
+        let expected_bottom_right = bottom_board.bounding_box().unwrap().bottom_right;
+        let expected_top_left = top_board.bounding_box().unwrap().top_left;
+
+        let expected_tl = expected_top_left.index();
+        let expected_br = expected_bottom_right.index();
+
+        let expected_bounds = GridBounds {
+            top_left: BitGridLocation::new(above_center, expected_tl),
+            bottom_right: BitGridLocation::new(center, expected_br),
+        };
+
+        assert_eq!(bounds, expected_bounds);
+    }
+
+    #[test]
+    pub fn test_single_board_bounding_box() {
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        let board = AxialBitboard::from_u64(0x4fc0808081000);
+        let mut grid = BasicBitGrid::new();
+
+        add_board_to_grid(&mut grid, CENTER_BOARD_INDEX, board);
+
+        let bounds = grid.bounding_box().unwrap();
+        let expected_bounds = board.bounding_box().unwrap();
+
+        let expected_tl = expected_bounds.top_left.index();
+        let expected_br = expected_bounds.bottom_right.index();
+
+        let expected_bounds = GridBounds {
+            top_left: BitGridLocation::new(CENTER_BOARD_INDEX, expected_tl),
+            bottom_right: BitGridLocation::new(CENTER_BOARD_INDEX, expected_br),
+        };
+
+        assert_eq!(bounds, expected_bounds);
+    }
+
+    #[test]
+    pub fn test_empty_board_bounding_box() {
+        let grid = BasicBitGrid::new();
+        assert!(grid.bounding_box().is_none());
+    }
+
+    #[test]
+    pub fn test_large_bounding_box() {
+        let mut grid = BasicBitGrid::new();
+
+        // Boards laid out like this
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        // 8 7 6
+        // 5 4 3
+        // 2 1 0
+        let board_0 = AxialBitboard::from_u64(0xfcfcfcfcfcfc0000);
+        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest 
+        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest 
+        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest 
+        let board_4 = AxialBitboard::from_u64(0xffffffffffffffff); // completely full
+        let board_5 = AxialBitboard::from_u64(0x0); // completely empty
+        let board_6 = AxialBitboard::from_u64(0x20f0);
+        let board_7 = AxialBitboard::from_u64(0x1010ff); // highest
+        let board_8 = AxialBitboard::from_u64(0x1);
+
+        
+        println!("{}\n{}\n{}\n\n{}\n{}\n{}\n\n{}\n{}\n{}",
+            board_8, board_7, board_6,
+            board_5, board_4, board_3,
+            board_2, board_1, board_0
+        );
+
+        let top_left_coords = BitboardCoords { x: 2, y: 2 };
+        let bottom_right_coords = BitboardCoords { x: 0, y: 1 };
+        let expected_bounds = GridBounds {
+            top_left: BitGridLocation::new(2 * GRID_WIDTH + 2, top_left_coords.index()),
+            bottom_right: BitGridLocation::new(0, bottom_right_coords.index()),
+        };
+
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 0, board_0);
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 1, board_1);
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 2, board_2);
+
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 0, board_3);
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 1, board_4);
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 2, board_5);
+
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 0, board_6);
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 1, board_7);
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 2, board_8);
+
+        let bounds = grid.bounding_box().expect("Bounds should not be empty!");
+        assert_eq!(bounds, expected_bounds);
+    }
+
+    #[test]
+    pub fn test_small_bounding_box_dimensions() {
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        let bottom_board = AxialBitboard::from_u64(0x10705018121e0400);
+        let top_board = AxialBitboard::from_u64(0xf80808081010);
+
+        let mut grid = BasicBitGrid::new();
+        let center = CENTER_BOARD_INDEX;
+        let above_center = center + GRID_WIDTH;
+
+        add_board_to_grid(&mut grid, center, bottom_board);
+        add_board_to_grid(&mut grid, above_center, top_board);
+
+        let bounds = grid.bounding_box().unwrap();
+        let width = bounds.width();
+        let height = bounds.height();
+
+        assert_eq!(width , 7);
+        assert_eq!(height, 13);
+    }
+
+    #[test]
+    pub fn test_single_board_bounding_box_dimensions() {
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        let board = AxialBitboard::from_u64(0x4fc0808081000);
+        let mut grid = BasicBitGrid::new();
+
+
+        add_board_to_grid(&mut grid, CENTER_BOARD_INDEX, board);
+
+        let bounds = grid.bounding_box().unwrap();
+        let width = bounds.width();
+        let height = bounds.height();
+
+        assert_eq!(width, 6);
+        assert_eq!(height, 6);
+    }
+
+    
+    #[test]
+    pub fn test_large_bounding_box_dimensions() {
+        let mut grid = BasicBitGrid::new();
+
+        // Boards laid out like this
+        // Note: we have to make sure that this still follows the One Hive rule!
+        // so all the boards form at most one connected component
+        // 8 7 6
+        // 5 4 3
+        // 2 1 0
+        let board_0 = AxialBitboard::from_u64(0xfcfcfcfcfcfc0000);
+        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest 
+        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest 
+        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest 
+        let board_4 = AxialBitboard::from_u64(0xffffffffffffffff); // completely full
+        let board_5 = AxialBitboard::from_u64(0x0); // completely empty
+        let board_6 = AxialBitboard::from_u64(0x20f0);
+        let board_7 = AxialBitboard::from_u64(0x1010ff); // highest
+        let board_8 = AxialBitboard::from_u64(0x1);
+
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 0, board_0);
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 1, board_1);
+        add_board_to_grid(&mut grid, 0 * GRID_WIDTH + 2, board_2);
+
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 0, board_3);
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 1, board_4);
+        add_board_to_grid(&mut grid, 1 * GRID_WIDTH + 2, board_5);
+
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 0, board_6);
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 1, board_7);
+        add_board_to_grid(&mut grid, 2 * GRID_WIDTH + 2, board_8);
+
+        let bounds = grid.bounding_box().expect("Bounds should not be empty!");
+        let width = bounds.width();
+        let height = bounds.height();
+
+        assert_eq!(width, 19);
+        assert_eq!(height, 18);
+    }
+
+    #[test]
+    pub fn test_one_bounding_box_dimensions() {
+        let  mut grid = BasicBitGrid::new();
+        let board = AxialBitboard::from_u64(0x1);
+        add_board_to_grid(&mut grid, CENTER_BOARD_INDEX, board);
+        let bounds = grid.bounding_box().unwrap();
+
+        let width = bounds.width();
+        let height = bounds.height();
+
+        assert_eq!(width, 1);
+        assert_eq!(height, 1);
+        assert_eq!(bounds.top_left, bounds.bottom_right);
     }
 }

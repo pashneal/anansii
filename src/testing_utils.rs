@@ -126,3 +126,4 @@ pub fn is_localized<H: Shiftable + FromHex>(
         distance,
     )
 }
+

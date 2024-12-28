@@ -709,6 +709,17 @@ impl From<HexGrid> for BasicBitGrid {
     }
 }
 
+impl From<&HexGrid> for BasicBitGrid {
+    fn from(hex_grid: &HexGrid) -> Self {
+        let mut bit_grid = BasicBitGrid::new();
+        for (stack, loc) in hex_grid.pieces() {
+            for piece in stack {
+                bit_grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+        bit_grid
+    }
+}
 impl Display for BasicBitGrid {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let hex_grid: HexGrid = self.try_into().expect("Could not convert to hex grid");

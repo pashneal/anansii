@@ -11,6 +11,7 @@ use std::collections::HashSet;
 ///
 /// The move generator is only guaranteed to generate moves correctly
 /// for positions that follow the One Hive Rule
+#[derive(Clone, Debug)]
 pub struct MoveGeneratorDebugger {
     grid: HexGrid,
     pinned: Vec<HexLocation>,

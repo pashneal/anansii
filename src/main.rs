@@ -24,6 +24,10 @@ struct Cli {
 enum MainCommands {
     /// Runs an interactive interface for a hive game engine that supports uhp
     Uhp,
+
+    /// Runs a script to analyze the certain statistics for hive positions
+    Analyze,
+    
 }
 
 pub fn run_uhp() {
@@ -44,6 +48,9 @@ pub fn main() {
     match args.command {
         Some(MainCommands::Uhp) => {
             run_uhp();
+        }
+        Some(MainCommands::Analyze) => {
+            data_analysis::check_positions();
         }
         None => run_uhp(),
     }

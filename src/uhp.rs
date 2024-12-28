@@ -10,8 +10,11 @@ pub enum UHPError {
     InvariantError,
     #[error("Could not undo move")]
     UndoError,
-    #[error("IllegalMove")]
-    IllegalMove,
+    #[error("IllegalMove {info}")]
+    IllegalMove{ info: String },
+
+    #[error("Found more than two position differences")]
+    TooManyDiffs,
 }
 
 pub type Result<T> = std::result::Result<T, UHPError>;
@@ -358,7 +361,7 @@ impl Annotator {
                 (Diff::Removed { .. }, Diff::Removed { .. }) => {
                     return Err(UHPError::InvariantError)
                 }
-                _ => Err(UHPError::IllegalMove)?,
+                _ => Err(UHPError::TooManyDiffs)?,
             };
 
             return Ok(self.piece_moved(removed, added, current_grid));
@@ -598,6 +601,10 @@ impl UHPInterface {
             game: GameDebugger::from_moves(&[]).unwrap(),
             player_to_move: PieceColor::White,
         }
+    }
+
+    pub fn game_debugger(&self) -> GameDebugger {
+        self.game.clone()
     }
 
     fn info(&self) -> CommandResult {

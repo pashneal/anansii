@@ -24,6 +24,7 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 /// or extremely complicated testing harnesses - a hard lesson learned
 /// from the first version of this project. It leaves optimized code to more easily
 /// be iterated on.
+#[derive(Clone, Debug)]
 pub struct GameDebugger {
     annotations: Vec<Annotator>,
     generator: MoveGeneratorDebugger,
@@ -133,7 +134,9 @@ impl GameDebugger {
         let grid = position.to_hex_grid();
 
         if !self.legal_positions().contains(&grid) {
-            return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove));
+            return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove{
+                info : format!("\nPrevious position:\n{}\nLatest position:\n{}", self.position().to_dsl(), grid.to_dsl())
+            }));
         }
 
         let annotator = self.annotations.last().unwrap().clone();

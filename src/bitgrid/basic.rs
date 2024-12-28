@@ -12,7 +12,8 @@ pub const GRID_HEIGHT: usize = 7;
 pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug
-/// that follow the One Hive rule and has no greater than 6 pieces with height > 1
+/// that follow the One Hive rules (see Hive Rules for more information) 
+/// and has no greater than 6 pieces with height > 1
 ///
 /// Only beetles and mosquitos can be at height > 1 in this representation
 /// as opposed to HexGrid which is more relaxed in its constraints.
@@ -37,6 +38,58 @@ pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 ///
 /// The center is assigned to board index 24 at the bitboard index 28
 pub type Grid = [AxialBitboard; GRID_SIZE];
+pub struct GridBounds {
+    pub top_left : BitGridLocation,
+    pub bottom_right : BitGridLocation,
+}
+
+impl GridBounds {
+    pub fn width(&self) -> usize {
+        let (left_x, right_x) = (
+            self.top_left.bitboard_index % BITBOARD_WIDTH, 
+            self.bottom_right.bitboard_index % BITBOARD_WIDTH
+        );
+
+        let (max_board_x, min_board_x) = (
+            self.top_left.board_index % GRID_WIDTH, 
+            self.bottom_right.board_index % GRID_WIDTH
+        );
+
+        let board_difference = max_board_x - min_board_x;
+        let extra_padding = (board_difference - 1) * BITBOARD_WIDTH;
+
+        // Contribution from left width of rightmost bitboard
+        let mut width = right_x.rem_euclid(BITBOARD_WIDTH) as i8 + 1;
+
+        width += extra_padding as i8;
+        width += left_x as i8;
+
+        width as usize
+    }
+
+    pub fn height(&self) -> usize {
+        let (top_y, bottom_y) = (
+            self.top_left.bitboard_index / BITBOARD_HEIGHT, 
+            self.bottom_right.bitboard_index / BITBOARD_HEIGHT
+        );
+
+        let (max_board_y, min_board_y) = (
+            self.top_left.board_index / GRID_HEIGHT, 
+            self.bottom_right.board_index / GRID_HEIGHT
+        );
+
+        let board_difference = max_board_y - min_board_y;
+        let extra_padding = (board_difference - 1) * BITBOARD_HEIGHT;
+
+        // Contribution from top height of bottommost bitboard
+        let mut height = bottom_y.rem_euclid(BITBOARD_HEIGHT) as i8 + 1;
+
+        height += extra_padding as i8;
+        height += top_y as i8;
+        
+        height as usize
+    }
+}
 #[derive(Debug)]
 pub struct BasicBitGrid {
     pub queens: Grid,
@@ -52,6 +105,7 @@ pub struct BasicBitGrid {
     pub black_pieces: Grid,
     pub stacks: BasicBitStack,
 }
+
 
 impl Default for BasicBitGrid {
     fn default() -> Self {
@@ -227,6 +281,85 @@ impl BasicBitGrid {
             PieceColor::White => &mut self.white_pieces,
             PieceColor::Black => &mut self.black_pieces,
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.all_pieces.iter().all(|&board| board.is_empty())
+    }
+
+    /// Returns a smallest bounding box that contains all pieces on the grid. 
+    /// If no pieces on the grid, returns None
+    pub fn bounding_box(&self) -> Option<GridBounds> {
+
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut min_board_x = GRID_WIDTH;
+        let mut min_board_y = GRID_HEIGHT;
+        let mut max_board_x = 0;
+        let mut max_board_y = 0;
+
+        let mut bottom_right = BitboardCoords{ x : BITBOARD_WIDTH, y : BITBOARD_HEIGHT};
+        let mut top_left = BitboardCoords{ x : BITBOARD_WIDTH, y : BITBOARD_HEIGHT};
+
+        for board_x in 0..GRID_WIDTH {
+            for board_y in 0..GRID_HEIGHT { 
+
+                let board_index  = board_y * GRID_HEIGHT + board_x;
+                let bitboard = self.all_pieces[board_index];
+
+                let Some(BitboardBounds { top_left: tl, bottom_right : br }) = bitboard.bounding_box() else {
+                    continue;
+                };
+
+                if board_x == min_board_x {
+                    bottom_right.x = br.x.min(bottom_right.x);
+                }
+                
+                if board_x == max_board_x {
+                    top_left.x = tl.x.max(top_left.x);
+                }
+
+                if board_x < min_board_x {
+                    min_board_x = board_x;
+                    bottom_right.x = br.x;
+                }
+
+                if board_x > max_board_x {
+                    max_board_x = board_x;
+                    top_left.x = tl.x;
+                }
+
+                if board_y == min_board_y {
+                    bottom_right.y = br.y.min(bottom_right.y);
+                }
+
+                if board_y == max_board_y {
+                    top_left.y = tl.y.max(top_left.y);
+                }
+
+                if board_y < min_board_y {
+                    min_board_y = board_y;
+                    bottom_right.y = br.y;
+                }
+
+                if board_y > max_board_y {
+                    max_board_y = board_y;
+                    top_left.y = tl.y;
+                }
+            }
+        }
+
+        let top_left_board_index = max_board_y * GRID_WIDTH + max_board_x;
+        let top_left_bitboard_index = top_left.y * BITBOARD_WIDTH + top_left.x;
+        let top_left = BitGridLocation::new(top_left_board_index, top_left_bitboard_index);
+
+        let bottom_right_board_index = min_board_y * GRID_WIDTH + min_board_x;
+        let bottom_right_bitboard_index = bottom_right.y * BITBOARD_WIDTH + bottom_right.x;
+        let bottom_right = BitGridLocation::new(bottom_right_board_index, bottom_right_bitboard_index);
+
+        Some(GridBounds{ top_left, bottom_right })
     }
 }
 

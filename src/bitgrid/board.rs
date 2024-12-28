@@ -42,6 +42,17 @@ pub struct AxialBitboard(u64);
 pub const BITBOARD_HEIGHT: usize = 8;
 pub const BITBOARD_WIDTH: usize = 8;
 
+#[derive(Debug, Copy, Clone)]
+pub struct BitboardCoords{
+    pub x: usize, 
+    pub y: usize
+}
+#[derive(Debug, Copy, Clone)]
+pub struct BitboardBounds{
+    pub top_left : BitboardCoords,
+    pub bottom_right: BitboardCoords,
+}
+
 impl AxialBitboard {
     #[inline(always)]
     pub fn from_u64(board: u64) -> Self {
@@ -86,6 +97,38 @@ impl AxialBitboard {
     #[inline(always)]
     pub fn peek(&self, index: usize) -> bool {
         (self.0 & (1 << index)) != 0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
+    /// Returns the smallest bounding box of the bitboard, containing all 
+    /// set bits in the bitboard if there are any
+    pub fn bounding_box(&self) -> Option<BitboardBounds> {
+        if self.is_empty() { return None; }
+
+        let mut max_x = 0;
+        let mut max_y = 0;
+        let mut min_x = BITBOARD_WIDTH;
+        let mut min_y = BITBOARD_HEIGHT;
+
+        for y in 0..BITBOARD_HEIGHT {
+            for x in 0..BITBOARD_WIDTH {
+                let index = y * BITBOARD_WIDTH + x;
+                if self.peek(index) {
+                    min_x = min_x.min(x);
+                    min_y = min_y.min(y);
+                    max_x = max_x.max(x);
+                    max_y = max_y.max(y);
+                }
+            }
+        }
+
+        Some(BitboardBounds{
+            top_left: BitboardCoords{x: max_x, y: max_y},
+            bottom_right: BitboardCoords{x: min_x, y: min_y}
+        })
     }
 }
 

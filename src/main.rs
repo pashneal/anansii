@@ -8,6 +8,7 @@ mod move_generator;
 mod piece;
 mod testing_utils;
 mod uhp;
+mod data_analysis;
 
 use clap::{Parser, Subcommand};
 use uhp::UHPInterface;

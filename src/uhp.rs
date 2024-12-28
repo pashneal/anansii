@@ -413,7 +413,9 @@ impl Annotator {
     /// Preserves the input move's text verbatim to be accessed later by the
     /// standard_move_strings() or uhp_move_strings() functions.
     ///
-    /// The move must represent a legal Hive move from the last state of the annotator.
+    /// The move must represent a legal Hive move from the last state of the annotator. The
+    /// identifier must correct represent the first, second, third, etc piece of that type 
+    /// to be placed
     ///
     /// Returns the resulting state of the annotator after the move is applied.
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
@@ -456,7 +458,8 @@ impl Annotator {
 
         let (_, mut final_loc, _) = self
             .find(anchor_piece_string)
-            .expect("Could not find anchor");
+            .expect(format!("Could not find anchor piece: {}", anchor_piece_string).as_str());
+
         if let Some(direction) = direction {
             final_loc = final_loc.apply(direction);
         }

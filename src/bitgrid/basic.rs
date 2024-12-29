@@ -5,11 +5,11 @@ use crate::piece::*;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 
-pub const CENTER_BOARD_INDEX: usize = 24;
-pub const CENTER_BITBOARD_INDEX: usize = 28;
-pub const GRID_WIDTH: usize = 7;
-pub const GRID_HEIGHT: usize = 7;
-pub const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
+const CENTER_BOARD_INDEX: usize = 24;
+const CENTER_BITBOARD_INDEX: usize = 28;
+const GRID_WIDTH: usize = 7;
+const GRID_HEIGHT: usize = 7;
+const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug
 /// that follow the One Hive rules (see Hive Rules for more information) 
@@ -720,6 +720,7 @@ impl From<&HexGrid> for BasicBitGrid {
         bit_grid
     }
 }
+
 impl Display for BasicBitGrid {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let hex_grid: HexGrid = self.try_into().expect("Could not convert to hex grid");

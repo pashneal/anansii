@@ -1,7 +1,6 @@
 use super::*;
-use std::fmt;
-use std::fmt::Display;
-use crate::location::Shiftable;
+use std::fmt::{Display, self};
+use crate::location::{Shiftable, FromHex, HexLocation};
 
 const LEFT_OVERFLOW_MASK : u64 = 0x8080808080808080;
 const RIGHT_OVERFLOW_MASK : u64 = 0x0101010101010101;
@@ -9,7 +8,9 @@ const BOTTOM_OVERFLOW_MASK : u64 = 0x00000000000000FF;
 const TOP_OVERFLOW_MASK : u64 = 0xFF00000000000000;
 
 const CENTER_BOARD_INDEX: usize = 0;
-const CENTER_BIT_INDEX: usize = 28;
+const CENTER_BIT_X: i8 = 4;
+const CENTER_BIT_Y: i8 = 3;
+const CENTER_BIT_INDEX: usize = CENTER_BIT_X as usize + CENTER_BIT_Y as usize * BITBOARD_WIDTH;
 const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 const GRID_WIDTH: usize = 2;
 const GRID_HEIGHT: usize = 2;
@@ -38,10 +39,12 @@ pub type MiniGrid = [AxialBitboard; 4];
 /// The center is assigned to board index 0 at the bitboard index 28
 ///
 /// Horizontal wrapping works in the following way:
-///     0 - 3 - 2 - 1 - 0 ...
+///     0 wraps to 1 and vice versa
+///     2 wraps to 3 and vice versa
 ///
 /// Vertical wrapping works in the following way:
-///     3 - 1 - 2 - 0 - 3 ...
+///     0 wraps to 2 and vice versa
+///     1 wraps to 3 and vice versa
 pub struct MiniBitGrid {
     pub queens: MiniGrid,
     pub beetles: MiniGrid,
@@ -62,7 +65,7 @@ pub struct MiniBitGrid {
 ///
 /// must have a single bit set on mask representing the 
 /// location as well as board_index between 0 <= board_index < 4
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MiniBitGridLocation {
     pub board_index: usize,
     pub mask: u64,
@@ -86,7 +89,6 @@ impl MiniBitGridLocation {
             mask,
         }
     }
-
 }
 
 impl Shiftable for MiniBitGridLocation {
@@ -97,9 +99,12 @@ impl Shiftable for MiniBitGridLocation {
             false => self.mask << 1,
         };
 
-        let new_board = match overflow_found {
-            true => (self.board_index + 1).rem_euclid(GRID_SIZE),
-            false => self.board_index,
+        let new_board = match (overflow_found, self.board_index) {
+            (true, 0) => 1,
+            (true, 1) => 0,
+            (true, 2) => 3,
+            (true, 3) => 2,
+            _ => self.board_index,
         };
 
         debug_assert!(new_mask.count_ones() == 1);
@@ -118,9 +123,12 @@ impl Shiftable for MiniBitGridLocation {
             false => self.mask >> 1,
         };
 
-        let new_board = match overflow_found {
-            true => (self.board_index - 1).rem_euclid(GRID_SIZE),
-            false => self.board_index,
+        let new_board = match (overflow_found, self.board_index) {
+            (true, 0) => 1,
+            (true, 1) => 0,
+            (true, 2) => 3,
+            (true, 3) => 2,
+            _ => self.board_index,
         };
 
 
@@ -142,9 +150,7 @@ impl Shiftable for MiniBitGridLocation {
         };
 
         let new_board = match (overflow_found, self.board_index) {
-            (true, 2) => 1,
-            (true, 3) => 0,
-            (true , index) => index + 2,
+            (true, index) => (index + 2).rem_euclid(GRID_SIZE),
             _ => self.board_index,
         };
 
@@ -173,9 +179,7 @@ impl Shiftable for MiniBitGridLocation {
         };
 
         let new_board = match (overflow_found, self.board_index) {
-            (true, 0) => 3,
-            (true, 1) => 2,
-            (true , index) => index - 2,
+            (true, index) => (index + 2).rem_euclid(GRID_SIZE),
             _ => self.board_index,
         };
 
@@ -196,15 +200,57 @@ impl Shiftable for MiniBitGridLocation {
     }
 }
 
+impl FromHex for MiniBitGridLocation {
+    fn from_hex(hex: HexLocation) -> MiniBitGridLocation {
+        let wrap = |x: i8, y: i8| -> usize {
+            let board_x = (x + CENTER_BIT_X).div_euclid(BITBOARD_WIDTH as i8);
+            let board_y = (y + CENTER_BIT_Y).div_euclid(BITBOARD_HEIGHT as i8);
+
+            let board_x = board_x.rem_euclid(GRID_WIDTH as i8);
+            let board_y = board_y.rem_euclid(GRID_HEIGHT as i8);
+
+            let board_index = board_x + board_y * GRID_WIDTH as i8;
+
+            board_index as usize
+        };
+
+
+        let bit_x = (-hex.x + CENTER_BIT_X).rem_euclid(BITBOARD_WIDTH as i8);
+        let bit_y = (-hex.y + CENTER_BIT_Y).rem_euclid(BITBOARD_HEIGHT as i8);
+
+        let bit_index = bit_x + bit_y * BITBOARD_WIDTH as i8;
+        let bit_index = bit_index.rem_euclid(BITBOARD_SIZE as i8);
+        let bit_index = bit_index as usize;
+        let mask = 1 << bit_index as usize;
+
+        let board_index = wrap(-hex.x, -hex.y);
+        MiniBitGridLocation::from_u64(board_index, mask)
+    }
+}
+
+impl From<HexLocation> for MiniBitGridLocation {
+    fn from(hex: HexLocation) -> Self {
+        MiniBitGridLocation::from_hex(hex)
+    }
+}
+
 impl Display for MiniBitGridLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "MiniBitGrid ({})\n{}", self.board_index, AxialBitboard::from_u64(self.mask))
     }
 }
 
+impl fmt::Debug for MiniBitGridLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MiniBitGrid ({})\n{}", self.board_index, AxialBitboard::from_u64(self.mask))
+    }
+}
+
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::testing_utils::is_localized;
 
     #[test]
     pub fn size_sanity_check() {
@@ -252,4 +298,18 @@ pub mod tests {
             assert_eq!(start, end);
         }
     }
+
+    #[test]
+    pub fn test_center_localized_15() {
+        let reference = HexLocation::center();
+        let start: MiniBitGridLocation = reference.into();
+
+        assert!(is_localized::<MiniBitGridLocation>(
+            start,
+            reference,
+            15
+        ));
+    }
+
+
 }

@@ -41,6 +41,7 @@ pub struct AxialBitboard(u64);
 
 pub const BITBOARD_HEIGHT: usize = 8;
 pub const BITBOARD_WIDTH: usize = 8;
+pub const BITBOARD_SIZE: usize = BITBOARD_HEIGHT * BITBOARD_WIDTH;
 
 #[derive(Debug, Copy, Clone)]
 pub struct BitboardCoords{

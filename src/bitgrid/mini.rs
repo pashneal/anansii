@@ -1,4 +1,5 @@
 use super::*;
+use crate::piece::{Piece, PieceType, PieceColor};
 use std::fmt::{Display, self};
 use crate::location::{Shiftable, FromHex, HexLocation};
 
@@ -31,6 +32,8 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///
 /// The grid indices are laid out in the conventional x-y axis as follows:
 ///
+/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps 
+/// compare it to HexGridLocation instead
 /// ```
 ///     3 2
 ///     1 0
@@ -45,6 +48,7 @@ pub type MiniGrid = [AxialBitboard; 4];
 /// Vertical wrapping works in the following way:
 ///     0 wraps to 2 and vice versa
 ///     1 wraps to 3 and vice versa
+///
 pub struct MiniBitGrid {
     pub queens: MiniGrid,
     pub beetles: MiniGrid,
@@ -55,11 +59,33 @@ pub struct MiniBitGrid {
     pub ladybugs: MiniGrid,
     pub mosquitos: MiniGrid,
     pub all_pieces: MiniGrid,
+    pub outside: MiniGrid,
     pub white_pieces: MiniGrid,
     pub black_pieces: MiniGrid,
     pub stacks: BasicBitStack,
+    pub metainfo: MiniMetaInfo,
 }
 
+pub struct MiniMetaInfo {
+    /// Represents for each row, whether at least one piece is present
+    pub row_presence: u16,
+    /// Represents for each column, whether at least one piece is present
+    pub column_presence: u16
+}
+
+impl MiniMetaInfo {
+    pub fn new() -> Self {
+        MiniMetaInfo {
+            row_presence: 0,
+            column_presence: 0,
+        }
+    }
+
+    pub fn add_location(&mut self, location: MiniBitGridLocation) {
+        self.row_presence |= location.row();
+        self.column_presence |= location.column();
+    }
+}
 
 /// Represents a location on the MiniBitGrid, 
 ///
@@ -70,6 +96,115 @@ pub struct MiniBitGridLocation {
     pub board_index: usize,
     pub mask: u64,
 }
+
+impl MiniBitGrid {
+    pub fn new() -> Self {
+        MiniBitGrid {
+            queens: [AxialBitboard::empty(); 4],
+            beetles: [AxialBitboard::empty(); 4],
+            spiders: [AxialBitboard::empty(); 4],
+            grasshoppers: [AxialBitboard::empty(); 4],
+            ants: [AxialBitboard::empty(); 4],
+            pillbugs: [AxialBitboard::empty(); 4],
+            ladybugs: [AxialBitboard::empty(); 4],
+            mosquitos: [AxialBitboard::empty(); 4],
+            all_pieces: [AxialBitboard::empty(); 4],
+            outside: [AxialBitboard::empty(); 4],
+            white_pieces: [AxialBitboard::empty(); 4],
+            black_pieces: [AxialBitboard::empty(); 4],
+            stacks: BasicBitStack::new(),
+            metainfo: MiniMetaInfo::new(),  
+        }
+    }
+
+
+    fn is_row_occupied(&self, bit_location : MiniBitGridLocation) -> bool {
+        let (left, right) = match bit_location.board_index {
+            0 | 1 => (self.all_pieces[0], self.all_pieces[1]),
+            2 | 3 => (self.all_pieces[2], self.all_pieces[3]),
+            _ => panic!("Invalid board index"),
+        };
+
+        let index = bit_location.mask.trailing_zeros() as usize;
+        let row = index / BITBOARD_WIDTH;
+        let row_mask = 0xFF << (row * BITBOARD_WIDTH);
+
+        let bit_present = left & row_mask != 0 || right & row_mask != 0;
+        bit_present
+    }
+
+    fn is_col_occupied(&self, bit_location : MiniBitGridLocation) -> bool {
+        let (top, bottom) = match bit_location.board_index {
+            0 | 2 => (self.all_pieces[0], self.all_pieces[2]),
+            1 | 3 => (self.all_pieces[1], self.all_pieces[3]),
+            _ => panic!("Invalid board index"),
+        };
+
+        let index = bit_location.mask.trailing_zeros() as usize;
+        let col = index % BITBOARD_WIDTH;
+        let col_mask = 0x0101010101010101 << col;
+
+        let bit_present = top & col_mask != 0 || bottom & col_mask != 0;
+        bit_present
+    }
+
+    pub fn add_piece(&mut self, piece: Piece, location: MiniBitGridLocation) {
+        use PieceType::*;
+        use PieceColor::*;
+
+        let piece_bit = AxialBitboard::from_u64(location.mask);
+        let board_index = location.board_index;
+        let all_pieces = &mut self.all_pieces[board_index];
+        let white_pieces = &mut self.white_pieces[board_index];
+        let black_pieces = &mut self.black_pieces[board_index];
+
+        match piece.piece_type {
+            Queen => {
+                self.queens[board_index] |= piece_bit;
+            }
+            Beetle => {
+                self.beetles[board_index] |= piece_bit;
+            }
+            Spider => {
+                self.spiders[board_index] |= piece_bit;
+            }
+            Grasshopper => {
+                self.grasshoppers[board_index] |= piece_bit;
+            }
+            Ant => {
+                self.ants[board_index] |= piece_bit;
+            }
+            Pillbug => {
+                self.pillbugs[board_index] |= piece_bit;
+            }
+            Ladybug => {
+                self.ladybugs[board_index] |= piece_bit;
+            }
+            Mosquito => {
+                self.mosquitos[board_index] |= piece_bit;
+            }
+        }
+
+        match piece.color {
+            White => {
+                *white_pieces |= piece_bit;
+            }
+            Black => {
+                *black_pieces |= piece_bit;
+            }
+        }
+
+        // TODO: update stacks
+        // TODO: update outside
+    
+        // update metainfo
+        self.metainfo.add_location(location);
+
+
+    }
+
+}
+
 
 impl MiniBitGridLocation {
     pub fn from_index(board_index: usize, bitboard_index: usize) -> Self {
@@ -88,6 +223,20 @@ impl MiniBitGridLocation {
             board_index,
             mask,
         }
+    }
+
+    /// Converts the set bit and board index to the *number* representing 
+    /// its row in the grid. Returns 1 << number.
+    pub fn row(&self) -> u16 {
+        let row = self.mask.trailing_zeros() / BITBOARD_WIDTH as u32;
+        let delta = if self.board_index % 2 == 0 { 0 } else { BITBOARD_WIDTH as u32};
+        1 << (row + delta)
+    }
+
+    pub fn column(&self) -> u16 {
+        let column = self.mask.trailing_zeros() % BITBOARD_WIDTH as u32;
+        let delta = if self.board_index < 2 { 0 } else { BITBOARD_WIDTH as u32};
+        1 << (column + delta)
     }
 }
 
@@ -254,7 +403,7 @@ pub mod tests {
 
     #[test]
     pub fn size_sanity_check() {
-        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 384);
+        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 416);
     }
 
     #[test]
@@ -310,6 +459,4 @@ pub mod tests {
             15
         ));
     }
-
-
 }

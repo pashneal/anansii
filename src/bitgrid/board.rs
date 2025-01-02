@@ -63,6 +63,11 @@ pub struct BitboardBounds{
 
 impl AxialBitboard {
     #[inline(always)]
+    pub fn empty() -> Self {
+        AxialBitboard(0)
+    }
+
+    #[inline(always)]
     pub fn from_u64(board: u64) -> Self {
         AxialBitboard(board)
     }
@@ -249,6 +254,13 @@ impl Display for AxialBitboard {
             writeln!(f)?;
         }
         Ok(())
+    }
+}
+
+impl PartialEq<u64> for AxialBitboard {
+    #[inline(always)]
+    fn eq(&self, other: &u64) -> bool {
+        self.0 == *other
     }
 }
 

@@ -26,6 +26,9 @@ const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 /// a 7x7 grid of AxialBitboards
 ///
 /// The grid indices are laid out in the conventional x-y axis follows:
+/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps 
+/// compare it to HexGridLocation instead
+///
 /// ```
 ///    48 47 46 45 44 43 42
 ///    41 40 39 38 37 36 35

@@ -1,6 +1,17 @@
 use std::fmt::{Display, Formatter};
 use std::ops;
 
+const NORTHWEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0xff00000000000000);
+const SOUTHEAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x00000000000000ff);
+const WEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x8080808080808080);
+const EAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x0101010101010101);
+const NORTHEAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0xff01010101010101);
+const SOUTHWEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x80808080808080ff);
+const NORTHEAST_CORNER : AxialBitboard = AxialBitboard(0x100000000000000);
+const SOUTHWEST_CORNER : AxialBitboard = AxialBitboard(0x80);
+const NORTH_WITHOUT_CORNER : AxialBitboard = AxialBitboard(0xfe00000000000000);
+const SOUTH_WITHOUT_CORNER : AxialBitboard = AxialBitboard(0x000000000000007f);
+
 /// Represents a internal part of the Hive grid
 ///
 /// Compositions of AxialBitboards are used to represent the full
@@ -61,6 +72,87 @@ pub struct BitboardBounds{
     pub bottom_right: BitboardCoords,
 }
 
+/// Represents a collection of boards around a central board
+/// in the follow structure
+///
+/// top_left      top        top_right
+/// center_left  center   center_right
+/// bottom_left  bottom   bottom_right
+pub struct Neighborhood {
+    boards: [AxialBitboard; 9]
+}
+
+impl Neighborhood {
+    pub fn new() -> Self {
+        Neighborhood{
+            boards: [AxialBitboard::empty(); 9]
+        }
+    }
+
+    pub fn bottom(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[1]
+    }
+
+    pub fn top(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[7]
+    }
+
+    pub fn center_right(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[3]
+    }
+
+    pub fn center_left(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[5]
+    }
+
+    pub fn center(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[4]
+    }
+
+    pub fn top_left(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[8]
+    }
+
+    pub fn top_right(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[6]
+    }
+
+    pub fn bottom_left(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[2]
+    }
+
+    pub fn bottom_right(&mut self) -> &mut AxialBitboard {
+        &mut self.boards[0]
+    }
+}
+
+impl Display for Neighborhood {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for start_board in (0..9).step_by(3).rev() {
+            let mut rows = vec![String::new(); BITBOARD_HEIGHT];
+            for offset in (0..3).rev() {
+                let board  = self.boards[start_board + offset];
+                for i in (0..BITBOARD_HEIGHT).rev() {
+                    for j in (0..BITBOARD_WIDTH).rev() {
+                        let index = i * BITBOARD_WIDTH + j;
+                        if board.peek(index) {
+                            rows[BITBOARD_HEIGHT - i - 1].push('■');
+                        } else {
+                            rows[BITBOARD_HEIGHT - i - 1].push('□');
+                        }
+                    }
+                }
+            }
+
+            for row in rows {
+                writeln!(f, "{}", row)?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
 impl AxialBitboard {
     #[inline(always)]
     pub fn empty() -> Self {
@@ -73,8 +165,8 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    pub fn from_bitboard(other: AxialBitboard) -> Self {
-        AxialBitboard(other.0)
+    fn flip_west(&self) -> AxialBitboard {
+        AxialBitboard(self.0 >> BITBOARD_WIDTH - 1)
     }
 
     #[inline(always)]
@@ -83,8 +175,18 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
+    fn flip_east(&self) -> AxialBitboard {
+        AxialBitboard(self.0 << BITBOARD_WIDTH - 1)
+    }
+
+    #[inline(always)]
     pub fn shift_east(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> 1)
+    }
+
+    #[inline(always)]
+    fn flip_northwest(&self) -> AxialBitboard {
+        AxialBitboard(self.0 >> (BITBOARD_HEIGHT - 1) * BITBOARD_WIDTH)
     }
 
     #[inline(always)]
@@ -93,13 +195,28 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
+    fn flip_northeast(&self) -> AxialBitboard {
+        AxialBitboard(self.0 >> (BITBOARD_HEIGHT - 1) * (BITBOARD_WIDTH - 1))
+    }
+
+    #[inline(always)]
     pub fn shift_northeast(&self) -> AxialBitboard {
         AxialBitboard(self.0 << 7)
     }
 
     #[inline(always)]
+    fn flip_southwest(&self) -> AxialBitboard {
+        AxialBitboard(self.0 << (BITBOARD_HEIGHT - 1) * (BITBOARD_WIDTH - 1))
+    }
+
+    #[inline(always)]
     pub fn shift_southwest(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> 7)
+    }
+
+    #[inline(always)]
+    fn flip_southeast(&self) -> AxialBitboard {
+        AxialBitboard(self.0 << (BITBOARD_HEIGHT - 1) * BITBOARD_WIDTH)
     }
 
     #[inline(always)]
@@ -142,6 +259,40 @@ impl AxialBitboard {
             top_left: BitboardCoords{x: max_x, y: max_y},
             bottom_right: BitboardCoords{x: min_x, y: min_y}
         })
+    }
+
+    /// Returns a neighborhood representing all empty adjacent spaces
+    /// next to current existing set bits. These adjacent neighbors are 
+    /// specifically unset bits arrived at by shifting the current bitboard
+    /// in all hive directions (W, NW, NE, SE, SW, E).
+    pub fn neighborhood(&self) -> Neighborhood {
+        let mut neighbors = Neighborhood::new();
+        let original = *self;
+
+        *neighbors.center() |= (original & !WEST_OVERFLOW_MASK).shift_west();
+        *neighbors.center() |= (original & !EAST_OVERFLOW_MASK).shift_east();
+        *neighbors.center() |= (original & !NORTHWEST_OVERFLOW_MASK).shift_northwest();
+        *neighbors.center() |= (original & !NORTHEAST_OVERFLOW_MASK).shift_northeast();
+        *neighbors.center() |= (original & !SOUTHWEST_OVERFLOW_MASK).shift_southwest();
+        *neighbors.center() |= (original & !SOUTHEAST_OVERFLOW_MASK).shift_southeast();
+        *neighbors.center() &= !original;
+
+        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK).flip_east();
+        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK).shift_northwest().flip_east();
+
+        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK).flip_west();
+        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK).shift_southeast().flip_west();
+
+        *neighbors.top() |= (original & NORTHWEST_OVERFLOW_MASK).flip_northwest();
+        *neighbors.top() |= (original & NORTH_WITHOUT_CORNER).shift_east().flip_northwest(); 
+
+        *neighbors.bottom() |= (original & SOUTHEAST_OVERFLOW_MASK).flip_southeast();
+        *neighbors.bottom() |= (original & SOUTH_WITHOUT_CORNER).shift_west().flip_southeast();
+
+        *neighbors.top_right() |= (original & NORTHEAST_CORNER).flip_northeast();
+        *neighbors.bottom_left() |= (original & SOUTHWEST_CORNER).flip_southwest();
+        
+        neighbors
     }
 }
 
@@ -233,10 +384,20 @@ impl ops::BitAndAssign<Self> for AxialBitboard {
     }
 }
 
+
 impl ops::BitAndAssign<u64> for AxialBitboard {
     #[inline(always)]
     fn bitand_assign(&mut self, rhs: u64) {
         self.0 &= rhs;
+    }
+}
+
+impl ops::Not for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn not(self) -> Self {
+        AxialBitboard(!self.0)
     }
 }
 
@@ -345,4 +506,86 @@ mod tests {
         assert!(board.is_empty());
         assert!(board.bounding_box().is_none());
     }
+
+    #[test]
+    pub fn test_neighborhood_center_board() {
+        let start = AxialBitboard::from_u64(0x725e242000);
+        let expected = AxialBitboard::from_u64(0x7b8da1da5c60);
+        let mut result = start.neighborhood();
+
+        assert_eq!(*result.center(), expected);
+        assert_eq!(*result.top(), AxialBitboard::empty());
+        assert_eq!(*result.bottom(), AxialBitboard::empty());
+        assert_eq!(*result.center_right(), AxialBitboard::empty());
+        assert_eq!(*result.center_left(), AxialBitboard::empty());
+        assert_eq!(*result.top_right(), AxialBitboard::empty());
+        assert_eq!(*result.top_left(), AxialBitboard::empty());
+        assert_eq!(*result.bottom_right(), AxialBitboard::empty());
+        assert_eq!(*result.bottom_left(), AxialBitboard::empty());
+    }
+
+    #[test]
+    pub fn test_neighborhood_all_boards() {
+        let start = AxialBitboard(0x9100008001000091);
+        let center = AxialBitboard(0x6ab3c0418203d96a);
+        let center_right = AxialBitboard(0x8000008080008080);
+        let center_left = AxialBitboard(0x101000101000001);
+        let top = AxialBitboard(0xd9);
+        let top_right = AxialBitboard(0x80); 
+        let bottom_left = AxialBitboard(0x100000000000000);
+        let bottom = AxialBitboard(0xb300000000000000);
+
+        let bottom_right = AxialBitboard::empty();
+        let top_left = AxialBitboard::empty();
+
+        let mut result = start.neighborhood();
+        println!("{}", result);
+
+        println!("Center:");
+        println!("{}", center);
+        println!("{}", *result.center());
+        assert_eq!(*result.center(), center);
+
+        println!("Center Right:");
+        println!("{}", center_right);
+        println!("{}", *result.center_right());
+        assert_eq!(*result.center_right(), center_right);
+
+        println!("Center Left:");
+        println!("{}", center_left);
+        println!("{}", *result.center_left());
+        assert_eq!(*result.center_left(), center_left);
+
+        println!("Top:");
+        println!("{}", top);
+        println!("{}", *result.top());
+        assert_eq!(*result.top(), top);
+
+        println!("Top Right:");
+        println!("{}", top_right);
+        println!("{}", *result.top_right());
+        assert_eq!(*result.top_right(), top_right);
+
+        println!("Top Left:");
+        println!("{}", top_left);
+        println!("{}", *result.top_left());
+        assert_eq!(*result.top_left(), top_left);
+
+        println!("Bottom Left:");
+        println!("{}", bottom_left);
+        println!("{}", *result.bottom_left());
+        assert_eq!(*result.bottom_left(), bottom_left);
+
+        println!("Bottom:");
+        println!("{}", bottom);
+        println!("{}", *result.bottom());
+        assert_eq!(*result.bottom(), bottom);
+
+        println!("Bottom Right:");
+        println!("{}", bottom_right);
+        println!("{}", *result.bottom_right());
+        assert_eq!(*result.bottom_right(), bottom_right);
+    }
+
+
 }

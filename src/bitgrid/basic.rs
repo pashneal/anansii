@@ -95,7 +95,7 @@ impl GridBounds {
         height as usize
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BasicBitGrid {
     pub queens: Grid,
     pub beetles: Grid,
@@ -136,15 +136,36 @@ impl BasicBitGrid {
         }
     }
 
+    /// Returns a single present piece in the grid if there exists at least one
+    /// within the bounds of an equivalent HexGrid
+    fn find_one(&self) -> Option<(Piece, HexLocation)> {
+        let left = -((HEX_GRID_SIZE / 2) as i8);
+        let right = (HEX_GRID_SIZE / 2) as i8;
+        let top = -((HEX_GRID_SIZE / 2) as i8);
+        let bottom = (HEX_GRID_SIZE / 2) as i8;
+
+        for row in top..=bottom {
+            for col in left..=right {
+                let hex_location = HexLocation::new(row, col);
+                let bit_location: BitGridLocation = hex_location.into();
+                if !self.peek(bit_location).is_empty() {
+                    return Some((self.peek(bit_location).pop().unwrap(), hex_location));
+                }
+            }
+        }
+        None
+    }
+
     pub fn add(&mut self, piece: Piece, loc: BitGridLocation) {
         debug_assert!(loc.board_index < GRID_SIZE);
         let color = piece.color;
         let piece = piece.piece_type;
-
         let all_pieces = self.get_mut_all_pieces().get_mut(loc.board_index).unwrap();
+
         if all_pieces.peek(loc.bitboard_index) {
             self.insert_stack(piece, loc, color);
         } else {
+
             *all_pieces |= 1 << loc.bitboard_index;
 
             let board = self.get_mut_piece(piece).get_mut(loc.board_index).unwrap();
@@ -159,14 +180,10 @@ impl BasicBitGrid {
         use PieceType::*;
         match piece {
             Beetle | Mosquito => {
-                let index = self.stacks.find_one(loc.into());
-                let height = if let Some(index) = index {
-                    let entry = self.stacks.get(index);
+                let stack = self.stacks.find_all(loc.into());
 
-                    entry.height()
-                } else {
-                    2_u8
-                };
+                let height = stack.len() + 1;
+                let height = height as u8;
 
                 let entry = BasicBitStackEntry::new(piece.into(), height, loc.into(), color.into());
                 self.stacks.insert(entry);
@@ -174,8 +191,14 @@ impl BasicBitGrid {
             _ => panic!("Cannot add a {:?} to the top of the hive", piece),
         }
     }
+    pub fn top(&self, loc: BitGridLocation) -> Option<Piece> {
+        let pieces = self.peek(loc);
+        pieces.last().cloned()
+    }
 
     pub fn remove(&mut self, piece: Piece, loc: BitGridLocation) {
+        debug_assert!(self.top(loc).expect("piece should exist") == piece, 
+                      "input piece should match existing top piece");
         debug_assert!(loc.board_index < GRID_SIZE);
         let color = piece.color;
         let piece = piece.piece_type;
@@ -193,6 +216,7 @@ impl BasicBitGrid {
 
         let all_pieces = self.get_mut_all_pieces().get_mut(loc.board_index).unwrap();
         *all_pieces &= !(1 << loc.bitboard_index);
+
     }
 
     fn remove_stack(&mut self, loc: BitGridLocation) -> bool {
@@ -382,6 +406,7 @@ impl BitGridLocation {
         }
     }
 
+
     fn apply(&self, direction: Direction) -> BitGridLocation {
         use Direction::*;
         let x = self.bitboard_index % BITBOARD_WIDTH;
@@ -494,33 +519,51 @@ impl Shiftable for BitGridLocation {
 }
 
 impl PieceIterator for BasicBitGrid {
-    type Output = BitGridLocation;
-    fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)> {
-        let mut pieces = Vec::new();
-        // Needs to be in reverse to go in "board order"
-        for board_index in (0..GRID_SIZE).rev() {
-            let board = self.all_pieces[board_index];
+    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        if None == self.find_one() {
+            return Vec::new();
+        }
+        
+        let (_, loc) = self.find_one().unwrap();
 
-            // Needs to be in reverse to go in "board order"
-            for bitboard_index in (0..BITBOARD_WIDTH * BITBOARD_HEIGHT).rev() {
-                if board.peek(bitboard_index) {
-                    let loc = BitGridLocation::new(board_index, bitboard_index);
-                    let piece = self.peek(loc);
-                    pieces.push((piece, loc));
-                }
+        fn dfs(
+            grid: &BasicBitGrid,
+            current_loc: HexLocation,
+            visited: &mut HashSet<HexLocation>,
+            result: &mut Vec<(Vec<Piece>, HexLocation)>,
+        ) {
+            if visited.contains(&current_loc) {
+                return;
+            }
+
+            let pieces = grid.peek(current_loc.into());
+
+            if pieces.is_empty() {
+                return;
+            }
+
+            visited.insert(current_loc);
+            result.push((pieces, current_loc));
+            for direction in Direction::all() {
+                let next_loc = current_loc.apply(direction);
+                dfs(grid, next_loc, visited, result);
             }
         }
-        pieces
+
+        let mut visited = HashSet::new();
+        let mut result = Vec::new();
+        dfs(self, loc, &mut visited, &mut result);
+
+        // First sort by Hexlocation y then by x
+        result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
+
+        result
     }
 }
 
 impl PartialEq<HexGrid> for BasicBitGrid {
     fn eq(&self, other: &HexGrid) -> bool {
-        let other_pieces = other.pieces().into_iter();
-        let other_pieces = other_pieces.map(|(p, l)| (p, BitGridLocation::from_hex(l)));
-        let other_pieces = other_pieces.collect::<Vec<_>>();
-
-        self.pieces() == other_pieces
+        self.pieces() == other.pieces()
     }
 }
 
@@ -918,6 +961,7 @@ mod tests {
         assert!(bit_grid == hex_grid, "These board's pieces should match");
     }
 
+
     #[test]
     pub fn test_remove() {
         let hex_grid = HexGrid::from_dsl(concat!(
@@ -930,6 +974,10 @@ mod tests {
             "start - [0 0]\n\n",
             "7 - [a b M B M b B]\n",
         ));
+        println!("{}", HexGrid::from_dsl(concat!(
+            "a\n\n",
+            "start - [0 0]\n\n",
+        )).to_dsl());
         let mut bit_grid = BasicBitGrid::new();
         for (stack, loc) in hex_grid.pieces() {
             for piece in stack {
@@ -937,14 +985,23 @@ mod tests {
             }
         }
 
+        let test : HexGrid = bit_grid.clone().try_into().unwrap();
+        println!("{}", test.to_dsl());
+        println!("{}", hex_grid.to_dsl());
+        assert!(test == hex_grid, "These board's pieces should match");
+        assert!(bit_grid == test, "These board's pieces should match");
         assert!(bit_grid == hex_grid, "These board's pieces should match");
 
         for (stack, loc) in hex_grid.pieces() {
-            for piece in stack {
+            for &piece in stack.iter().rev() {
                 bit_grid.remove(piece, BitGridLocation::from_hex(loc));
             }
         }
 
+        let test : HexGrid = bit_grid.clone().try_into().unwrap();
+        println!("{}", test.to_dsl());
+
+        println!("{:#?}", bit_grid.pieces());
         assert_eq!(bit_grid.pieces().len(), 0, "There should be no pieces left");
     }
 

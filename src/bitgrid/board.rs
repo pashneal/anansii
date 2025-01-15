@@ -136,9 +136,9 @@ impl Display for Neighborhood {
                     for j in (0..BITBOARD_WIDTH).rev() {
                         let index = i * BITBOARD_WIDTH + j;
                         if board.peek(index) {
-                            rows[BITBOARD_HEIGHT - i - 1].push('■');
+                            rows[BITBOARD_HEIGHT - i - 1].push_str("■ ");
                         } else {
-                            rows[BITBOARD_HEIGHT - i - 1].push('□');
+                            rows[BITBOARD_HEIGHT - i - 1].push_str("□ ");
                         }
                     }
                 }
@@ -407,9 +407,9 @@ impl Display for AxialBitboard {
             for j in (0..BITBOARD_WIDTH).rev() {
                 let index = i * BITBOARD_WIDTH + j;
                 if self.peek(index) {
-                    write!(f, "■")?;
+                    write!(f, "■ ")?;
                 } else {
-                    write!(f, "□")?;
+                    write!(f, "□ ")?;
                 }
             }
             writeln!(f)?;
@@ -469,14 +469,14 @@ mod tests {
     #[test]
     pub fn test_display() {
         let output = concat!(
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "□□□□□□□□\n",
-            "■□□□□□□□\n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "□ □ □ □ □ □ □ □ \n",
+            "■ □ □ □ □ □ □ □ \n",
         );
 
         let start = AxialBitboard::from_u64(0x80);

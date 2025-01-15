@@ -32,6 +32,9 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///
 /// The grid indices are laid out in the conventional x-y axis as follows:
 ///
+/// TODO(optimization): move away from BasicBitStack to smaller / more efficient
+/// representation after measuring performance
+///
 /// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps 
 /// compare it to HexGridLocation instead
 /// ```
@@ -50,20 +53,20 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///     1 wraps to 3 and vice versa
 ///
 pub struct MiniBitGrid {
-    pub queens: MiniGrid,
-    pub beetles: MiniGrid,
-    pub spiders: MiniGrid,
-    pub grasshoppers: MiniGrid,
-    pub ants: MiniGrid,
-    pub pillbugs: MiniGrid,
-    pub ladybugs: MiniGrid,
-    pub mosquitos: MiniGrid,
-    pub all_pieces: MiniGrid,
-    pub outside: MiniGrid,
-    pub white_pieces: MiniGrid,
-    pub black_pieces: MiniGrid,
-    pub stacks: BasicBitStack,
-    pub metainfo: MiniMetaInfo,
+    queens: MiniGrid,
+    beetles: MiniGrid,
+    spiders: MiniGrid,
+    grasshoppers: MiniGrid,
+    ants: MiniGrid,
+    pillbugs: MiniGrid,
+    ladybugs: MiniGrid,
+    mosquitos: MiniGrid,
+    all_pieces: MiniGrid,
+    outside: MiniGrid,
+    white_pieces: MiniGrid,
+    black_pieces: MiniGrid,
+    stacks: BasicBitStack,
+    metainfo: MiniMetaInfo,
 }
 
 pub struct MiniMetaInfo {
@@ -117,6 +120,39 @@ impl MiniBitGrid {
         }
     }
 
+    fn stamp(&mut self, neighborhood: &mut Neighborhood, board_index: usize) {
+        debug_assert!(board_index < 4);
+        let vertical_index = ( board_index + 2 ) % 4;
+        let horizontal_index = board_index ^ 1;
+        let diagonal_index = (( board_index + 2 ) % 4) ^ 1;
+
+
+        let vertical = &mut self.outside[vertical_index];
+        *vertical |= *neighborhood.top() | *neighborhood.bottom();
+        *vertical &= !self.all_pieces[vertical_index];
+
+        let horizontal = &mut self.outside[horizontal_index];
+        *horizontal |= *neighborhood.center_left() | *neighborhood.center_right();
+        *horizontal &= !self.all_pieces[horizontal_index];
+
+        let diagonal = &mut self.outside[diagonal_index];
+        *diagonal |= *neighborhood.top_right() | *neighborhood.bottom_left();
+        *diagonal &= !self.all_pieces[diagonal_index];
+
+        let center = &mut self.outside[board_index];
+        *center |= *neighborhood.center();
+        *center &= !self.all_pieces[board_index];
+    }
+
+    fn update_outside(&mut self) {
+        for board_index in 0..4 {
+            self.outside[board_index] = AxialBitboard::empty();
+        }
+        for board_index in 0..4 {
+            let mut neighborhood = self.all_pieces[board_index].neighborhood();
+            self.stamp(&mut neighborhood, board_index);
+        }
+    }
 
     fn is_row_occupied(&self, bit_location : MiniBitGridLocation) -> bool {
         let (left, right) = match bit_location.board_index {
@@ -148,7 +184,157 @@ impl MiniBitGrid {
         bit_present
     }
 
-    pub fn add_piece(&mut self, piece: Piece, location: MiniBitGridLocation) {
+    /// Returns the piece type a location that contains a piece.
+    /// Note: Must have a piece at the location
+    fn piece_type(&self, location: MiniBitGridLocation) -> PieceType {
+        debug_assert!(self.presence(location));
+        let queen = self.queens[location.board_index];
+        let beetle = self.beetles[location.board_index];
+        let spider = self.spiders[location.board_index];
+        let grasshopper = self.grasshoppers[location.board_index];
+        let ant = self.ants[location.board_index];
+        let pillbug = self.pillbugs[location.board_index];
+        let ladybug = self.ladybugs[location.board_index];
+        let mask = location.mask;
+
+        if queen & mask != 0 {
+            return PieceType::Queen;
+        } else if beetle & mask != 0 {
+            return PieceType::Beetle;
+        } else if spider & mask != 0 {
+            return PieceType::Spider;
+        } else if grasshopper & mask != 0 {
+            return PieceType::Grasshopper;
+        } else if ant & mask != 0 {
+            return PieceType::Ant;
+        } else if pillbug & mask != 0 {
+            return PieceType::Pillbug;
+        } else if ladybug & mask != 0 {
+            return PieceType::Ladybug;
+        } else {
+            return PieceType::Mosquito;
+        }
+    }
+
+    /// Returns the color of the piece at the given location
+    /// Note: Must have a piece at the location
+    fn color(&self, location: MiniBitGridLocation) -> PieceColor {
+        debug_assert!(self.presence(location));
+        let white = self.white_pieces[location.board_index];
+        let black = self.black_pieces[location.board_index];
+        let mask = location.mask;
+
+        if white & mask != 0 {
+            return PieceColor::White;
+        } else { 
+            return PieceColor::Black;
+        }
+    }
+
+    fn color_mut(&mut self, color : PieceColor, board_index: usize) -> &mut AxialBitboard {
+        match color {
+            PieceColor::White => &mut self.white_pieces[board_index],
+            PieceColor::Black => &mut self.black_pieces[board_index],
+        }
+    }
+
+    fn piece_type_mut(&mut self, piece_type : PieceType, board_index: usize) -> &mut AxialBitboard {
+        use PieceType::*;
+        match piece_type {
+            Queen => &mut self.queens[board_index],
+            Beetle => &mut self.beetles[board_index],
+            Spider => &mut self.spiders[board_index],
+            Grasshopper => &mut self.grasshoppers[board_index],
+            Ant => &mut self.ants[board_index],
+            Pillbug => &mut self.pillbugs[board_index],
+            Ladybug => &mut self.ladybugs[board_index],
+            Mosquito => &mut self.mosquitos[board_index],
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        for board in &self.all_pieces {
+            if *board != AxialBitboard::empty() {
+                return false;
+            }
+        }
+        true
+    } 
+
+
+    /// Checks to see if an addition preserves the invariants of this board.
+    /// That is, does the addition follow the One Hive rule?
+    fn addition_preserves_one_hive(&self, location : MiniBitGridLocation) -> bool {
+        if self.is_empty() {
+            return true;
+        } 
+
+        if self.presence(location) {
+            return true;
+        }
+
+        // A single addition that is adjacent to existing pieces necessarily
+        // follows the one hive rule...
+        // so check all neighbors of given location
+        let mut neighbors = AxialBitboard::from_u64(location.mask).neighborhood();
+
+        let center_index = location.board_index;
+        let vertical_wrap = |index| (index + 2) % 4;
+        let horizontal_wrap = |index| index ^ 1;
+        let diagonal_wrap = |index| vertical_wrap(horizontal_wrap(index));
+    
+        // 1. is there a piece in vertical overflow that is adjacent?
+        let board = self.all_pieces[vertical_wrap(center_index)];
+        if (board & *neighbors.top() | *neighbors.bottom()) != 0 {
+            return true;
+        }
+
+        // 2. is there a piece in horizontal overflow that is adjacent?
+        let board = self.all_pieces[horizontal_wrap(center_index)];
+        if (board & *neighbors.center_left() | *neighbors.center_right()) != 0 {
+            return true;
+        }
+
+        // 3. is there a piece in diagonal overflow that is adjacent?
+        let board = self.all_pieces[diagonal_wrap(center_index)];
+        if (board & *neighbors.top_right() | *neighbors.bottom_left()) != 0 {
+            return true;
+        }
+
+        // 4. is there a piece without overflow that is adjacent?
+        let board = self.all_pieces[center_index];
+        if (board & *neighbors.center()) != 0 {
+            return true;
+        }
+
+        // No piece is adjacent to the given location, so the addition is invalid!
+        return false;
+    }
+
+    
+    /// Returns true if a piece is present at the given location
+    /// or there is a stack at the location
+    pub fn presence(&self, location: MiniBitGridLocation) -> bool {
+        self.all_pieces[location.board_index] & location.mask != 0
+    }
+
+    /// Returns the top piece at the given location
+    pub fn top(&self, location: MiniBitGridLocation) -> Option<Piece> {
+        if self.presence(location) == false {
+            return None;
+        }
+        let stack = self.stacks.top(location.into());
+        if stack.is_some() {
+            return stack
+        }
+
+        let color = self.color(location);
+        let piece_type = self.piece_type(location);
+        Some(Piece::new(piece_type, color))
+    }
+
+    pub fn add_top(&mut self, piece: Piece, location: MiniBitGridLocation) {
+        debug_assert!(self.addition_preserves_one_hive(location));
         use PieceType::*;
         use PieceColor::*;
 
@@ -159,52 +345,110 @@ impl MiniBitGrid {
         let black_pieces = &mut self.black_pieces[board_index];
 
         match piece.piece_type {
-            Queen => {
-                self.queens[board_index] |= piece_bit;
-            }
-            Beetle => {
-                self.beetles[board_index] |= piece_bit;
-            }
-            Spider => {
-                self.spiders[board_index] |= piece_bit;
-            }
-            Grasshopper => {
-                self.grasshoppers[board_index] |= piece_bit;
-            }
-            Ant => {
-                self.ants[board_index] |= piece_bit;
-            }
-            Pillbug => {
-                self.pillbugs[board_index] |= piece_bit;
-            }
-            Ladybug => {
-                self.ladybugs[board_index] |= piece_bit;
-            }
-            Mosquito => {
-                self.mosquitos[board_index] |= piece_bit;
-            }
+            Queen => self.queens[board_index] |= piece_bit,
+            Beetle => self.beetles[board_index] |= piece_bit,
+            Spider => self.spiders[board_index] |= piece_bit,
+            Grasshopper => self.grasshoppers[board_index] |= piece_bit,
+            Ant => self.ants[board_index] |= piece_bit,
+            Pillbug => self.pillbugs[board_index] |= piece_bit,
+            Ladybug => self.ladybugs[board_index] |= piece_bit,
+            Mosquito => self.mosquitos[board_index] |= piece_bit,
         }
 
         match piece.color {
-            White => {
-                *white_pieces |= piece_bit;
-            }
-            Black => {
-                *black_pieces |= piece_bit;
-            }
+            White => *white_pieces |= piece_bit,
+            Black => *black_pieces |= piece_bit,
         }
 
-        // TODO: update stacks
-        // TODO: update outside
+        if *all_pieces & piece_bit != 0 {
+            self.stacks.add_piece(piece, location);
+        }  else {
+            *all_pieces |= piece_bit;
+        }
+        
+        // TODO: update outside with single bit, for now
+        // we just use the whole board
+        self.update_outside();
     
-        // update metainfo
         self.metainfo.add_location(location);
-
-
     }
 
+    pub fn remove_top(&mut self, location : MiniBitGridLocation) -> Option<Piece> {
+        if self.presence(location) == false {
+            return None;
+        }
+
+        if let Some(_) = self.stacks.find_one(location.into()) {
+            return self.stacks.remove_top(location.into());
+        }
+
+        let piece = self.top(location);
+        let piece_type = piece.unwrap().piece_type;
+        let color = piece.unwrap().color;
+        let board_index = location.board_index;
+        let mask = location.mask;
+
+        self.all_pieces[board_index] &= !mask;
+        *self.piece_type_mut(piece_type, board_index) &= !mask;
+        *self.color_mut(color, board_index) &= !mask;
+        self.update_outside();
+
+        // update metainfo
+        if self.is_row_occupied(location) == false {
+            self.metainfo.row_presence &= !location.row();
+        }  
+        if self.is_col_occupied(location) == false {
+            self.metainfo.column_presence &= !location.column();
+        }
+
+        piece
+    }
+
+    /// Returns true if the grid should promote and transfer all
+    /// pieces to a larger version of the bit grid.
+    ///
+    /// Prevents "hazardous overflow", that is, if should_promote() is false,
+    /// the pieces on the hive are guaranteed to not wrap around and collide 
+    /// with itself.
+    pub fn should_promote(&self) -> bool {
+        let width_heuristic = BITBOARD_WIDTH * GRID_WIDTH - 1;
+        let height_heuristic = BITBOARD_HEIGHT * GRID_HEIGHT - 1;
+
+        println!("Row presence: {}", self.metainfo.row_presence.count_ones());
+        println!("Column presence: {}", self.metainfo.column_presence.count_ones());
+        self.metainfo.row_presence.count_ones() >=  width_heuristic as u32 ||
+        self.metainfo.column_presence.count_ones() >= height_heuristic as u32
+    }
 }
 
+impl Display for MiniBitGrid {
+    fn fmt(&self, f : &mut fmt::Formatter) -> Result<(), fmt::Error>{
+        write!(f, "MiniBitGrid all_pieces\n")?;
+        for start_board in (0..GRID_SIZE).step_by(GRID_WIDTH).rev() {
+            let mut rows = vec![String::new(); BITBOARD_HEIGHT];
+            for offset in (0..GRID_WIDTH).rev() {
+                let board  = self.all_pieces[start_board + offset];
+                for i in (0..BITBOARD_HEIGHT).rev() {
+                    for j in (0..BITBOARD_WIDTH).rev() {
+                        let index = i * BITBOARD_WIDTH + j;
+                        if board.peek(index) {
+                            rows[BITBOARD_HEIGHT - i - 1].push_str("■  ");
+                        } else {
+                            rows[BITBOARD_HEIGHT - i - 1].push_str("□  ");
+                        }
+                    }
+                }
+            }
+
+            for row in rows {
+                writeln!(f, "{}", row)?;
+            }
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
 
 impl MiniBitGridLocation {
     pub fn from_index(board_index: usize, bitboard_index: usize) -> Self {
@@ -229,16 +473,31 @@ impl MiniBitGridLocation {
     /// its row in the grid. Returns 1 << number.
     pub fn row(&self) -> u16 {
         let row = self.mask.trailing_zeros() / BITBOARD_WIDTH as u32;
-        let delta = if self.board_index % 2 == 0 { 0 } else { BITBOARD_WIDTH as u32};
+        let delta = if self.board_index < 2 { 0 } else { BITBOARD_WIDTH as u32};
         1 << (row + delta)
     }
 
+    /// Converts the set bit and board index to the *number* representing 
+    /// its column in the grid. Returns 1 << number.
     pub fn column(&self) -> u16 {
         let column = self.mask.trailing_zeros() % BITBOARD_WIDTH as u32;
-        let delta = if self.board_index < 2 { 0 } else { BITBOARD_WIDTH as u32};
+        let delta = if self.board_index % 2 == 0 { 0 } else { BITBOARD_WIDTH as u32};
         1 << (column + delta)
     }
 }
+
+impl Into<BasicStackLocation> for MiniBitGridLocation {
+    fn into(self) -> BasicStackLocation {
+        let x = self.mask.trailing_zeros() % BITBOARD_WIDTH as u32;
+        let y = self.mask.trailing_zeros() / BITBOARD_HEIGHT as u32;
+        BasicStackLocation {
+            x: x as u32,
+            y: y as u32,
+            board_num: self.board_index as u32,
+        }
+    }
+}
+
 
 impl Shiftable for MiniBitGridLocation {
     fn shift_west(&self) -> MiniBitGridLocation {
@@ -395,6 +654,20 @@ impl fmt::Debug for MiniBitGridLocation {
     }
 }
 
+impl Into<BasicBitGrid> for MiniBitGrid { 
+    fn into(self) -> BasicBitGrid {
+        unimplemented!()
+    }
+}
+
+impl TryFrom<BasicBitGrid> for MiniBitGrid {
+    type Error = &'static str;
+
+    fn try_from(value: BasicBitGrid) -> Result<Self, Self::Error> {
+        unimplemented!()
+    }
+}
+
 
 #[cfg(test)]
 pub mod tests {
@@ -458,5 +731,186 @@ pub mod tests {
             reference,
             15
         ));
+    }
+
+    #[test]
+    pub fn test_promotion_basic_east() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_east();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_west() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_west();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_nw() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_northwest();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_sw() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_southwest();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_ne() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_northeast();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_se() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_southeast();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_top() {
+        let mut grid = MiniBitGrid::new();
+        let loc = MiniBitGridLocation::center();
+        let queen = Piece::new(PieceType::Queen, PieceColor::White);
+        let mosquito = Piece::new(PieceType::Mosquito, PieceColor::Black);
+        let beetle = Piece::new(PieceType::Beetle, PieceColor::Black);
+
+        assert_eq!(grid.top(loc), None);
+        grid.add_top(queen, loc);
+        assert_eq!(grid.top(loc).unwrap(), queen);
+        grid.add_top(mosquito, loc);
+        assert_eq!(grid.top(loc).unwrap(), mosquito);
+        grid.add_top(beetle, loc);
+        assert_eq!(grid.top(loc).unwrap(), beetle);
+        grid.add_top(mosquito, loc);
+        grid.remove_top(loc);
+        grid.add_top(mosquito, loc);
+        assert_eq!(grid.top(loc).unwrap(), mosquito);
+        grid.add_top(beetle, loc);
+        assert_eq!(grid.top(loc).unwrap(), beetle);
+        grid.add_top(beetle, loc);
+        assert_eq!(grid.top(loc).unwrap(), beetle);
+        grid.add_top(beetle, loc);
+        assert_eq!(grid.top(loc).unwrap(), beetle);
+
+        let removed = grid.remove_top(loc);
+        assert_eq!(removed.unwrap(), beetle);
+        assert_eq!(grid.top(loc).unwrap(), beetle);
+
+        grid.remove_top(loc);
+        grid.remove_top(loc);
+        assert_eq!(grid.top(loc).unwrap(), mosquito);
+        let removed = grid.remove_top(loc);
+        assert_eq!(removed.unwrap(), mosquito);
+
+        grid.remove_top(loc);
+        grid.remove_top(loc);
+        assert_eq!(grid.top(loc).unwrap(), queen);
+        grid.remove_top(loc);
+        assert_eq!(grid.top(loc), None);
+        assert!(grid.remove_top(loc).is_none());
+    }
+
+    #[test]
+    pub fn test_promotion_basic_remove() {
+        let mut grid = MiniBitGrid::new();
+        let mut loc = MiniBitGridLocation::center();
+        let dummy_piece = Piece::new(PieceType::Queen, PieceColor::White);
+
+        for _ in 0..(BITBOARD_WIDTH * GRID_WIDTH - 2) {
+            grid.add_top(dummy_piece, loc);
+            loc = loc.shift_southwest();
+            assert!(!grid.should_promote());
+        }
+
+        // Note: After this addition, the "outside" metadata would wrap and collide 
+        // with itself and yield invalid results. Be sure should_promote() 
+        // returns true!
+        grid.add_top(dummy_piece, loc);
+        assert!(grid.should_promote());
+
+        // .. and it should be rectified after removing the piece
+        grid.remove_top(loc);
+        assert!(!grid.should_promote());
     }
 }

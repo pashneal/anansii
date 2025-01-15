@@ -27,7 +27,11 @@ enum MainCommands {
 
     /// Runs a script to analyze the certain statistics for hive positions
     Analyze,
-    
+
+    /// Interprets a number as an Axial and prints the bitboard
+    Bitboard{
+        number: u64,
+    }
 }
 
 pub fn run_uhp() {
@@ -35,6 +39,7 @@ pub fn run_uhp() {
     let mut input = String::new();
     let output = uhp.command("info");
     print!("{}", output);
+
     loop {
         input.clear();
         std::io::stdin().read_line(&mut input).unwrap();
@@ -46,12 +51,13 @@ pub fn run_uhp() {
 pub fn main() {
     let args = Cli::parse();
     match args.command {
-        Some(MainCommands::Uhp) => {
-            run_uhp();
+        Some(MainCommands::Uhp) =>  run_uhp(),
+        Some(MainCommands::Analyze) =>  data_analysis::check_positions(),
+        Some(MainCommands::Bitboard{number}) => {
+            let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
+            println!("{}", bitboard);
         }
-        Some(MainCommands::Analyze) => {
-            data_analysis::check_positions();
-        }
+
         None => run_uhp(),
     }
 }

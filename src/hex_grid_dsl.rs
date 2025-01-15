@@ -41,7 +41,8 @@ pub enum ParserError {
 ///
 /// - The board string specifies visually which pieces are where on the board.
 /// - The start string specifies where the [0,0] coordinate is in terms of
-///   [number of eastward moves, number of north-westward moves] starting from the lower left hex.
+///   [number of eastward moves, number of northwestward moves] starting from the upper leftmost hex.
+///   if negative, it means the opposite direction.
 /// - The stack specifies which pieces are in which stacks, listed in "board order".
 ///   That is, first by row, top to bottom, then by column, left to right.
 ///

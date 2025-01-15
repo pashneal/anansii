@@ -475,7 +475,6 @@ impl HexGrid {
 }
 
 impl PieceIterator for HexGrid {
-    type Output = HexLocation;
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
         for (&(q, r), stack) in self.fast_grid.iter() {

@@ -1,4 +1,5 @@
 use crate::hex_grid::HexGridError;
+use crate::location::HexLocation;
 use crate::uhp::GameType;
 
 type Result<T> = std::result::Result<T, HexGridError>;
@@ -171,7 +172,10 @@ impl std::hash::Hash for Piece {
     }
 }
 
+
 pub trait PieceIterator {
-    type Output;
-    fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
+    /// Returns a list of pieces and their locations in "board order", that 
+    /// is first by row top to bottom then by column left to right,
+    /// and with the stacks of pieces from bottom to top.
+    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)>;
 }

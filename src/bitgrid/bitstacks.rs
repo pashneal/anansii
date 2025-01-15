@@ -57,7 +57,7 @@ impl From<PieceType> for StackPiece {
         match piece {
             PieceType::Beetle => StackPiece::Beetle,
             PieceType::Mosquito => StackPiece::Mosquito,
-            _ => panic!("Invalid piece type"),
+            _ => panic!("Invalid piece type, a {:#?} cannot climb atop the hive", piece),
         }
     }
 }
@@ -96,15 +96,15 @@ impl From<PieceColor> for StackColor {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BasicBitLocation {
+pub struct BasicStackLocation {
     pub x: u32,
     pub y: u32,
     pub board_num: u32,
 }
 
-impl From<BitGridLocation> for BasicBitLocation {
+impl From<BitGridLocation> for BasicStackLocation {
     fn from(location: BitGridLocation) -> Self {
-        BasicBitLocation {
+        BasicStackLocation {
             x: location.bitboard_index as u32 % BITBOARD_WIDTH as u32,
             y: location.bitboard_index as u32 / BITBOARD_HEIGHT as u32,
             board_num: location.board_index as u32,
@@ -116,7 +116,7 @@ impl BasicBitStackEntry {
     pub fn new(
         piece: StackPiece,
         height: u8,
-        location: BasicBitLocation,
+        location: BasicStackLocation,
         color: StackColor,
     ) -> Self {
         let piece = piece as u32;
@@ -151,8 +151,34 @@ impl BasicBitStack {
         }
     }
 
+    pub fn top(&self, location: BasicStackLocation) -> Option<Piece> {
+        let pieces = self.find_all(location);
+        pieces.last().map(|index| {
+            let entry = self.stack[*index];
+            let piece = entry.piece();
+            let color = entry.color();
+            Piece::new(piece.into(), color.into())
+        })
+    }
+
+    pub fn remove_top(&mut self, location: BasicStackLocation) -> Option<Piece> {
+        let pieces = self.find_all(location);
+        let piece = pieces.last().map(|index| {
+            let entry = self.stack[*index];
+            let piece = entry.piece();
+            let color = entry.color();
+            Piece::new(piece.into(), color.into())
+        });
+
+        if let Some(index) = pieces.last() {
+            self.remove(*index);
+        }
+
+        piece
+    }
     pub fn insert(&mut self, entry: BasicBitStackEntry) {
         let index = self.bitset.insert();
+        debug_assert!(index < 6, "Cannot insert more than 6 pieces to BitStacks");
         self.stack[index] = entry;
     }
 
@@ -169,10 +195,25 @@ impl BasicBitStack {
         self.stack[index]
     }
 
-    pub fn find_one(&self, location: BasicBitLocation) -> Option<usize> {
+    pub fn add_piece(
+        &mut self,
+        piece: Piece,
+        location: impl Into<BasicStackLocation>,
+    ) {
+        let color = piece.color.into();
+        let piece : StackPiece = piece.piece_type.into();
+
+        let location = location.into();
+        let height = self.find_all(location).len() as u8;
+        let entry = BasicBitStackEntry::new(piece, height, location, color);
+        self.insert(entry);
+    }
+
+    /// TODO(optimization): optimize by using superscalar/vector instructions 
+    pub fn find_one(&self, location: BasicStackLocation) -> Option<usize> {
         for index in self.bitset.into_iter() {
             let entry = self.stack[index];
-            let entry_location = BasicBitLocation {
+            let entry_location = BasicStackLocation {
                 x: (entry.data >> (PIECE_BITS + HEIGHT_BITS)) & COORD_MASK,
                 y: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 3)) & COORD_MASK,
                 board_num: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 6)) & LOCATION_MASK as u32,
@@ -185,13 +226,13 @@ impl BasicBitStack {
         None
     }
 
-    /// Returns all of the pieces at a given stack in height
+    /// Returns all of the indices for stack in height
     /// order from lowest to highest
-    pub fn find_all(&self, location: BasicBitLocation) -> Vec<usize> {
+    pub fn find_all(&self, location: BasicStackLocation) -> Vec<usize> {
         let mut indices = Vec::new();
         for index in self.bitset.into_iter() {
             let entry = self.stack[index];
-            let entry_location = BasicBitLocation {
+            let entry_location = BasicStackLocation {
                 x: (entry.data >> (PIECE_BITS + HEIGHT_BITS)) & COORD_MASK,
                 y: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 3)) & COORD_MASK,
                 board_num: (entry.data >> (PIECE_BITS + HEIGHT_BITS + 6)) & LOCATION_MASK as u32,

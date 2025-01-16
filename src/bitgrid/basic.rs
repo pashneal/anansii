@@ -589,6 +589,12 @@ impl PartialEq<HexGrid> for BasicBitGrid {
     }
 }
 
+impl PartialEq<BasicBitGrid> for BasicBitGrid {
+    fn eq(&self, other: &BasicBitGrid) -> bool {
+        self.pieces() == other.pieces()
+    }
+}
+
 
 /// TODO: this needs to be a try from, not all HexGrids are valid BasicBitGrids
 impl From<HexGrid> for BasicBitGrid {
@@ -636,6 +642,12 @@ impl <I: BasicBitConvertible> From<I> for BasicBitGrid {
             }
         }
         grid
+    }
+}
+
+impl <I: BasicBitConvertible> PartialEq<I> for BasicBitGrid {
+    fn eq(&self, other: &I) -> bool {
+        self.pieces() == other.pieces()
     }
 }
 

@@ -1,6 +1,7 @@
 use super::*;
 use std::fmt::{Display, self};
 use std::collections::HashSet;
+use crate::hex_grid::HexGridConvertible;
 use crate::piece::{Piece, PieceType, PieceColor, PieceIterator};
 use crate::location::{Shiftable, FromHex, HexLocation, Direction};
 
@@ -53,6 +54,7 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///     0 wraps to 2 and vice versa
 ///     1 wraps to 3 and vice versa
 ///
+#[derive(Clone)]
 pub struct MiniBitGrid {
     queens: MiniGrid,
     beetles: MiniGrid,
@@ -70,6 +72,7 @@ pub struct MiniBitGrid {
     metainfo: MiniMetaInfo,
 }
 
+#[derive(Clone, Debug)]
 pub struct MiniMetaInfo {
     /// Represents for each row, whether at least one piece is present
     pub row_presence: u16,
@@ -205,8 +208,8 @@ impl MiniBitGrid {
         bit_present
     }
 
-    /// Returns the piece type a location that contains a piece.
-    /// Note: Must have a piece at the location
+    /// Returns the piece type at the bottom of a location that contains at least
+    /// one piece
     fn piece_type(&self, location: MiniBitGridLocation) -> PieceType {
         debug_assert!(self.presence(location));
         let queen = self.queens[location.board_index];
@@ -237,12 +240,11 @@ impl MiniBitGrid {
         }
     }
 
-    /// Returns the color of the piece at the given location
+    /// Returns the color of the piece at the bottom of the given location
     /// Note: Must have a piece at the location
     fn color(&self, location: MiniBitGridLocation) -> PieceColor {
         debug_assert!(self.presence(location));
         let white = self.white_pieces[location.board_index];
-        let black = self.black_pieces[location.board_index];
         let mask = location.mask;
 
         if white & mask != 0 {
@@ -332,8 +334,18 @@ impl MiniBitGrid {
         return false;
     }
 
+    /// Returns the stack of all pieces at the given location from bottom to top
     fn peek(&self, loc: MiniBitGridLocation) -> Vec<Piece> {
         let mut pieces = Vec::new();
+
+        if self.presence(loc) == false {
+            return pieces;
+        }
+
+        let color = self.color(loc);
+        let piece_type = self.piece_type(loc);
+        pieces.push(Piece::new(piece_type, color));
+
         for index in self.stacks.find_all(loc.into()) {
             let entry = self.stacks.get(index);
             let piece_type : PieceType = entry.piece().into();
@@ -341,9 +353,6 @@ impl MiniBitGrid {
             pieces.push(Piece::new(piece_type, color));
         }
 
-        let color = self.color(loc);
-        let piece_type = self.piece_type(loc);
-        pieces.push(Piece::new(piece_type, color));
 
         pieces
     }
@@ -357,6 +366,7 @@ impl MiniBitGrid {
     /// Returns the top piece at the given location
     pub fn top(&self, location: MiniBitGridLocation) -> Option<Piece> {
         if self.presence(location) == false {
+            debug_assert!(self.stacks.top(location.into()).is_none());
             return None;
         }
         let stack = self.stacks.top(location.into());
@@ -369,8 +379,17 @@ impl MiniBitGrid {
         Some(Piece::new(piece_type, color))
     }
 
+    /// Adds a piece to the top of the stack at the given location,
+    /// addition must preserve the One Hive rule
     pub fn add_top(&mut self, piece: Piece, location: MiniBitGridLocation) {
-        debug_assert!(self.addition_preserves_one_hive(location));
+        assert!(self.addition_preserves_one_hive(location));
+        self.add_top_unchecked(piece, location);
+    }
+
+    /// Adds a piece to the top of the stack at the given location,
+    /// But does not necessarily guarantee that 
+    /// the addition preserves the One Hive rule
+    fn add_top_unchecked(&mut self, piece: Piece, location: MiniBitGridLocation) {
         use PieceType::*;
         use PieceColor::*;
 
@@ -380,26 +399,28 @@ impl MiniBitGrid {
         let white_pieces = &mut self.white_pieces[board_index];
         let black_pieces = &mut self.black_pieces[board_index];
 
-        match piece.piece_type {
-            Queen => self.queens[board_index] |= piece_bit,
-            Beetle => self.beetles[board_index] |= piece_bit,
-            Spider => self.spiders[board_index] |= piece_bit,
-            Grasshopper => self.grasshoppers[board_index] |= piece_bit,
-            Ant => self.ants[board_index] |= piece_bit,
-            Pillbug => self.pillbugs[board_index] |= piece_bit,
-            Ladybug => self.ladybugs[board_index] |= piece_bit,
-            Mosquito => self.mosquitos[board_index] |= piece_bit,
-        }
 
-        match piece.color {
-            White => *white_pieces |= piece_bit,
-            Black => *black_pieces |= piece_bit,
-        }
 
-        if *all_pieces & piece_bit != 0 {
+        let bottom_piece_exists =  *all_pieces & piece_bit != 0;
+        
+        if bottom_piece_exists {
             self.stacks.add_piece(piece, location);
         }  else {
             *all_pieces |= piece_bit;
+            match piece.color {
+                White => *white_pieces |= piece_bit,
+                Black => *black_pieces |= piece_bit,
+            }
+            match piece.piece_type {
+                Queen => self.queens[board_index] |= piece_bit,
+                Beetle => self.beetles[board_index] |= piece_bit,
+                Spider => self.spiders[board_index] |= piece_bit,
+                Grasshopper => self.grasshoppers[board_index] |= piece_bit,
+                Ant => self.ants[board_index] |= piece_bit,
+                Pillbug => self.pillbugs[board_index] |= piece_bit,
+                Ladybug => self.ladybugs[board_index] |= piece_bit,
+                Mosquito => self.mosquitos[board_index] |= piece_bit,
+            }
         }
         
         // TODO: update outside with single bit, for now
@@ -450,8 +471,6 @@ impl MiniBitGrid {
         let width_heuristic = BITBOARD_WIDTH * GRID_WIDTH - 1;
         let height_heuristic = BITBOARD_HEIGHT * GRID_HEIGHT - 1;
 
-        println!("Row presence: {}", self.metainfo.row_presence.count_ones());
-        println!("Column presence: {}", self.metainfo.column_presence.count_ones());
         self.metainfo.row_presence.count_ones() >=  width_heuristic as u32 ||
         self.metainfo.column_presence.count_ones() >= height_heuristic as u32
     }
@@ -531,7 +550,7 @@ impl PieceIterator for MiniBitGrid {
     }
 }
 
-impl Display for MiniBitGrid {
+impl std::fmt::Debug for MiniBitGrid {
     fn fmt(&self, f : &mut fmt::Formatter) -> Result<(), fmt::Error>{
         write!(f, "MiniBitGrid all_pieces\n")?;
         for start_board in (0..GRID_SIZE).step_by(GRID_WIDTH).rev() {
@@ -765,17 +784,41 @@ impl fmt::Debug for MiniBitGridLocation {
 
 /// Promises the compiler that all MiniBitGrids can be converted to a BasicBitGrid
 impl BasicBitConvertible for MiniBitGrid {}
+/// Promises the compiler that all MiniBitGrids can be converted to a HexGrid
+impl HexGridConvertible for MiniBitGrid {} 
 
 impl TryFrom<BasicBitGrid> for MiniBitGrid {
     type Error = &'static str;
 
-    fn try_from(value: BasicBitGrid) -> Result<Self, Self::Error> {
-        unimplemented!()
+    fn try_from(grid: BasicBitGrid) -> Result<Self, Self::Error> {
+        let bounds = grid.bounding_box();
+        if bounds.is_none() {
+            return Ok(MiniBitGrid::new());
+        }
+
+        let bounds = bounds.unwrap();
+        let size = bounds.width().max(bounds.height());
+
+        if size >= 15 {
+            return Err("Cannot convert BasicBitGrid to MiniBitGrid, size too large");
+        }
+
+        let mut mini = MiniBitGrid::new();
+        for (stack, location) in grid.pieces() {
+            let mini_location: MiniBitGridLocation = location.into();
+            for piece in stack {
+                mini.add_top_unchecked(piece, mini_location);
+            }
+        }
+        // TODO: could do a debug assert to see if one hive rule is preserved?
+
+        Ok(mini)
     }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use crate::hex_grid::HexGrid;
     use super::*;
     use crate::testing_utils::is_localized;
 
@@ -1021,5 +1064,41 @@ pub mod tests {
 
     #[test]
     pub fn test_conversion() {
+        let hex_grid = HexGrid::from_dsl(concat!(
+            " . a . . . .\n",
+            ". . a . a .\n",
+            " . a 7 a . .\n",
+            ". . a . . .\n",
+            " . . a a . .\n",
+            ". . . . a .\n\n",
+            "start - [0 0]\n\n",
+            "7 - [a b M B M b B]\n",
+        ));
+
+        let basic : BasicBitGrid = hex_grid.clone().into();
+        let mini : MiniBitGrid = basic.clone().try_into().unwrap();
+
+        
+        println!("-----------------");
+        for stack in mini.pieces() {
+            if stack.0.len() > 1 {
+                println!("mini {:#?}", stack);
+            }
+        }
+        println!("-----------------");
+        for stack in basic.pieces() {
+            if stack.0.len() > 1 {
+                println!("basic {:#?}", stack);
+            }
+        }
+
+        assert_eq!(basic.pieces(), mini.pieces());
+        assert_eq!(basic, mini);
+
+        let converted_basic : BasicBitGrid = mini.clone().into();
+        assert_eq!(basic, converted_basic);
+
+        let converted_hex : HexGrid = mini.into();
+        assert_eq!(hex_grid, converted_hex);
     }
 }

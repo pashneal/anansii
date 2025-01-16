@@ -1,7 +1,8 @@
 use super::*;
-use crate::piece::{Piece, PieceType, PieceColor};
 use std::fmt::{Display, self};
-use crate::location::{Shiftable, FromHex, HexLocation};
+use std::collections::HashSet;
+use crate::piece::{Piece, PieceType, PieceColor, PieceIterator};
+use crate::location::{Shiftable, FromHex, HexLocation, Direction};
 
 const LEFT_OVERFLOW_MASK : u64 = 0x8080808080808080;
 const RIGHT_OVERFLOW_MASK : u64 = 0x0101010101010101;
@@ -118,6 +119,26 @@ impl MiniBitGrid {
             stacks: BasicBitStack::new(),
             metainfo: MiniMetaInfo::new(),  
         }
+    }
+
+    /// Deterministically chooses a HexLocation that contains at least one piece
+    /// on the board. Returns none if the board is empty 
+    fn find_one_hex(&self) -> Option<HexLocation> {
+        let left = -(BITBOARD_WIDTH as i8);
+        let right = BITBOARD_WIDTH as i8; 
+        let top = -(BITBOARD_HEIGHT as i8);
+        let bottom = BITBOARD_HEIGHT as i8;
+
+        for row in top..=bottom {
+            for col in left..=right {
+                let hex_location = HexLocation::new(row, col);
+                let bit_location: MiniBitGridLocation = hex_location.into();
+                if self.top(bit_location).is_some() {
+                    return Some(hex_location);
+                }
+            }
+        }
+        None
     }
 
     fn stamp(&mut self, neighborhood: &mut Neighborhood, board_index: usize) {
@@ -311,6 +332,21 @@ impl MiniBitGrid {
         return false;
     }
 
+    fn peek(&self, loc: MiniBitGridLocation) -> Vec<Piece> {
+        let mut pieces = Vec::new();
+        for index in self.stacks.find_all(loc.into()) {
+            let entry = self.stacks.get(index);
+            let piece_type : PieceType = entry.piece().into();
+            let color: PieceColor = entry.color().into();
+            pieces.push(Piece::new(piece_type, color));
+        }
+
+        let color = self.color(loc);
+        let piece_type = self.piece_type(loc);
+        pieces.push(Piece::new(piece_type, color));
+
+        pieces
+    }
     
     /// Returns true if a piece is present at the given location
     /// or there is a stack at the location
@@ -421,6 +457,80 @@ impl MiniBitGrid {
     }
 }
 
+impl PieceIterator for MiniBitGrid {
+    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+
+        // We use the fact that the equivalence of
+        // MiniBitGridLocation to HexLocation is closed under adjacency to 
+        // convert a set of MiniBitGridLocations to an equivalent set of HexLocations
+        //
+        // In other words, even though there are multiple valid HexLocations
+        // that map to the same MiniBitGridLocation (due to wrapping), we can guarantee a 
+        // deterministic conversion by:
+        //
+        //  1. deterministically choosing a single starting MiniBitGridLocation
+        //  2. deterministically converting that to a HexLocation
+        //  3. performing deterministic adjacency operations on that HexLocation 
+        //  4. converting the resulting HexLocations back to MiniBitGridLocations
+        //     (via the FromHex trait), continuing this process until 
+        //     we have found all desired locations
+        // 
+        // This will find a deterministic set of HexLocations that are on or adjacent
+        // to our chosen starting MiniBitGridLocation
+        
+
+        if self.is_empty() {
+            return Vec::new();
+        }
+
+        // -> Perform steps (1) and (2)
+        let hex = self.find_one_hex().unwrap();
+
+
+        fn dfs(
+            grid: &MiniBitGrid,
+            current_loc: HexLocation,
+            visited: &mut HashSet<HexLocation>,
+            result: &mut Vec<(Vec<Piece>, HexLocation)>,
+        ) {
+            if visited.contains(&current_loc) {
+                return;
+            }
+
+            // -> Perform step (4)
+            let bit_location : MiniBitGridLocation = current_loc.into(); 
+
+            let pieces = grid.peek(bit_location);
+            if pieces.is_empty() {
+                return;
+            }
+
+            visited.insert(current_loc);
+            result.push((pieces, current_loc));
+
+            // -> Perform step (3)
+            for direction in Direction::all() {
+                let next_loc = current_loc.apply(direction);
+                dfs(grid, next_loc, visited, result);
+            }
+        }
+
+        let mut visited = HashSet::new();
+        let mut result = Vec::new();
+
+        // Perform the conversion from our MiniBitGridLocations to HexLocations,
+        // we can use depth first search because all piece
+        // locations are guaranteed to be connected
+        dfs(self, hex, &mut visited, &mut result);
+
+        // First sort by Hexlocation y then by x
+        result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
+
+        result
+        
+    }
+}
+
 impl Display for MiniBitGrid {
     fn fmt(&self, f : &mut fmt::Formatter) -> Result<(), fmt::Error>{
         write!(f, "MiniBitGrid all_pieces\n")?;
@@ -497,7 +607,6 @@ impl Into<BasicStackLocation> for MiniBitGridLocation {
         }
     }
 }
-
 
 impl Shiftable for MiniBitGridLocation {
     fn shift_west(&self) -> MiniBitGridLocation {
@@ -654,11 +763,8 @@ impl fmt::Debug for MiniBitGridLocation {
     }
 }
 
-impl Into<BasicBitGrid> for MiniBitGrid { 
-    fn into(self) -> BasicBitGrid {
-        unimplemented!()
-    }
-}
+/// Promises the compiler that all MiniBitGrids can be converted to a BasicBitGrid
+impl BasicBitConvertible for MiniBitGrid {}
 
 impl TryFrom<BasicBitGrid> for MiniBitGrid {
     type Error = &'static str;
@@ -667,7 +773,6 @@ impl TryFrom<BasicBitGrid> for MiniBitGrid {
         unimplemented!()
     }
 }
-
 
 #[cfg(test)]
 pub mod tests {
@@ -912,5 +1017,9 @@ pub mod tests {
         // .. and it should be rectified after removing the piece
         grid.remove_top(loc);
         assert!(!grid.should_promote());
+    }
+
+    #[test]
+    pub fn test_conversion() {
     }
 }

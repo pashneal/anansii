@@ -327,6 +327,24 @@ impl IntoIterator for AxialBitboard {
     }
 }
 
+impl ops::Add<Self> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: Self) -> Self {
+        AxialBitboard(self.0 + rhs.0)
+    }
+}
+
+impl ops::Add<u64> for AxialBitboard {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: u64) -> Self {
+        AxialBitboard(self.0 + rhs)
+    }
+}
+
 impl ops::BitOr<Self> for AxialBitboard {
     type Output = Self;
 

@@ -49,7 +49,8 @@ impl HexLocation {
         HexLocation { x, y }
     }
 
-    /// Applies a direction to this location, returning the new location.
+    /// Applies a direction to this location, 
+    /// returning the new location. This function is deterministic.
     pub fn apply(&self, direction: Direction) -> Self {
         use Direction::*;
         let (mut x, mut y) = (self.x, self.y);
@@ -116,11 +117,18 @@ pub trait FromHex: PartialEq + std::fmt::Debug {
 }
 
 pub trait Shiftable {
+    // Deterministically shifts the location west by one hex.
     fn shift_west(&self) -> Self;
+    // Deterministically shifts the location east by one hex.
     fn shift_east(&self) -> Self;
+    // Deterministically shifts the location northwest by one hex.
     fn shift_northwest(&self) -> Self;
+    // Deterministically shifts the location northeast by one hex.
     fn shift_northeast(&self) -> Self;
+    // Deterministically shifts the location southwest by one hex.
     fn shift_southwest(&self) -> Self;
+    // Deterministically shifts the location southeast by one hex.
     fn shift_southeast(&self) -> Self;
+    // Returns a consistent center location for the given type.
     fn center() -> Self;
 }

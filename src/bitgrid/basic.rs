@@ -136,9 +136,9 @@ impl BasicBitGrid {
         }
     }
 
-    /// Returns a single present piece in the grid if there exists at least one
-    /// within the bounds of an equivalent HexGrid
-    fn find_one(&self) -> Option<(Piece, HexLocation)> {
+    /// Deterministically chooses a HexLocation that contains to a single piece
+    /// on the board. Returns none if no piece exists within the bounds of an equivalent HexGrid
+    fn find_one_hex(&self) -> Option<HexLocation> {
         let left = -((HEX_GRID_SIZE / 2) as i8);
         let right = (HEX_GRID_SIZE / 2) as i8;
         let top = -((HEX_GRID_SIZE / 2) as i8);
@@ -149,7 +149,7 @@ impl BasicBitGrid {
                 let hex_location = HexLocation::new(row, col);
                 let bit_location: BitGridLocation = hex_location.into();
                 if !self.peek(bit_location).is_empty() {
-                    return Some((self.peek(bit_location).pop().unwrap(), hex_location));
+                    return Some(hex_location);
                 }
             }
         }
@@ -520,11 +520,30 @@ impl Shiftable for BitGridLocation {
 
 impl PieceIterator for BasicBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
-        if None == self.find_one() {
+
+        // We use the fact that the equivalence of
+        // BasicBitGridLocation to HexLocation is closed under adjacency to 
+        // convert a set of BasicBitGridLocations to an equivalent set of HexLocations
+        //
+        // In other words, even though there are multiple valid HexLocations
+        // that map to the same BasicBitGridLocation (due to wrapping), and thus multiple valid
+        // conversions we can guarantee a deterministic conversion by:
+        //
+        //  1. deterministically choosing a single starting BasicBitGridLocation
+        //  2. deterministically converting that to a HexLocation
+        //  3. performing deterministic adjacency operations on that HexLocation 
+        //  4. converting the resulting HexLocations back to BasicBitGridLocations
+        //     (via the FromHex trait), continuing this process until 
+        //     we have found all desired locations
+        // 
+        // This will find a deterministic set of HexLocations that are on or adjacent
+        // to our chosen starting BasicBitGridLocation
+
+        if None == self.find_one_hex() {
             return Vec::new();
         }
         
-        let (_, loc) = self.find_one().unwrap();
+        let hex = self.find_one_hex().unwrap();
 
         fn dfs(
             grid: &BasicBitGrid,
@@ -550,9 +569,12 @@ impl PieceIterator for BasicBitGrid {
             }
         }
 
+        // Perform the conversion as described above
+        // we can use depth first search because all piece
+        // locations are guaranteed to be connected
         let mut visited = HashSet::new();
         let mut result = Vec::new();
-        dfs(self, loc, &mut visited, &mut result);
+        dfs(self, hex, &mut visited, &mut result);
 
         // First sort by Hexlocation y then by x
         result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
@@ -567,182 +589,8 @@ impl PartialEq<HexGrid> for BasicBitGrid {
     }
 }
 
-impl TryInto<HexGrid> for BasicBitGrid {
-    type Error = HexGridError;
-    fn try_into(self) -> Result<HexGrid> {
-        let left = -((HEX_GRID_SIZE / 2) as i8);
-        let right = (HEX_GRID_SIZE / 2) as i8;
-        let top = -((HEX_GRID_SIZE / 2) as i8);
-        let bottom = (HEX_GRID_SIZE / 2) as i8;
 
-        let mut start = None;
-        for row in top..=bottom {
-            for col in left..=right {
-                let hex_location = HexLocation::new(row, col);
-                let bit_location: BitGridLocation = hex_location.into();
-                if !self.peek(bit_location).is_empty() {
-                    start = Some(hex_location);
-                }
-            }
-        }
-
-        if start.is_none() {
-            debug_assert!(
-                self.pieces().is_empty(),
-                "Somehow pieces exist outside the bounds of the hex grid (-{}/+{})",
-                HEX_GRID_SIZE / 2,
-                HEX_GRID_SIZE / 2
-            );
-            return Ok(HexGrid::new());
-        }
-
-        // Since we know the position must follow the One Hive rule,
-        // we do a dfs starting from the start location to find all the pieces
-        //
-        // Note: the reason we can't convert directly is that there is
-        // no guarantee that BasicBitLocation -> HexLocation is an injective mapping -
-        // there may be multiple BasicBitLocations that map to the same HexLocation
-        // due to wrapping
-        fn dfs(
-            grid: &BasicBitGrid,
-            current_loc: HexLocation,
-            visited: &mut HashSet<HexLocation>,
-            on_hive: &mut usize,
-            result: &mut HexGrid,
-        ) -> Result<()> {
-            if visited.contains(&current_loc) {
-                return Ok(());
-            }
-
-            let pieces = grid.peek(current_loc.into());
-
-            if pieces.is_empty() {
-                return Ok(());
-            }
-
-            *on_hive += pieces.len() - 1;
-
-            if *on_hive > 6 {
-                return Err(HexGridError::TooManyPiecesOnHive);
-            }
-
-            visited.insert(current_loc);
-            for piece in pieces {
-                result.add(piece, current_loc);
-            }
-            for direction in Direction::all() {
-                let next_loc = current_loc.apply(direction);
-                dfs(grid, next_loc, visited, on_hive, result)?;
-            }
-
-            Ok(())
-        }
-
-        let mut visited = HashSet::new();
-        let mut on_hive = 0;
-        let mut result = HexGrid::new();
-        match dfs(
-            &self,
-            start.unwrap(),
-            &mut visited,
-            &mut on_hive,
-            &mut result,
-        ) {
-            Err(e) => Err(e),
-            _ => Ok(result),
-        }
-    }
-}
-
-impl<'a> TryInto<HexGrid> for &'a BasicBitGrid {
-    type Error = HexGridError;
-    fn try_into(self) -> Result<HexGrid> {
-        let left = -((HEX_GRID_SIZE / 2) as i8);
-        let right = (HEX_GRID_SIZE / 2) as i8;
-        let top = -((HEX_GRID_SIZE / 2) as i8);
-        let bottom = (HEX_GRID_SIZE / 2) as i8;
-
-        let mut start = None;
-        for row in top..=bottom {
-            for col in left..=right {
-                let hex_location = HexLocation::new(row, col);
-                let bit_location: BitGridLocation = hex_location.into();
-                if !self.peek(bit_location).is_empty() {
-                    start = Some(hex_location);
-                }
-            }
-        }
-
-        if start.is_none() {
-            debug_assert!(
-                self.pieces().is_empty(),
-                "Somehow pieces exist outside the bounds of the hex grid (-{}/+{})",
-                HEX_GRID_SIZE / 2,
-                HEX_GRID_SIZE / 2
-            );
-            return Ok(HexGrid::new());
-        }
-
-        // Since we know the position must follow the One Hive rule,
-        // we do a dfs starting from the start location to find all the pieces
-        //
-        // Note: the reason we can't convert directly is that there is
-        // no guarantee that BasicBitLocation -> HexLocation is an injective mapping -
-        // there may be multiple BasicBitLocations that map to the same HexLocation
-        // due to wrapping
-        fn dfs(
-            grid: &BasicBitGrid,
-            current_loc: HexLocation,
-            visited: &mut HashSet<HexLocation>,
-            on_hive: &mut usize,
-            result: &mut HexGrid,
-        ) -> Result<()> {
-            if visited.contains(&current_loc) {
-                return Ok(());
-            }
-
-            let pieces = grid.peek(current_loc.into());
-
-            if pieces.is_empty() {
-                return Ok(());
-            }
-
-            *on_hive += pieces.len() - 1;
-
-            if *on_hive > 6 {
-                return Err(HexGridError::TooManyPiecesOnHive);
-            }
-
-            visited.insert(current_loc);
-            for piece in pieces {
-                result.add(piece, current_loc);
-            }
-            for direction in Direction::all() {
-                let next_loc = current_loc.apply(direction);
-                dfs(grid, next_loc, visited, on_hive, result)?;
-            }
-
-            Ok(())
-        }
-
-        let mut visited = HashSet::new();
-        let mut on_hive = 0;
-        let mut result = HexGrid::new();
-        match dfs(
-            self,
-            start.unwrap(),
-            &mut visited,
-            &mut on_hive,
-            &mut result,
-        ) {
-            Err(e) => Err(e),
-            _ => Ok(result),
-        }
-    }
-}
-
-// Note: All basic bit grids are legal HexGrids,
-// thus there is no TryFrom implementation
+/// TODO: this needs to be a try from, not all HexGrids are valid BasicBitGrids
 impl From<HexGrid> for BasicBitGrid {
     fn from(hex_grid: HexGrid) -> Self {
         let mut bit_grid = BasicBitGrid::new();
@@ -769,11 +617,32 @@ impl From<&HexGrid> for BasicBitGrid {
 
 impl Display for BasicBitGrid {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let hex_grid: HexGrid = self.try_into().expect("Could not convert to hex grid");
+        let hex_grid: HexGrid = self.clone().into();
         write!(f, "{}", hex_grid.to_dsl())?;
         Ok(())
     }
 }
+
+/// Marker trait for types that can iterate over pieces.
+/// Promises the compiler that the type can be converted to a BasicBitGrid
+pub trait BasicBitConvertible : PieceIterator {}
+
+impl <I: BasicBitConvertible> From<I> for BasicBitGrid {
+    fn from(iter: I) -> Self {
+        let mut grid = BasicBitGrid::new();
+        for (stack, loc) in iter.pieces() {
+            for piece in stack {
+                grid.add(piece, BitGridLocation::from_hex(loc));
+            }
+        }
+        grid
+    }
+}
+
+/// Marker trait for types that can iterate over pieces.
+/// Promises the compiler that the type can be converted to a HexGrid
+impl HexGridConvertible for BasicBitGrid {}
+
 
 #[cfg(test)]
 mod tests {

@@ -164,7 +164,7 @@ impl GameDebugger {
         // If the game is over, no legal moves
         match self.game_result() {
             Some(_) => HashSet::new(),
-            _ => self.generator.all_moves_for(self.player_to_move()),
+            _ => self.generator.generate_positions_for(self.player_to_move()),
         }
     }
 

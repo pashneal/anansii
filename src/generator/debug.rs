@@ -461,7 +461,7 @@ impl SwapGenerator<HexGrid> for PositionDebugger {
     fn pillbug_swaps(
         &mut self,
         pillbug_location: HexLocation,
-        disallowed: Option<HexLocation>,
+        immobilized: Option<HexLocation>,
     ) -> Vec<HexGrid> {
         let height = self.grid.peek(pillbug_location).len();
         debug_assert!(height == 1, "The stack must only contain the pillbug");
@@ -470,9 +470,14 @@ impl SwapGenerator<HexGrid> for PositionDebugger {
                 || self.grid.top(pillbug_location).unwrap().piece_type == PieceType::Mosquito
         );
 
+        match immobilized {
+            Some(loc) if loc == pillbug_location => return vec![],
+            _ => {},
+        }
+
         let mut swappable = Vec::new();
         for &candidate_loc in self.grid.get_neighbors(pillbug_location).iter() {
-            if let Some(disallowed) = disallowed {
+            if let Some(disallowed) = immobilized {
                 if candidate_loc == disallowed {
                     continue;
                 }
@@ -517,7 +522,7 @@ impl SwapGenerator<HexGrid> for PositionDebugger {
 }
 
 impl PositionGenerator<HexGrid> for PositionDebugger {
-    fn all_moves_for(&mut self, color: PieceColor) -> HashSet<HexGrid> {
+    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
         let all_pieces = self.grid.pieces();
@@ -650,23 +655,26 @@ pub trait SwapGenerator<Position: IntoPieces> {
     ///
     /// Adjacent pieces that are not allowed to be swapped are:
     ///
-    /// - a piece at the specified *disallowed* location
+    /// - a piece at the specified *immobilized* location
     /// - pieces in a stack of height > 1
     /// - pieces whose absence would violate the One Hive Rule
     /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
+    ///
+    /// Additionally, the pillbug is not able to swap if it is at the immobilized
+    /// location
     fn pillbug_swaps(
         &mut self,
         pillbug_location: HexLocation,
-        disallowed: Option<HexLocation>,
+        immobilized: Option<HexLocation>,
     ) -> Vec<Position>;
 }
 
 pub trait PositionGenerator<Position: IntoPieces>:
     MoveGenerator<Position> + PlacementGenerator + SwapGenerator<Position>
 {
-    /// Returns unique legal positions reachable from the current board state
-    /// given that it is the turn of the specified color.
-    fn all_moves_for(&mut self, color: PieceColor) -> HashSet<Position>;
+    /// Returns the legal positions reachable from the current board state
+    /// as if it is the turn of the specified color.
+    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<Position>;
 }
 
 #[cfg(test)]
@@ -1457,6 +1465,33 @@ mod tests {
         compare_moves(pillbug, selector, &grid, &pillbug_moves);
     }
 
+
+    #[test]
+    pub fn test_pillbug_swaps_immobilized() {
+        use PieceColor::*;
+        use PieceType::*;
+
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . 2 . . .\n",
+            ". . 2 P . . .\n",
+            " . . l . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [q b]\n",
+            "2 - [m b]\n"
+        ));
+
+        let pillbug_loc = grid.find(Piece::new(Pillbug, White)).unwrap().0;
+        let mut generator = PositionDebugger::from_default_grid(&grid);
+        let pillbug_swaps = generator.pillbug_swaps(pillbug_loc, None);
+
+        assert!(!pillbug_swaps.is_empty());
+
+        let pillbug_swaps = generator.pillbug_swaps(pillbug_loc, Some(pillbug_loc));
+        assert!(pillbug_swaps.is_empty());
+    }
+
     #[test]
     pub(crate) fn test_pillbug_swaps() {
         use PieceColor::*;
@@ -1878,4 +1913,5 @@ mod tests {
         let mosquito_moves = generator.mosquito_moves(mosquito);
         assert!(mosquito_moves.is_empty());
     }
+
 }

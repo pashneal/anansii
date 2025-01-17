@@ -1,16 +1,16 @@
 use std::fmt::{Display, Formatter};
 use std::ops;
 
-const NORTHWEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0xff00000000000000);
-const SOUTHEAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x00000000000000ff);
-const WEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x8080808080808080);
-const EAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x0101010101010101);
-const NORTHEAST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0xff01010101010101);
-const SOUTHWEST_OVERFLOW_MASK : AxialBitboard = AxialBitboard(0x80808080808080ff);
-const NORTHEAST_CORNER : AxialBitboard = AxialBitboard(0x100000000000000);
-const SOUTHWEST_CORNER : AxialBitboard = AxialBitboard(0x80);
-const NORTH_WITHOUT_CORNER : AxialBitboard = AxialBitboard(0xfe00000000000000);
-const SOUTH_WITHOUT_CORNER : AxialBitboard = AxialBitboard(0x000000000000007f);
+const NORTHWEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0xff00000000000000);
+const SOUTHEAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x00000000000000ff);
+const WEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x8080808080808080);
+const EAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x0101010101010101);
+const NORTHEAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0xff01010101010101);
+const SOUTHWEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x80808080808080ff);
+const NORTHEAST_CORNER: AxialBitboard = AxialBitboard(0x100000000000000);
+const SOUTHWEST_CORNER: AxialBitboard = AxialBitboard(0x80);
+const NORTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0xfe00000000000000);
+const SOUTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0x000000000000007f);
 
 /// Represents a internal part of the Hive grid
 ///
@@ -55,9 +55,9 @@ pub const BITBOARD_WIDTH: usize = 8;
 pub const BITBOARD_SIZE: usize = BITBOARD_HEIGHT * BITBOARD_WIDTH;
 
 #[derive(Debug, Copy, Clone)]
-pub struct BitboardCoords{
-    pub x: usize, 
-    pub y: usize
+pub struct BitboardCoords {
+    pub x: usize,
+    pub y: usize,
 }
 
 impl BitboardCoords {
@@ -67,8 +67,8 @@ impl BitboardCoords {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct BitboardBounds{
-    pub top_left : BitboardCoords,
+pub struct BitboardBounds {
+    pub top_left: BitboardCoords,
     pub bottom_right: BitboardCoords,
 }
 
@@ -79,13 +79,13 @@ pub struct BitboardBounds{
 /// center_left  center   center_right
 /// bottom_left  bottom   bottom_right
 pub struct Neighborhood {
-    boards: [AxialBitboard; 9]
+    boards: [AxialBitboard; 9],
 }
 
 impl Neighborhood {
     pub fn new() -> Self {
-        Neighborhood{
-            boards: [AxialBitboard::empty(); 9]
+        Neighborhood {
+            boards: [AxialBitboard::empty(); 9],
         }
     }
 
@@ -131,7 +131,7 @@ impl Display for Neighborhood {
         for start_board in (0..9).step_by(3).rev() {
             let mut rows = vec![String::new(); BITBOARD_HEIGHT];
             for offset in (0..3).rev() {
-                let board  = self.boards[start_board + offset];
+                let board = self.boards[start_board + offset];
                 for i in (0..BITBOARD_HEIGHT).rev() {
                     for j in (0..BITBOARD_WIDTH).rev() {
                         let index = i * BITBOARD_WIDTH + j;
@@ -233,10 +233,12 @@ impl AxialBitboard {
         self.0 == 0
     }
 
-    /// Returns the smallest bounding box of the bitboard, containing all 
+    /// Returns the smallest bounding box of the bitboard, containing all
     /// set bits in the bitboard if there are any
     pub fn bounding_box(&self) -> Option<BitboardBounds> {
-        if self.is_empty() { return None; }
+        if self.is_empty() {
+            return None;
+        }
 
         let mut max_x = 0;
         let mut max_y = 0;
@@ -255,14 +257,14 @@ impl AxialBitboard {
             }
         }
 
-        Some(BitboardBounds{
-            top_left: BitboardCoords{x: max_x, y: max_y},
-            bottom_right: BitboardCoords{x: min_x, y: min_y}
+        Some(BitboardBounds {
+            top_left: BitboardCoords { x: max_x, y: max_y },
+            bottom_right: BitboardCoords { x: min_x, y: min_y },
         })
     }
 
     /// Returns a neighborhood representing all empty adjacent spaces
-    /// next to current existing set bits. These adjacent neighbors are 
+    /// next to current existing set bits. These adjacent neighbors are
     /// specifically unset bits arrived at by shifting the current bitboard
     /// in all hive directions (W, NW, NE, SE, SW, E).
     pub fn neighborhood(&self) -> Neighborhood {
@@ -278,26 +280,34 @@ impl AxialBitboard {
         *neighbors.center() &= !original;
 
         *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK).flip_east();
-        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK).shift_northwest().flip_east();
+        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK)
+            .shift_northwest()
+            .flip_east();
 
         *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK).flip_west();
-        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK).shift_southeast().flip_west();
+        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK)
+            .shift_southeast()
+            .flip_west();
 
         *neighbors.top() |= (original & NORTHWEST_OVERFLOW_MASK).flip_northwest();
-        *neighbors.top() |= (original & NORTH_WITHOUT_CORNER).shift_east().flip_northwest(); 
+        *neighbors.top() |= (original & NORTH_WITHOUT_CORNER)
+            .shift_east()
+            .flip_northwest();
 
         *neighbors.bottom() |= (original & SOUTHEAST_OVERFLOW_MASK).flip_southeast();
-        *neighbors.bottom() |= (original & SOUTH_WITHOUT_CORNER).shift_west().flip_southeast();
+        *neighbors.bottom() |= (original & SOUTH_WITHOUT_CORNER)
+            .shift_west()
+            .flip_southeast();
 
         *neighbors.top_right() |= (original & NORTHEAST_CORNER).flip_northeast();
         *neighbors.bottom_left() |= (original & SOUTHWEST_CORNER).flip_southwest();
-        
+
         neighbors
     }
 }
 
 pub struct AxialBitboardIter {
-    board: AxialBitboard
+    board: AxialBitboard,
 }
 
 impl Iterator for AxialBitboardIter {
@@ -314,7 +324,7 @@ impl Iterator for AxialBitboardIter {
 
         self.board.0 &= self.board.0 - 1;
 
-        Some(BitboardCoords{x, y})
+        Some(BitboardCoords { x, y })
     }
 }
 
@@ -323,7 +333,7 @@ impl IntoIterator for AxialBitboard {
     type IntoIter = AxialBitboardIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        AxialBitboardIter{board: self}
+        AxialBitboardIter { board: self }
     }
 }
 
@@ -401,7 +411,6 @@ impl ops::BitAndAssign<Self> for AxialBitboard {
         self.0 &= rhs.0;
     }
 }
-
 
 impl ops::BitAndAssign<u64> for AxialBitboard {
     #[inline(always)]
@@ -549,7 +558,7 @@ mod tests {
         let center_right = AxialBitboard(0x8000008080008080);
         let center_left = AxialBitboard(0x101000101000001);
         let top = AxialBitboard(0xd9);
-        let top_right = AxialBitboard(0x80); 
+        let top_right = AxialBitboard(0x80);
         let bottom_left = AxialBitboard(0x100000000000000);
         let bottom = AxialBitboard(0xb300000000000000);
 
@@ -604,6 +613,4 @@ mod tests {
         println!("{}", *result.bottom_right());
         assert_eq!(*result.bottom_right(), bottom_right);
     }
-
-
 }

@@ -11,7 +11,7 @@ pub enum UHPError {
     #[error("Could not undo move")]
     UndoError,
     #[error("IllegalMove {info}")]
-    IllegalMove{ info: String },
+    IllegalMove { info: String },
 
     #[error("Found more than two position differences")]
     TooManyDiffs,
@@ -417,7 +417,7 @@ impl Annotator {
     /// standard_move_strings() or uhp_move_strings() functions.
     ///
     /// The move must represent a legal Hive move from the last state of the annotator. The
-    /// identifier must correct represent the first, second, third, etc piece of that type 
+    /// identifier must correct represent the first, second, third, etc piece of that type
     /// to be placed
     ///
     /// Returns the resulting state of the annotator after the move is applied.

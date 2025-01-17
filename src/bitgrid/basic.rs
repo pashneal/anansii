@@ -12,7 +12,7 @@ const GRID_HEIGHT: usize = 7;
 const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 
 /// Represents positions of Hive with Pillbug Mosquito and Ladybug
-/// that follow the One Hive rules (see Hive Rules for more information) 
+/// that follow the One Hive rules (see Hive Rules for more information)
 /// and has no greater than 6 pieces with height > 1
 ///
 /// Only beetles and mosquitos can be at height > 1 in this representation
@@ -26,7 +26,7 @@ const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 /// a 7x7 grid of AxialBitboards
 ///
 /// The grid indices are laid out in the conventional x-y axis follows:
-/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps 
+/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps
 /// compare it to HexGridLocation instead
 ///
 /// ```
@@ -43,20 +43,20 @@ const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 pub type Grid = [AxialBitboard; GRID_SIZE];
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridBounds {
-    pub top_left : BitGridLocation,
-    pub bottom_right : BitGridLocation,
+    pub top_left: BitGridLocation,
+    pub bottom_right: BitGridLocation,
 }
 
 impl GridBounds {
     pub fn width(&self) -> usize {
         let (left_x, right_x) = (
-            self.top_left.bitboard_index % BITBOARD_WIDTH, 
-            self.bottom_right.bitboard_index % BITBOARD_WIDTH
+            self.top_left.bitboard_index % BITBOARD_WIDTH,
+            self.bottom_right.bitboard_index % BITBOARD_WIDTH,
         );
 
         let (max_board_x, min_board_x) = (
-            self.top_left.board_index % GRID_WIDTH, 
-            self.bottom_right.board_index % GRID_WIDTH
+            self.top_left.board_index % GRID_WIDTH,
+            self.bottom_right.board_index % GRID_WIDTH,
         );
 
         let board_difference = max_board_x as i8 - min_board_x as i8;
@@ -64,7 +64,6 @@ impl GridBounds {
 
         // Contribution from left width of rightmost bitboard
         let mut width = (BITBOARD_WIDTH - right_x) as i8;
-
 
         width += extra_padding as i8;
         width += left_x as i8 + 1;
@@ -74,13 +73,13 @@ impl GridBounds {
 
     pub fn height(&self) -> usize {
         let (top_y, bottom_y) = (
-            self.top_left.bitboard_index / BITBOARD_HEIGHT, 
-            self.bottom_right.bitboard_index / BITBOARD_HEIGHT
+            self.top_left.bitboard_index / BITBOARD_HEIGHT,
+            self.bottom_right.bitboard_index / BITBOARD_HEIGHT,
         );
 
         let (max_board_y, min_board_y) = (
-            self.top_left.board_index / GRID_HEIGHT, 
-            self.bottom_right.board_index / GRID_HEIGHT
+            self.top_left.board_index / GRID_HEIGHT,
+            self.bottom_right.board_index / GRID_HEIGHT,
         );
 
         let board_difference = max_board_y as i8 - min_board_y as i8;
@@ -91,7 +90,7 @@ impl GridBounds {
 
         height += extra_padding as i8;
         height += top_y as i8 + 1;
-        
+
         height as usize
     }
 }
@@ -110,7 +109,6 @@ pub struct BasicBitGrid {
     pub black_pieces: Grid,
     pub stacks: BasicBitStack,
 }
-
 
 impl Default for BasicBitGrid {
     fn default() -> Self {
@@ -165,7 +163,6 @@ impl BasicBitGrid {
         if all_pieces.peek(loc.bitboard_index) {
             self.insert_stack(piece, loc, color);
         } else {
-
             *all_pieces |= 1 << loc.bitboard_index;
 
             let board = self.get_mut_piece(piece).get_mut(loc.board_index).unwrap();
@@ -197,8 +194,10 @@ impl BasicBitGrid {
     }
 
     pub fn remove(&mut self, piece: Piece, loc: BitGridLocation) {
-        debug_assert!(self.top(loc).expect("piece should exist") == piece, 
-                      "input piece should match existing top piece");
+        debug_assert!(
+            self.top(loc).expect("piece should exist") == piece,
+            "input piece should match existing top piece"
+        );
         debug_assert!(loc.board_index < GRID_SIZE);
         let color = piece.color;
         let piece = piece.piece_type;
@@ -216,7 +215,6 @@ impl BasicBitGrid {
 
         let all_pieces = self.get_mut_all_pieces().get_mut(loc.board_index).unwrap();
         *all_pieces &= !(1 << loc.bitboard_index);
-
     }
 
     fn remove_stack(&mut self, loc: BitGridLocation) -> bool {
@@ -316,10 +314,9 @@ impl BasicBitGrid {
         self.all_pieces.iter().all(|&board| board.is_empty())
     }
 
-    /// Returns a smallest bounding box that contains all pieces on the grid. 
+    /// Returns a smallest bounding box that contains all pieces on the grid.
     /// If no pieces on the grid, returns None
     pub fn bounding_box(&self) -> Option<GridBounds> {
-
         if self.is_empty() {
             return None;
         }
@@ -329,23 +326,32 @@ impl BasicBitGrid {
         let mut max_board_x = 0;
         let mut max_board_y = 0;
 
-        let mut bottom_right = BitboardCoords{ x : BITBOARD_WIDTH, y : BITBOARD_HEIGHT};
-        let mut top_left = BitboardCoords{ x : BITBOARD_WIDTH, y : BITBOARD_HEIGHT};
+        let mut bottom_right = BitboardCoords {
+            x: BITBOARD_WIDTH,
+            y: BITBOARD_HEIGHT,
+        };
+        let mut top_left = BitboardCoords {
+            x: BITBOARD_WIDTH,
+            y: BITBOARD_HEIGHT,
+        };
 
         for board_x in 0..GRID_WIDTH {
-            for board_y in 0..GRID_HEIGHT { 
-
-                let board_index  = board_y * GRID_HEIGHT + board_x;
+            for board_y in 0..GRID_HEIGHT {
+                let board_index = board_y * GRID_HEIGHT + board_x;
                 let bitboard = self.all_pieces[board_index];
 
-                let Some(BitboardBounds { top_left: tl, bottom_right : br }) = bitboard.bounding_box() else {
+                let Some(BitboardBounds {
+                    top_left: tl,
+                    bottom_right: br,
+                }) = bitboard.bounding_box()
+                else {
                     continue;
                 };
 
                 if board_x == min_board_x {
                     bottom_right.x = br.x.min(bottom_right.x);
                 }
-                
+
                 if board_x == max_board_x {
                     top_left.x = tl.x.max(top_left.x);
                 }
@@ -386,9 +392,13 @@ impl BasicBitGrid {
 
         let bottom_right_board_index = min_board_y * GRID_WIDTH + min_board_x;
         let bottom_right_bitboard_index = bottom_right.y * BITBOARD_WIDTH + bottom_right.x;
-        let bottom_right = BitGridLocation::new(bottom_right_board_index, bottom_right_bitboard_index);
+        let bottom_right =
+            BitGridLocation::new(bottom_right_board_index, bottom_right_bitboard_index);
 
-        Some(GridBounds{ top_left, bottom_right })
+        Some(GridBounds {
+            top_left,
+            bottom_right,
+        })
     }
 }
 
@@ -405,7 +415,6 @@ impl BitGridLocation {
             bitboard_index,
         }
     }
-
 
     fn apply(&self, direction: Direction) -> BitGridLocation {
         use Direction::*;
@@ -520,9 +529,8 @@ impl Shiftable for BitGridLocation {
 
 impl PieceIterator for BasicBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
-
         // We use the fact that the equivalence of
-        // BasicBitGridLocation to HexLocation is closed under adjacency to 
+        // BasicBitGridLocation to HexLocation is closed under adjacency to
         // convert a set of BasicBitGridLocations to an equivalent set of HexLocations
         //
         // In other words, even though there are multiple valid HexLocations
@@ -531,18 +539,18 @@ impl PieceIterator for BasicBitGrid {
         //
         //  1. deterministically choosing a single starting BasicBitGridLocation
         //  2. deterministically converting that to a HexLocation
-        //  3. performing deterministic adjacency operations on that HexLocation 
+        //  3. performing deterministic adjacency operations on that HexLocation
         //  4. converting the resulting HexLocations back to BasicBitGridLocations
-        //     (via the FromHex trait), continuing this process until 
+        //     (via the FromHex trait), continuing this process until
         //     we have found all desired locations
-        // 
+        //
         // This will find a deterministic set of HexLocations that are on or adjacent
         // to our chosen starting BasicBitGridLocation
 
         if None == self.find_one_hex() {
             return Vec::new();
         }
-        
+
         let hex = self.find_one_hex().unwrap();
 
         fn dfs(
@@ -595,7 +603,6 @@ impl PartialEq<BasicBitGrid> for BasicBitGrid {
     }
 }
 
-
 /// TODO: this needs to be a try from, not all HexGrids are valid BasicBitGrids
 impl From<HexGrid> for BasicBitGrid {
     fn from(hex_grid: HexGrid) -> Self {
@@ -631,9 +638,9 @@ impl Display for BasicBitGrid {
 
 /// Marker trait for types that can iterate over pieces.
 /// Promises the compiler that the type can be converted to a BasicBitGrid
-pub trait BasicBitConvertible : PieceIterator {}
+pub trait BasicBitConvertible: PieceIterator {}
 
-impl <I: BasicBitConvertible> From<I> for BasicBitGrid {
+impl<I: BasicBitConvertible> From<I> for BasicBitGrid {
     fn from(iter: I) -> Self {
         let mut grid = BasicBitGrid::new();
         for (stack, loc) in iter.pieces() {
@@ -645,7 +652,7 @@ impl <I: BasicBitConvertible> From<I> for BasicBitGrid {
     }
 }
 
-impl <I: BasicBitConvertible> PartialEq<I> for BasicBitGrid {
+impl<I: BasicBitConvertible> PartialEq<I> for BasicBitGrid {
     fn eq(&self, other: &I) -> bool {
         self.pieces() == other.pieces()
     }
@@ -654,7 +661,6 @@ impl <I: BasicBitConvertible> PartialEq<I> for BasicBitGrid {
 /// Marker trait for types that can iterate over pieces.
 /// Promises the compiler that the type can be converted to a HexGrid
 impl HexGridConvertible for BasicBitGrid {}
-
 
 #[cfg(test)]
 mod tests {
@@ -842,7 +848,6 @@ mod tests {
         assert!(bit_grid == hex_grid, "These board's pieces should match");
     }
 
-
     #[test]
     pub fn test_remove() {
         let hex_grid = HexGrid::from_dsl(concat!(
@@ -855,10 +860,10 @@ mod tests {
             "start - [0 0]\n\n",
             "7 - [a b M B M b B]\n",
         ));
-        println!("{}", HexGrid::from_dsl(concat!(
-            "a\n\n",
-            "start - [0 0]\n\n",
-        )).to_dsl());
+        println!(
+            "{}",
+            HexGrid::from_dsl(concat!("a\n\n", "start - [0 0]\n\n",)).to_dsl()
+        );
         let mut bit_grid = BasicBitGrid::new();
         for (stack, loc) in hex_grid.pieces() {
             for piece in stack {
@@ -866,7 +871,7 @@ mod tests {
             }
         }
 
-        let test : HexGrid = bit_grid.clone().try_into().unwrap();
+        let test: HexGrid = bit_grid.clone().try_into().unwrap();
         println!("{}", test.to_dsl());
         println!("{}", hex_grid.to_dsl());
         assert!(test == hex_grid, "These board's pieces should match");
@@ -879,7 +884,7 @@ mod tests {
             }
         }
 
-        let test : HexGrid = bit_grid.clone().try_into().unwrap();
+        let test: HexGrid = bit_grid.clone().try_into().unwrap();
         println!("{}", test.to_dsl());
 
         println!("{:#?}", bit_grid.pieces());
@@ -1026,20 +1031,18 @@ mod tests {
         // 5 4 3
         // 2 1 0
         let board_0 = AxialBitboard::from_u64(0xfcfcfcfcfcfc0000);
-        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest 
-        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest 
-        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest 
+        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest
+        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest
+        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest
         let board_4 = AxialBitboard::from_u64(0xffffffffffffffff); // completely full
         let board_5 = AxialBitboard::from_u64(0x0); // completely empty
         let board_6 = AxialBitboard::from_u64(0x20f0);
         let board_7 = AxialBitboard::from_u64(0x1010ff); // highest
         let board_8 = AxialBitboard::from_u64(0x1);
 
-        
-        println!("{}\n{}\n{}\n\n{}\n{}\n{}\n\n{}\n{}\n{}",
-            board_8, board_7, board_6,
-            board_5, board_4, board_3,
-            board_2, board_1, board_0
+        println!(
+            "{}\n{}\n{}\n\n{}\n{}\n{}\n\n{}\n{}\n{}",
+            board_8, board_7, board_6, board_5, board_4, board_3, board_2, board_1, board_0
         );
 
         let top_left_coords = BitboardCoords { x: 2, y: 2 };
@@ -1083,7 +1086,7 @@ mod tests {
         let width = bounds.width();
         let height = bounds.height();
 
-        assert_eq!(width , 7);
+        assert_eq!(width, 7);
         assert_eq!(height, 13);
     }
 
@@ -1093,7 +1096,6 @@ mod tests {
         // so all the boards form at most one connected component
         let board = AxialBitboard::from_u64(0x4fc0808081000);
         let mut grid = BasicBitGrid::new();
-
 
         add_board_to_grid(&mut grid, CENTER_BOARD_INDEX, board);
 
@@ -1105,7 +1107,6 @@ mod tests {
         assert_eq!(height, 6);
     }
 
-    
     #[test]
     pub fn test_large_bounding_box_dimensions() {
         let mut grid = BasicBitGrid::new();
@@ -1117,9 +1118,9 @@ mod tests {
         // 5 4 3
         // 2 1 0
         let board_0 = AxialBitboard::from_u64(0xfcfcfcfcfcfc0000);
-        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest 
-        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest 
-        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest 
+        let board_1 = AxialBitboard::from_u64(0xffffffff10101000); // lowest
+        let board_2 = AxialBitboard::from_u64(0x707000000000000); // leftest
+        let board_3 = AxialBitboard::from_u64(0x80808ff08080808); // rightest
         let board_4 = AxialBitboard::from_u64(0xffffffffffffffff); // completely full
         let board_5 = AxialBitboard::from_u64(0x0); // completely empty
         let board_6 = AxialBitboard::from_u64(0x20f0);
@@ -1148,7 +1149,7 @@ mod tests {
 
     #[test]
     pub fn test_one_bounding_box_dimensions() {
-        let  mut grid = BasicBitGrid::new();
+        let mut grid = BasicBitGrid::new();
         let board = AxialBitboard::from_u64(0x1);
         add_board_to_grid(&mut grid, CENTER_BOARD_INDEX, board);
         let bounds = grid.bounding_box().unwrap();

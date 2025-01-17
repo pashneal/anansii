@@ -1,5 +1,6 @@
 mod bitgrid;
 mod constants;
+mod data_analysis;
 mod game;
 mod hex_grid;
 mod hex_grid_dsl;
@@ -8,7 +9,6 @@ mod move_generator;
 mod piece;
 mod testing_utils;
 mod uhp;
-mod data_analysis;
 
 use clap::{Parser, Subcommand};
 use uhp::UHPInterface;
@@ -29,9 +29,7 @@ enum MainCommands {
     Analyze,
 
     /// Interprets a number as an Axial and prints the bitboard
-    Bitboard{
-        number: u64,
-    }
+    Bitboard { number: u64 },
 }
 
 pub fn run_uhp() {
@@ -51,9 +49,9 @@ pub fn run_uhp() {
 pub fn main() {
     let args = Cli::parse();
     match args.command {
-        Some(MainCommands::Uhp) =>  run_uhp(),
-        Some(MainCommands::Analyze) =>  data_analysis::check_positions(),
-        Some(MainCommands::Bitboard{number}) => {
+        Some(MainCommands::Uhp) => run_uhp(),
+        Some(MainCommands::Analyze) => data_analysis::check_positions(),
+        Some(MainCommands::Bitboard { number }) => {
             let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
             println!("{}", bitboard);
         }

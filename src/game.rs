@@ -134,8 +134,12 @@ impl GameDebugger {
         let grid = position.to_hex_grid();
 
         if !self.legal_positions().contains(&grid) {
-            return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove{
-                info : format!("\nPrevious position:\n{}\nLatest position:\n{}", self.position().to_dsl(), grid.to_dsl())
+            return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove {
+                info: format!(
+                    "\nPrevious position:\n{}\nLatest position:\n{}",
+                    self.position().to_dsl(),
+                    grid.to_dsl()
+                ),
             }));
         }
 

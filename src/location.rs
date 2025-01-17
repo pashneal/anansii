@@ -49,7 +49,7 @@ impl HexLocation {
         HexLocation { x, y }
     }
 
-    /// Applies a direction to this location, 
+    /// Applies a direction to this location,
     /// returning the new location. This function is deterministic.
     pub fn apply(&self, direction: Direction) -> Self {
         use Direction::*;

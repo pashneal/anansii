@@ -503,11 +503,11 @@ impl PartialEq<HexGrid> for HexGrid {
     }
 }
 
-/// Marker trait to promise the compiler that 
+/// Marker trait to promise the compiler that
 /// the type can be converted to a HexGrid
-pub trait HexGridConvertible : PieceIterator {}
+pub trait HexGridConvertible: PieceIterator {}
 
-impl <I: HexGridConvertible> From<I> for HexGrid {
+impl<I: HexGridConvertible> From<I> for HexGrid {
     fn from(item: I) -> Self {
         let mut grid = HexGrid::new();
         for (stack, location) in item.pieces() {

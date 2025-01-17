@@ -1,15 +1,15 @@
-use crate::uhp::UHPInterface;
 use crate::bitgrid::basic::BasicBitGrid;
 use crate::game::GameDebugger;
-use std::collections::HashMap;
+use crate::uhp::UHPInterface;
 use regex::Regex;
+use std::collections::HashMap;
 
-pub fn uhp_strings() -> Vec<&'static str>{
+pub fn uhp_strings() -> Vec<&'static str> {
     include_str!("data.txt").lines().collect()
 }
 
-pub struct Stats{ 
-    sizes : HashMap<usize, usize>,
+pub struct Stats {
+    sizes: HashMap<usize, usize>,
 }
 
 impl Stats {
@@ -38,7 +38,7 @@ impl Stats {
 }
 
 pub fn get_size(game: &GameDebugger) -> usize {
-    let position : Result<BasicBitGrid, _> = game.position().try_into();
+    let position: Result<BasicBitGrid, _> = game.position().try_into();
     let position = position.expect("Failed to convert game position to bitgrid");
     let bounds = position.bounding_box();
     if bounds.is_none() {
@@ -48,12 +48,12 @@ pub fn get_size(game: &GameDebugger) -> usize {
     bounds.width().max(bounds.height())
 }
 
-pub fn check_positions(){
+pub fn check_positions() {
     let mut stats = Stats::new();
     let games = uhp_strings();
     let mut failures = 0;
 
-    let mut uhp = UHPInterface::new(); 
+    let mut uhp = UHPInterface::new();
     for (index, game) in games.iter().enumerate() {
         let output = uhp.command(&format!("newgame {}", game));
 

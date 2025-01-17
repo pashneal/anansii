@@ -57,7 +57,10 @@ impl From<PieceType> for StackPiece {
         match piece {
             PieceType::Beetle => StackPiece::Beetle,
             PieceType::Mosquito => StackPiece::Mosquito,
-            _ => panic!("Invalid piece type, a {:#?} cannot climb atop the hive", piece),
+            _ => panic!(
+                "Invalid piece type, a {:#?} cannot climb atop the hive",
+                piece
+            ),
         }
     }
 }
@@ -195,13 +198,9 @@ impl BasicBitStack {
         self.stack[index]
     }
 
-    pub fn add_piece(
-        &mut self,
-        piece: Piece,
-        location: impl Into<BasicStackLocation>,
-    ) {
+    pub fn add_piece(&mut self, piece: Piece, location: impl Into<BasicStackLocation>) {
         let color = piece.color.into();
-        let piece : StackPiece = piece.piece_type.into();
+        let piece: StackPiece = piece.piece_type.into();
 
         let location = location.into();
         let height = self.find_all(location).len() as u8;
@@ -209,7 +208,7 @@ impl BasicBitStack {
         self.insert(entry);
     }
 
-    /// TODO(optimization): optimize by using superscalar/vector instructions 
+    /// TODO(optimization): optimize by using superscalar/vector instructions
     pub fn find_one(&self, location: BasicStackLocation) -> Option<usize> {
         for index in self.bitset.into_iter() {
             let entry = self.stack[index];

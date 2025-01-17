@@ -491,7 +491,7 @@ pub mod test_suite {
     use PieceColor::*;
     use PieceType::*;
 
-    pub fn dsl_to_locations(dsls: &[&'static str], target: Piece) -> Vec<HexLocation> {
+    fn dsl_to_locations(dsls: &[&'static str], target: Piece) -> Vec<HexLocation> {
         dsl_to_hex_grids(dsls)
             .iter()
             .map(|x| x.find(target))
@@ -500,7 +500,7 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
-    pub fn dsl_to_hex_grids(dsls: &[&'static str]) -> Vec<HexGrid> {
+    fn dsl_to_hex_grids(dsls: &[&'static str]) -> Vec<HexGrid> {
         dsls.iter()
             .map(|x| HexGrid::from_dsl(x))
             .collect::<Vec<_>>()
@@ -509,7 +509,7 @@ pub mod test_suite {
     // this is the most garbage function definition I've ever written :D,
     // just wanted to play around with generics and closures
     // ... well maybe it's not all that bad, look how clean the final interface ends up being!
-    pub fn move_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
+    fn move_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
         target: Piece,
         dsls: &[&'static str],
         funcs: (Fa, Fb),

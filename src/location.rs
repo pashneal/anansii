@@ -131,4 +131,18 @@ pub trait Shiftable {
     fn shift_southeast(&self) -> Self;
     // Returns a consistent center location for the given type.
     fn center() -> Self;
+
+    fn apply(&self, direction: Direction) -> Self
+    where
+        Self: Sized,
+    {
+        match direction {
+            Direction::NW => self.shift_northwest(),
+            Direction::NE => self.shift_northeast(),
+            Direction::E => self.shift_east(),
+            Direction::SE => self.shift_southeast(),
+            Direction::SW => self.shift_southwest(),
+            Direction::W => self.shift_west(),
+        }
+    }
 }

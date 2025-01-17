@@ -1,5 +1,5 @@
 use super::*;
-use crate::hex_grid::HexGridConvertible;
+use crate::hex_grid::{HexGrid, HexGridConvertible};
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
@@ -122,6 +122,42 @@ impl MiniBitGrid {
             stacks: BasicBitStack::new(),
             metainfo: MiniMetaInfo::new(),
         }
+    }
+
+    /// Returns true only if the current grid follows the One Hive rule
+    fn is_one_hive(&self) -> bool {
+        if self.is_empty() {
+            return true;
+        }
+
+        fn dfs(
+            grid: &MiniBitGrid,
+            visited: &mut HashSet<MiniBitGridLocation>,
+            loc: MiniBitGridLocation,
+        ) {
+            if visited.contains(&loc) {
+                return;
+            }
+
+            if grid.presence(loc) == false {
+                return;
+            }
+
+            visited.insert(loc);
+
+            for direction in Direction::all() {
+                dfs(grid, visited, loc.apply(direction));
+            }
+        }
+
+        let mut found_locations = HashSet::new();
+        dfs(
+            &self,
+            &mut found_locations,
+            self.find_one_hex().unwrap().into(),
+        );
+
+        found_locations.len() == self.pieces().len()
     }
 
     /// Deterministically chooses a HexLocation that contains at least one piece
@@ -811,7 +847,44 @@ impl TryFrom<BasicBitGrid> for MiniBitGrid {
                 mini.add_top_unchecked(piece, mini_location);
             }
         }
-        // TODO: could do a debug assert to see if one hive rule is preserved?
+
+        // Note: this is a debug assert and NOT a regular assertion because
+        // implicity, BasicBitGrid should be following the One Hive rule
+        debug_assert!(mini.is_one_hive(), "Expected One Hive rule to be observed");
+        Ok(mini)
+    }
+}
+
+impl TryFrom<HexGrid> for MiniBitGrid {
+    type Error = &'static str;
+
+    fn try_from(grid: HexGrid) -> Result<Self, Self::Error> {
+        let bounds = grid.bounding_box();
+        if bounds.is_none() {
+            return Ok(MiniBitGrid::new());
+        }
+
+        let bounds = bounds.unwrap();
+        let size = bounds.width().max(bounds.height());
+
+        if size >= 15 {
+            return Err("Cannot convert HexGrid to MiniBitGrid, size too large");
+        }
+
+        let mut mini = MiniBitGrid::new();
+        for (stack, location) in grid.pieces() {
+            let mini_location: MiniBitGridLocation = location.into();
+            for piece in stack {
+                mini.add_top_unchecked(piece, mini_location);
+            }
+        }
+
+        // Note: this is checked explicitly because HexGrids do not
+        // make any restriction on whether pieces must follow the One
+        // Hive rule
+        if !mini.is_one_hive() {
+            return Err("Expected One Hive rule to be observed");
+        }
 
         Ok(mini)
     }

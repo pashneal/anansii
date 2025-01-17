@@ -6,6 +6,22 @@ pub use std::collections::HashMap;
 use std::collections::HashSet;
 use thiserror::Error;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridBounds {
+    pub top_left: (usize, usize),
+    pub bottom_right: (usize, usize),
+}
+
+impl GridBounds {
+    pub fn width(&self) -> usize {
+        self.bottom_right.1 - self.top_left.1 + 1
+    }
+
+    pub fn height(&self) -> usize {
+        self.bottom_right.0 - self.top_left.0 + 1
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum HexGridError {
     #[error("String input cannot be converted to piece")]
@@ -460,6 +476,8 @@ impl HexGrid {
     /// Returns a bounding box around all present pieces
     /// in the grid according the odd_r format as described here:
     /// https://www.redblobgames.com/grids/hexagons/#coordinates-offset
+    ///
+    /// Returns (top-left, bottom-right) corners
     fn bounds(&self) -> ((usize, usize), (usize, usize)) {
         let mut min_row = HEX_GRID_SIZE;
         let mut min_col = HEX_GRID_SIZE;
@@ -476,6 +494,19 @@ impl HexGrid {
         }
 
         ((min_row, min_col), (max_row, max_col))
+    }
+
+    pub fn bounding_box(&self) -> Option<GridBounds> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let ((top, left), (bottom, right)) = self.bounds();
+
+        Some(GridBounds {
+            top_left: (top, left),
+            bottom_right: (bottom, right),
+        })
     }
 
     /// Checks to see if the board contains no pieces

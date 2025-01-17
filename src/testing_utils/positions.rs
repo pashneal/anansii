@@ -537,7 +537,6 @@ pub mod test_suite {
                 .map(|x| x.to_hex_grid())
                 .collect::<Vec<_>>();
 
-
             for position in expected_result.iter() {
                 if !actual_result.contains(&position) {
                     println!("----------");

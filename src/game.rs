@@ -1,5 +1,5 @@
 use crate::hex_grid::*;
-use crate::move_generator::*;
+use crate::generator::*;
 use crate::piece::*;
 use crate::uhp::*;
 use std::collections::HashSet;

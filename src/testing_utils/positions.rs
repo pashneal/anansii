@@ -73,7 +73,7 @@ const SPIDER_MOVES: [&'static str; 8] = [
     ),
 ];
 
-pub const GRASSHOPPER: [&str; 2] = [
+pub const GRASSHOPPER_MOVES: [&str; 2] = [
     concat!(
         ". a a a . . .\n",
         " . . . a . . .\n",
@@ -96,7 +96,7 @@ pub const GRASSHOPPER: [&str; 2] = [
     ),
 ];
 
-pub const QUEEN: [&str; 5] = [
+pub const QUEEN_MOVES: [&str; 5] = [
     concat!(
         " . . . . . . .\n",
         ". . a . . . .\n",

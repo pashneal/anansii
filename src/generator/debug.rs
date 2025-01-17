@@ -4,7 +4,7 @@ use crate::uhp::GameType;
 use std::collections::HashSet;
 
 /// Represents a HexGrid wrapper that can generate new positions.
-/// It will create new boards according to the rules that govern pieces as if the
+/// It will create new positions according to the rules that govern pieces as if the
 /// game state could not be swapped by the Pillbug.
 ///
 /// For moves of the pillbug and pillbug adjacent pieces, see pillbug_swaps() and pillbug_moves()
@@ -17,7 +17,7 @@ pub struct PositionDebugger {
     pinned: Vec<HexLocation>,
     outside: HashSet<HexLocation>,
     game_type: GameType,
-    last_move: Option<HexLocation>,
+    immobilized: Option<HexLocation>,
 }
 
 impl PositionDebugger {
@@ -27,21 +27,24 @@ impl PositionDebugger {
             pinned: Vec::new(),
             outside: HashSet::new(),
             game_type,
-            last_move: None,
+            immobilized: None,
         }
     }
 
+    /// Creates a new PositionDebugger from a HexGrid, 
+    /// with the previous change being the destination of the piece
+    /// that was manuevered in the previous turn. 
     pub fn from_grid(
         grid: &HexGrid,
         game_type: GameType,
-        last_move: Option<HexLocation>,
+        previous_change: Option<HexLocation>,
     ) -> PositionDebugger {
         PositionDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
             outside: grid.outside(),
             game_type,
-            last_move,
+            immobilized : previous_change,
         }
     }
 
@@ -51,7 +54,7 @@ impl PositionDebugger {
             pinned: grid.pinned(),
             outside: grid.outside(),
             game_type: GameType::MLP,
-            last_move: None,
+            immobilized: None,
         }
     }
 
@@ -566,17 +569,19 @@ impl PositionGenerator<HexGrid> for PositionDebugger {
                 PieceType::Beetle => self.beetle_moves(location),
                 PieceType::Ladybug => self.ladybug_moves(location),
                 PieceType::Mosquito => self.mosquito_moves(location),
-                PieceType::Pillbug => {
-                    let mut moves = self.pillbug_swaps(location, self.last_move);
-                    moves.extend(self.pillbug_moves(location));
-                    moves
-                }
+                PieceType::Pillbug => self.pillbug_moves(location),
+            };
+
+            let swaps = match top.piece_type {
+                PieceType::Pillbug => self.pillbug_swaps(location, self.immobilized),
+                _ => Vec::new()
             };
 
             positions.extend(moves.into_iter());
+            positions.extend(swaps.into_iter());
         }
 
-        // If there are no possible moves, return this board to represent th
+        // If there are no possible moves, return this board to represent the
         // "pass" move
         if positions.is_empty() {
             positions.insert(self.grid.clone());

@@ -46,7 +46,7 @@ pub struct Annotator {
     /// The previous state of the grid
     prev_grid: HexGrid,
     /// Move strings (not necessarily UHP-compatible)
-    moves: Vec<String>,
+    move_strings: Vec<String>,
 }
 
 pub type Height = usize;
@@ -71,7 +71,7 @@ impl Annotator {
             ids: HashMap::new(),
             piece_counts: HashMap::new(),
             prev_grid: HexGrid::new(),
-            moves: Vec::new(),
+            move_strings: Vec::new(),
         }
     }
 
@@ -261,14 +261,14 @@ impl Annotator {
         let piece_string = new_piece.to_uhp(id.expect("Expected an id"));
         let move_string = format!("{} {}", piece_string, anchor);
 
-        let mut moves = self.moves.clone();
+        let mut moves = self.move_strings.clone();
         moves.push(move_string);
 
         Annotator {
             ids: new_ids,
             piece_counts: self.piece_counts.clone(),
             prev_grid: grid.clone(),
-            moves,
+            move_strings: moves,
         }
     }
 
@@ -299,14 +299,14 @@ impl Annotator {
             format!("{} {}", piece_string, anchor)
         };
 
-        let mut moves = self.moves.clone();
+        let mut moves = self.move_strings.clone();
         moves.push(move_string);
 
         Annotator {
             ids: new_ids,
             piece_counts: new_piece_counts,
             prev_grid: grid.clone(),
-            moves,
+            move_strings: moves,
         }
     }
 
@@ -327,14 +327,14 @@ impl Annotator {
 
         // 0 diffs happy path
         if diffs.is_empty() {
-            let mut moves = self.moves.clone();
+            let mut moves = self.move_strings.clone();
             moves.push("pass".to_string());
 
             let annotator = Annotator {
                 ids: self.ids.clone(),
                 piece_counts: self.piece_counts.clone(),
                 prev_grid: current_grid.clone(),
-                moves,
+                move_strings: moves,
             };
 
             return Ok(annotator);
@@ -376,11 +376,11 @@ impl Annotator {
 
     /// Returns the destination location of the last move recorded by the annotator.
     pub fn last_move(&self) -> Option<HexLocation> {
-        if self.moves.is_empty() {
+        if self.move_strings.is_empty() {
             return None;
         }
 
-        let last_move = self.moves.last()?;
+        let last_move = self.move_strings.last()?;
         if last_move == "pass" {
             return None;
         }
@@ -486,10 +486,10 @@ impl Annotator {
         // Replace last move with verbatim move string so annotator
         // uhp move strings are predicable given string input
         result.map(|annotator| {
-            let mut moves = annotator.moves.clone();
+            let mut moves = annotator.move_strings.clone();
             moves.pop();
             moves.push(move_string.to_string());
-            Annotator { moves, ..annotator }
+            Annotator { move_strings: moves, ..annotator }
         })
     }
 
@@ -509,7 +509,7 @@ impl Annotator {
     /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos,
     /// Pillbugs and Ladybugs have ids appended to them. (e.g. wQ1, bM1, etc)
     pub fn standard_move_strings(&self) -> Vec<String> {
-        self.moves.clone()
+        self.move_strings.clone()
     }
 
     /// Convert a legal "standard" hive move to a UHP-compatible move string

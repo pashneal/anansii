@@ -5,7 +5,7 @@ mod game;
 mod hex_grid;
 mod hex_grid_dsl;
 mod location;
-mod move_generator;
+mod generator;
 mod piece;
 mod testing_utils;
 mod uhp;

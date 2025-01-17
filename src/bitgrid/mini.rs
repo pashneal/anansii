@@ -1,7 +1,7 @@
 use super::*;
 use crate::hex_grid::HexGridConvertible;
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
-use crate::piece::{Piece, PieceColor, PieceIterator, PieceType};
+use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
 use std::fmt::{self, Display};
 
@@ -471,7 +471,7 @@ impl MiniBitGrid {
     }
 }
 
-impl PieceIterator for MiniBitGrid {
+impl IntoPieces for MiniBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         // We use the fact that the equivalence of
         // MiniBitGridLocation to HexLocation is closed under adjacency to

@@ -172,7 +172,7 @@ impl std::hash::Hash for Piece {
     }
 }
 
-pub trait PieceIterator {
+pub trait IntoPieces {
     /// Returns a list of pieces and their locations in "board order", that
     /// is first by row top to bottom then by column left to right,
     /// and with the stacks of pieces from bottom to top.

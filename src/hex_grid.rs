@@ -48,6 +48,16 @@ impl HexGrid {
         Parser::parse_hex_grid(input).expect("Failed to parse input into HexGrid")
     }
 
+    pub fn from_pieces(input: Vec<(Vec<Piece>, HexLocation)>) -> Self {
+        let mut grid = HexGrid::new();
+        for (stack, location) in input {
+            for piece in stack {
+                grid.add(piece, location);
+            }
+        }
+        grid
+    }
+
     pub fn new() -> HexGrid {
         HexGrid {
             fast_grid: HashMap::new(),
@@ -474,7 +484,7 @@ impl HexGrid {
     }
 }
 
-impl PieceIterator for HexGrid {
+impl IntoPieces for HexGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
         for (&(q, r), stack) in self.fast_grid.iter() {
@@ -505,17 +515,11 @@ impl PartialEq<HexGrid> for HexGrid {
 
 /// Marker trait to promise the compiler that
 /// the type can be converted to a HexGrid
-pub trait HexGridConvertible: PieceIterator {}
+pub trait HexGridConvertible: IntoPieces {}
 
 impl<I: HexGridConvertible> From<I> for HexGrid {
     fn from(item: I) -> Self {
-        let mut grid = HexGrid::new();
-        for (stack, location) in item.pieces() {
-            for piece in stack {
-                grid.add(piece, location);
-            }
-        }
-        grid
+        HexGrid::from_pieces(item.pieces())
     }
 }
 

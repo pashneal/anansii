@@ -527,7 +527,7 @@ impl Shiftable for BitGridLocation {
     }
 }
 
-impl PieceIterator for BasicBitGrid {
+impl IntoPieces for BasicBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         // We use the fact that the equivalence of
         // BasicBitGridLocation to HexLocation is closed under adjacency to
@@ -638,7 +638,7 @@ impl Display for BasicBitGrid {
 
 /// Marker trait for types that can iterate over pieces.
 /// Promises the compiler that the type can be converted to a BasicBitGrid
-pub trait BasicBitConvertible: PieceIterator {}
+pub trait BasicBitConvertible: IntoPieces {}
 
 impl<I: BasicBitConvertible> From<I> for BasicBitGrid {
     fn from(iter: I) -> Self {

@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 #[derive(Clone, Debug)]
 pub struct GameDebugger {
     annotations: Vec<Annotator>,
-    generator: MoveGeneratorDebugger,
+    generator: PositionDebugger,
     game_type: GameType,
 }
 
@@ -56,7 +56,7 @@ impl GameDebugger {
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
-            generator: MoveGeneratorDebugger::new(game_type),
+            generator: PositionDebugger::new(game_type),
             game_type,
         };
 
@@ -81,7 +81,7 @@ impl GameDebugger {
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
-            generator: MoveGeneratorDebugger::new(game_type),
+            generator: PositionDebugger::new(game_type),
             game_type,
         };
 
@@ -103,7 +103,7 @@ impl GameDebugger {
         }
         self.annotations.pop();
         let last_move = self.annotations.last().unwrap().last_move();
-        self.generator = MoveGeneratorDebugger::from_grid(
+        self.generator = PositionDebugger::from_grid(
             self.annotations.last().unwrap().position(),
             self.game_type,
             last_move,
@@ -148,7 +148,7 @@ impl GameDebugger {
             .next_state(&grid)
             .map_err(GameDebuggerError::AnnotationError)?;
 
-        self.generator = MoveGeneratorDebugger::from_grid(
+        self.generator = PositionDebugger::from_grid(
             annotator.position(),
             self.game_type,
             annotator.last_move(),
@@ -160,7 +160,7 @@ impl GameDebugger {
 
     /// Returns a set of legal positions that can be arrived at
     /// from the current position
-    pub fn legal_positions(&self) -> HashSet<HexGrid> {
+    pub fn legal_positions(&mut self) -> HashSet<HexGrid> {
         // If the game is over, no legal moves
         match self.game_result() {
             Some(_) => HashSet::new(),

@@ -489,7 +489,10 @@ impl Annotator {
             let mut moves = annotator.move_strings.clone();
             moves.pop();
             moves.push(move_string.to_string());
-            Annotator { move_strings: moves, ..annotator }
+            Annotator {
+                move_strings: moves,
+                ..annotator
+            }
         })
     }
 
@@ -559,7 +562,7 @@ impl Annotator {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum GameType {
     Standard,
     M,
@@ -568,6 +571,7 @@ pub enum GameType {
     ML,
     MP,
     LP,
+    #[default]
     MLP,
 }
 

@@ -1,4 +1,4 @@
-use crate::hex_grid::HexGridError;
+use crate::hex_grid::{HexGrid, HexGridError};
 use crate::location::HexLocation;
 use crate::uhp::GameType;
 
@@ -180,4 +180,8 @@ pub trait IntoPieces {
     /// The returned list is required to be deterministic given
     /// the same state of the type.
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)>;
+
+    fn to_hex_grid(&self) -> HexGrid {
+        HexGrid::from_pieces(self.pieces())
+    }
 }

@@ -1,3 +1,8 @@
+use crate::generator::debug::*;
+use crate::hex_grid::{HexGrid, HexLocation};
+use crate::piece::*;
+use crate::uhp::GameType;
+
 const SPIDER_MOVES: [&'static str; 8] = [
     concat!(
         " . . . . . . .\n",
@@ -480,3 +485,148 @@ pub const MOSQUITO_MOVES: [&str; 4] = [
         "2 - [a B]\n",
     ),
 ];
+
+pub mod test_suite {
+    use super::*;
+    use PieceColor::*;
+    use PieceType::*;
+
+    pub fn dsl_to_locations(dsls: &[&'static str], target: Piece) -> Vec<HexLocation> {
+        dsl_to_hex_grids(dsls)
+            .iter()
+            .map(|x| x.find(target))
+            .map(|x| x.expect(&format!("Could not find target piece {:?}", target)))
+            .map(|x| x.0)
+            .collect::<Vec<_>>()
+    }
+
+    pub fn dsl_to_hex_grids(dsls: &[&'static str]) -> Vec<HexGrid> {
+        dsls.iter()
+            .map(|x| HexGrid::from_dsl(x))
+            .collect::<Vec<_>>()
+    }
+
+    // this is the most garbage function definition I've ever written :D,
+    // just wanted to play around with generics and closures
+    // ... well maybe it's not all that bad, look how clean the final interface ends up being!
+    pub fn move_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
+        target: Piece,
+        dsls: &[&'static str],
+        funcs: (Fa, Fb),
+    ) -> std::result::Result<(), ()>
+    where
+        Fa: FnMut(&mut M, HexLocation) -> Vec<I>,
+        Fb: FnMut(&mut ReferenceGenerator, HexLocation) -> Vec<HexGrid>,
+    {
+        let locations = dsl_to_locations(dsls, target);
+        let hex_grids = dsl_to_hex_grids(dsls);
+
+        let (mut gen_func, mut ref_func) = funcs;
+
+        for (location, hex_grid) in locations.iter().zip(hex_grids.iter()) {
+            let mut reference_generator = ReferenceGenerator::from_default(&hex_grid);
+            let mut generator = M::from_default(&hex_grid);
+
+            println!("generating positions from:\n{}\n...", hex_grid.to_dsl());
+
+            let actual_result = gen_func(&mut generator, *location);
+            let expected_result = ref_func(&mut reference_generator, *location);
+
+            let actual_result = actual_result
+                .into_iter()
+                .map(|x| x.to_hex_grid())
+                .collect::<Vec<_>>();
+
+
+            for position in expected_result.iter() {
+                if !actual_result.contains(&position) {
+                    println!("----------");
+                    println!("expected position missing:\n{}\n", position.to_dsl());
+                    println!("----------");
+                }
+            }
+
+            for position in actual_result.iter() {
+                if !expected_result.contains(&position) {
+                    println!("----------");
+                    println!("unexpected position:\n{}\n", position.to_dsl());
+                    println!("----------");
+                }
+            }
+
+            if !expected_result.iter().all(|x| actual_result.contains(x)) {
+                return Err(());
+            }
+            if !actual_result.iter().all(|x| expected_result.contains(x)) {
+                return Err(());
+            }
+
+            println!("...success\n");
+        }
+        return Ok(());
+    }
+
+    pub fn test_spider_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Spider, White),
+            &SPIDER_MOVES[..],
+            (M::spider_moves, ReferenceGenerator::spider_moves),
+        )
+    }
+
+    pub fn test_grasshopper_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Grasshopper, White),
+            &GRASSHOPPER_MOVES[..],
+            (M::grasshopper_moves, ReferenceGenerator::grasshopper_moves),
+        )
+    }
+
+    pub fn test_queen_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Queen, White),
+            &QUEEN_MOVES[..],
+            (M::queen_moves, ReferenceGenerator::queen_moves),
+        )
+    }
+
+    pub fn test_ant_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Ant, White),
+            &ANT_MOVES[..],
+            (M::ant_moves, ReferenceGenerator::ant_moves),
+        )
+    }
+
+    pub fn test_beetle_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Beetle, White),
+            &BEETLE_MOVES[..],
+            (M::beetle_moves, ReferenceGenerator::beetle_moves),
+        )
+    }
+
+    pub fn test_ladybug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Ladybug, White),
+            &LADYBUG_MOVES[..],
+            (M::ladybug_moves, ReferenceGenerator::ladybug_moves),
+        )
+    }
+
+    pub fn test_pillbug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Pillbug, White),
+            &PILLBUG_MOVES[..],
+            (M::pillbug_moves, ReferenceGenerator::pillbug_moves),
+        )
+    }
+
+    pub fn test_mosquito_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+        move_test(
+            Piece::new(Mosquito, White),
+            &MOSQUITO_MOVES[..],
+            (M::mosquito_moves, ReferenceGenerator::mosquito_moves),
+        )
+    }
+}

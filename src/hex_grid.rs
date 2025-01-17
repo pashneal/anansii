@@ -1,4 +1,4 @@
-use crate::game::Position;
+use crate::generator::debug::Position;
 use crate::hex_grid_dsl::Parser;
 pub use crate::location::*;
 pub use crate::piece::*;
@@ -530,8 +530,8 @@ impl Position for HexGrid {
         HexGrid::new()
     }
 
-    fn from_hex_grid(grid: &HexGrid) -> Self {
-        grid.clone()
+    fn from_hex_grid(grid: &HexGrid) -> std::result::Result<Self, String> {
+        Ok(grid.clone())
     }
 
     fn to_hex_grid(&self) -> HexGrid {

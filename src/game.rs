@@ -1,5 +1,5 @@
+use crate::generator::debug::*;
 use crate::hex_grid::*;
-use crate::generator::*;
 use crate::piece::*;
 use crate::uhp::*;
 use std::collections::HashSet;
@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 #[derive(Clone, Debug)]
 pub struct GameDebugger {
     annotations: Vec<Annotator>,
-    generator: PositionDebugger,
+    generator: ReferenceGenerator,
     game_type: GameType,
 }
 
@@ -56,7 +56,7 @@ impl GameDebugger {
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
-            generator: PositionDebugger::new(game_type),
+            generator: ReferenceGenerator::new(game_type),
             game_type,
         };
 
@@ -81,7 +81,7 @@ impl GameDebugger {
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
-            generator: PositionDebugger::new(game_type),
+            generator: ReferenceGenerator::new(game_type),
             game_type,
         };
 
@@ -103,7 +103,7 @@ impl GameDebugger {
         }
         self.annotations.pop();
         let last_move = self.annotations.last().unwrap().last_move();
-        self.generator = PositionDebugger::from_grid(
+        self.generator = ReferenceGenerator::from_hex_grid(
             self.annotations.last().unwrap().position(),
             self.game_type,
             last_move,
@@ -148,7 +148,7 @@ impl GameDebugger {
             .next_state(&grid)
             .map_err(GameDebuggerError::AnnotationError)?;
 
-        self.generator = PositionDebugger::from_grid(
+        self.generator = ReferenceGenerator::from_hex_grid(
             annotator.position(),
             self.game_type,
             annotator.last_move(),
@@ -211,12 +211,6 @@ impl GameDebugger {
     pub fn position(&self) -> &HexGrid {
         self.annotations.last().unwrap().position()
     }
-}
-
-pub trait Position {
-    fn new() -> Self;
-    fn to_hex_grid(&self) -> HexGrid;
-    fn from_hex_grid(grid: &HexGrid) -> Self;
 }
 
 #[cfg(test)]

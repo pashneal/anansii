@@ -113,7 +113,7 @@ impl PositionDebugger {
     }
 }
 
-impl PlacementGenerator for PositionDebugger{
+impl PlacementGenerator for PositionDebugger {
     fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
 
@@ -655,7 +655,6 @@ pub trait SwapGenerator<Position: IntoPieces> {
         disallowed: Option<HexLocation>,
     ) -> Vec<Position>;
 }
-
 
 pub trait PositionGenerator<Position: IntoPieces>:
     MoveGenerator<Position> + PlacementGenerator + SwapGenerator<Position>

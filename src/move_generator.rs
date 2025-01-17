@@ -276,8 +276,8 @@ impl MoveGeneratorDebugger {
         result
     }
 
-    /// Returns a list of all possible moves for a beetle at a given location
-    /// if the beetle is not covered by any other pieces.
+    /// Returns a list of all possible moves for a ladybug at a given location
+    /// if the ladybug is not covered by any other pieces.
     /// (ignores pillbug swaps)
     pub fn ladybug_moves(&self, location: HexLocation) -> Vec<HexGrid> {
         let height = self.grid.peek(location).len();

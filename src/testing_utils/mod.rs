@@ -1,4 +1,4 @@
 mod funcs;
-mod positions;
+pub mod positions;
 
 pub use funcs::*;

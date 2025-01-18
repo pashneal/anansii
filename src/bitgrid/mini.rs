@@ -1,5 +1,6 @@
 use super::*;
 use crate::hex_grid::{HexGrid, HexGridConvertible};
+use crate::generator::change::Change;
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
@@ -505,6 +506,26 @@ impl MiniBitGrid {
         self.metainfo.row_presence.count_ones() >= width_heuristic as u32
             || self.metainfo.column_presence.count_ones() >= height_heuristic as u32
     }
+
+
+    /// TODO: may be a candidate for optimization
+    pub fn apply_change(&mut self, change: Change) {
+        if change.removed.mask != 0 {
+            let piece = change.removed.piece;
+            let location = MiniBitGridLocation{
+                board_index : change.removed.board_index,
+                mask : change.removed.mask,
+            };
+            self.add_top(piece, location);
+        }
+
+        let location = MiniBitGridLocation{
+            board_index : change.added.board_index,
+            mask : change.added.mask,
+        };
+
+        self.remove_top(location);
+    }
 }
 
 impl IntoPieces for MiniBitGrid {
@@ -876,6 +897,9 @@ impl TryFrom<HexGrid> for MiniBitGrid {
 
         let mut mini = MiniBitGrid::new();
         for (stack, location) in grid.pieces() {
+            if stack.len() > 7 {
+                return Err("Cannot convert HexGrid to MiniBitGrid, stack too high");
+            }
             let mini_location: MiniBitGridLocation = location.into();
             for piece in stack {
                 mini.add_top_unchecked(piece, mini_location);

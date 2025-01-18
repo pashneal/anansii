@@ -128,6 +128,15 @@ pub struct Piece {
     pub color: PieceColor,
 }
 
+impl Default for Piece {
+    fn default() -> Piece {
+        Piece {
+            piece_type: PieceType::Ant,
+            color: PieceColor::Black,
+        }
+    }
+}
+
 impl Piece {
     pub fn new(piece: PieceType, color: PieceColor) -> Piece {
         Piece {

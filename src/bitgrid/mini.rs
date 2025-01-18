@@ -842,6 +842,9 @@ impl TryFrom<BasicBitGrid> for MiniBitGrid {
 
         let mut mini = MiniBitGrid::new();
         for (stack, location) in grid.pieces() {
+            if stack.len() > 7 {
+                return Err("Cannot convert HexGrid to MiniBitGrid, stack too high");
+            }
             let mini_location: MiniBitGridLocation = location.into();
             for piece in stack {
                 mini.add_top_unchecked(piece, mini_location);

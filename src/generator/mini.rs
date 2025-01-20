@@ -48,6 +48,19 @@ impl MiniGenerator {
     pub fn apply(&mut self, change: Change) {
         self.grid.apply_change(change);
     }
+
+    pub fn undo(&mut self, change: Change) {
+        let added = change.removed;
+        let removed = change.added;
+        let undo = Change {
+            added,
+            removed,
+        };
+        self.grid.apply_change(undo);
+    }
+
+    fn generate_spider_moves(&mut self, spider_loc: MiniBitGridLocation) {
+    }
 }
 
 

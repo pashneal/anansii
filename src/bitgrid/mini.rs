@@ -181,6 +181,8 @@ impl MiniBitGrid {
         None
     }
 
+    /// Adds a neighborhood that represents locations adjacent 
+    /// to pieces at the given board index
     fn stamp(&mut self, neighborhood: &mut Neighborhood, board_index: usize) {
         debug_assert!(board_index < 4);
         let vertical_index = (board_index + 2) % 4;

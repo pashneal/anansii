@@ -245,6 +245,13 @@ impl MiniBitGrid {
         num_connected
     }
 
+    pub fn is_pinned(&self, location: MiniBitGridLocation) -> bool {
+        let mut grid = self.all_pieces;
+        grid[location.board_index] &= !location.mask;
+        let connected_components = Self::num_connected_components(&grid);
+        connected_components > 1
+    }
+
     fn neighborhood_to_grid(
         neighborhood: &mut Neighborhood,
         neighborhood_center: usize,
@@ -1289,7 +1296,7 @@ pub mod tests {
         //□ □ □ □ □ □ □ □ 
         //□ □ □ ■ □ □ □ □ 
         //□ □ □ ■ □ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
+        //■ □ □ □ ■ ■ □ □ 
         //□ □ □ □ ■ ■ □ □ 
         //□ ■ ■ ■ ■ □ □ □ 
         //□ ■ ■ □ □ □ □ □ 
@@ -1359,7 +1366,7 @@ pub mod tests {
         //□ □ □ □ □ □ □ □ 
         //□ □ □ ■ □ □ □ □ 
         //□ □ □ ■ □ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
+        //■ □ □ □ ■ ■ □ □ 
         //□ □ □ □ ■ ■ □ □ 
         //□ ■ ■ ■ ■ □ □ □ 
         //□ ■ ■ □ □ □ □ □ 
@@ -1368,4 +1375,49 @@ pub mod tests {
 
         assert_eq!(MiniBitGrid::num_connected_components(&all_pieces), 3);
     }
+
+    #[test]
+    pub fn test_pinned_check() {
+        let grid : MiniBitGrid = HexGrid::from_dsl(concat!(
+            ". . . a . . .\n",
+            " . . a a . . .\n",
+            ". . a . . . .\n",
+            " . a G a a a .\n",
+            ". . . a . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        )).try_into().unwrap();
+
+        let pinned_locations = HexGrid::selector(concat!(
+            ". . . a . . .\n",
+            " . . * a . . .\n",
+            ". . * . . . .\n",
+            " . a * * * a .\n",
+            ". . . a . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        for location in pinned_locations {
+            assert!(grid.is_pinned(location.into()));
+        }
+
+        let unpinned_locations = HexGrid::selector(concat!(
+            ". . . * . . .\n",
+            " . . a * . . .\n",
+            ". . a . . . .\n",
+            " . * G a a * .\n",
+            ". . . * . . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n"
+        ));
+
+        for location in unpinned_locations {
+            assert!(!grid.is_pinned(location.into()));
+        }
+    }
+
 }

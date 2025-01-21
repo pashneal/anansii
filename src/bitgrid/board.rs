@@ -11,9 +11,9 @@ const NORTHEAST_CORNER: AxialBitboard = AxialBitboard(0x100000000000000);
 const SOUTHWEST_CORNER: AxialBitboard = AxialBitboard(0x80);
 const NORTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0xfe00000000000000);
 const SOUTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0x000000000000007f);
-const NEIGHBORHOOD_HEIGHT : i8 = 3;
-const NEIGHBORHOOD_WIDTH : i8 = 3;
-const NEIGHBORHOOD_CENTER_INDEX : i8 = 4;
+const NEIGHBORHOOD_HEIGHT: i8 = 3;
+const NEIGHBORHOOD_WIDTH: i8 = 3;
+const NEIGHBORHOOD_CENTER_INDEX: i8 = 4;
 
 /// Represents a internal part of the Hive grid
 ///
@@ -50,7 +50,7 @@ const NEIGHBORHOOD_CENTER_INDEX : i8 = 4;
 ///     .  .  .  .  .  .  .  .
 ///     .  .  .  .  .  .  .  .
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct AxialBitboard(u64);
 
 pub const BITBOARD_HEIGHT: usize = 8;
@@ -136,8 +136,9 @@ impl Neighborhood {
         &mut self.boards[0]
     }
 
+    /// Given a neighborhood centered at index other than NEIGHBORHOOD_CENTER_INDEX
+    /// combine the bits of that neighborhood with this one
     fn combine(&mut self, other: &Neighborhood, other_center_index: usize) {
-
         let x = NEIGHBORHOOD_CENTER_INDEX % NEIGHBORHOOD_HEIGHT;
         let y = NEIGHBORHOOD_CENTER_INDEX / NEIGHBORHOOD_WIDTH;
         let dx = x - (other_center_index as i8 % NEIGHBORHOOD_HEIGHT);
@@ -152,27 +153,24 @@ impl Neighborhood {
             (new_y * NEIGHBORHOOD_HEIGHT + new_x) as usize
         };
 
-        for (i, board) in self.boards.iter_mut().enumerate() { 
+        for (i, board) in self.boards.iter_mut().enumerate() {
             let index = translated_index(i);
             *board |= other.boards[index];
         }
     }
 
     //TODO: candidate for optimization, current implementation's correctness
-    //is easy to reason about, but at a major performance cost 
+    //is easy to reason about, but at a major performance cost
     pub fn neighborhood(&self) -> Self {
         let mut reference = self.clone();
         let mut result = reference.center().neighborhood();
 
-        println!("First neighborhood:\n{}", result);
         for (index, board) in reference.boards.iter().enumerate() {
             result.combine(&board.neighborhood(), index);
-            println!("Result after combining with board at index {}:\n{}", index, result);
         }
         result
     }
 }
-
 
 impl Display for Neighborhood {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -206,6 +204,12 @@ impl AxialBitboard {
     #[inline(always)]
     pub fn empty() -> Self {
         AxialBitboard(0)
+    }
+
+    #[inline(always)]
+    pub fn lsb(&self) -> Self {
+        let bit = ((self.0 as i64) & -(self.0 as i64)) as u64;
+        AxialBitboard(bit)
     }
 
     #[inline(always)]
@@ -314,7 +318,7 @@ impl AxialBitboard {
 
     /// Returns a neighborhood representing all empty adjacent spaces
     /// next to current existing set bits. These adjacent neighbors are
-    /// specifically unset bits arrived at by shifting the current bitboard
+    /// specifically bits arrived at by shifting set bits of the current bitboard
     /// in all hive directions (W, NW, NE, SE, SW, E).
     pub fn neighborhood(&self) -> Neighborhood {
         let mut neighbors = Neighborhood::new();
@@ -677,7 +681,7 @@ mod tests {
         let expected_bottom_left = AxialBitboard(0x303000000000000);
 
         let expected = Neighborhood {
-            boards: [ 
+            boards: [
                 expected_bottom_right,
                 expected_bottom,
                 expected_bottom_left,
@@ -687,14 +691,12 @@ mod tests {
                 expected_top_right,
                 expected_top,
                 expected_top_left,
-            ]
+            ],
         };
-
 
         println!("Expected:\n{}", expected);
 
         let n1 = start.neighborhood();
-
 
         let mut result = n1.neighborhood();
         result.combine(&n1, NEIGHBORHOOD_CENTER_INDEX as usize);
@@ -711,7 +713,5 @@ mod tests {
         assert_eq!(*result.bottom_right(), expected_bottom_right);
         assert_eq!(*result.top_left(), expected_top_left);
         assert_eq!(*result.bottom_left(), expected_bottom_left);
-
-
     }
 }

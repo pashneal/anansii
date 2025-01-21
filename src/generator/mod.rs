@@ -1,6 +1,6 @@
 pub mod change;
-pub mod mini;
 pub mod debug;
+pub mod mini;
 
-use change::*;
 use super::*;
+use change::*;

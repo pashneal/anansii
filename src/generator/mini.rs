@@ -1,7 +1,7 @@
 use crate::bitgrid::mini::*;
-use crate::generator::change::*;
 use crate::constants::EXPECTED_MAX_BRANCHING_FACTOR;
-use crate::generator::debug::{MoveGenerator, FromHexGrid};
+use crate::generator::change::*;
+use crate::generator::debug::{FromHexGrid, MoveGenerator};
 use crate::hex_grid::{HexGrid, HexLocation};
 use crate::uhp::GameType;
 
@@ -18,9 +18,9 @@ pub struct MiniGenerator {
 
     /// Represents the legal positions generated for a given position.
     ///
-    /// It is intended that this buffer avoid allocations by 
+    /// It is intended that this buffer avoid allocations by
     /// reusing the same buffer per generation.
-    change_buffer : Vec<Change>,
+    change_buffer: Vec<Change>,
 }
 
 impl FromHexGrid for MiniGenerator {
@@ -38,11 +38,10 @@ impl FromHexGrid for MiniGenerator {
             grid,
             game_type,
             immobilized,
-            change_buffer : Vec::with_capacity(EXPECTED_MAX_BRANCHING_FACTOR),
+            change_buffer: Vec::with_capacity(EXPECTED_MAX_BRANCHING_FACTOR),
         }
     }
 }
-
 
 impl MiniGenerator {
     pub fn apply(&mut self, change: Change) {
@@ -52,28 +51,19 @@ impl MiniGenerator {
     pub fn undo(&mut self, change: Change) {
         let added = change.removed;
         let removed = change.added;
-        let undo = Change {
-            added,
-            removed,
-        };
+        let undo = Change { added, removed };
         self.grid.apply_change(undo);
     }
-
-    fn generate_spider_moves(&mut self, spider_loc: MiniBitGridLocation) {
-    }
 }
 
-
-impl MoveGenerator<MiniBitGrid> for MiniGenerator {
-
-}
+impl MoveGenerator<MiniBitGrid> for MiniGenerator {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testing_utils::positions::test_suite::*;
 
-    #[test] 
+    #[test]
     fn test_spider_suite() {
         let result = test_spider_moves::<_, MiniGenerator>();
         assert!(result.is_ok());
@@ -115,4 +105,3 @@ mod tests {
         assert!(result.is_ok());
     }
 }
-

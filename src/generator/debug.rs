@@ -616,51 +616,51 @@ pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
     /// Returns a list of all possible moves for a grasshopper at a given location
     /// if the grasshopper is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for a queen at a given location
     /// if the queen is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn queen_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn queen_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for an ant at a given location
     /// if the ant is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn ant_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn ant_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for a beetle at a given location
     /// if the beetle is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn beetle_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn beetle_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for a ladybug at a given location
     /// if the ladybug is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for a pillbug at a given location
     /// if the pillbug is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 
     /// Returns a list of all possible moves for a mosquito at a given location
     /// if the mosquito is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Position> { 
-		unimplemented!();
-	}
+    fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Position> {
+        unimplemented!();
+    }
 }
 
 pub trait PlacementGenerator: FromHexGrid {

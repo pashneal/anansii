@@ -1,6 +1,6 @@
 use super::*;
-use crate::hex_grid::{HexGrid, HexGridConvertible};
 use crate::generator::change::Change;
+use crate::hex_grid::{HexGrid, HexGridConvertible};
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
@@ -181,38 +181,108 @@ impl MiniBitGrid {
         None
     }
 
-    /// Adds a neighborhood that represents locations adjacent 
-    /// to pieces at the given board index
-    fn stamp(&mut self, neighborhood: &mut Neighborhood, board_index: usize) {
-        debug_assert!(board_index < 4);
-        let vertical_index = (board_index + 2) % 4;
-        let horizontal_index = board_index ^ 1;
-        let diagonal_index = ((board_index + 2) % 4) ^ 1;
+    fn flood_fill_step(frontier: &mut MiniGrid, visited: &mut MiniGrid, all_pieces: &MiniGrid) {
+        let mut new_frontier = [AxialBitboard::empty(); GRID_SIZE];
 
-        let vertical = &mut self.outside[vertical_index];
+        for index in 0..GRID_SIZE {
+            visited[index] |= frontier[index];
+        }
+
+        for i in 0..GRID_SIZE {
+            let mut neighborhood = frontier[i].neighborhood();
+            let grid = Self::neighborhood_to_grid(&mut neighborhood, i);
+
+            for j in 0..GRID_SIZE {
+                new_frontier[j] |= grid[j] & all_pieces[j] & !visited[j];
+            }
+        }
+
+        for index in 0..GRID_SIZE {
+            frontier[index] = new_frontier[index] & all_pieces[index];
+        }
+    }
+
+    pub fn flood_fill(frontier: &mut MiniGrid, all_pieces: &MiniGrid) -> MiniGrid {
+        let is_empty =
+            |frontier: &MiniGrid| -> bool { frontier.iter().all(|board| board.is_empty()) };
+
+        let mut visited = [AxialBitboard::empty(); GRID_SIZE];
+
+        while !is_empty(frontier) {
+            Self::flood_fill_step(frontier, &mut visited, all_pieces);
+        }
+
+        for i in 0..GRID_SIZE {
+            visited[i] &= all_pieces[i];
+        }
+
+        visited
+    }
+
+    pub fn num_connected_components(grid: &MiniGrid) -> usize {
+        let next_board = |grid: &MiniGrid, visited: &MiniGrid| {
+            grid.iter()
+                .enumerate()
+                .find(|&(index, &board)| !(board & visited[index]).is_empty())
+                .map(|(index, &board)| (index, board))
+        };
+
+        let mut visited = [AxialBitboard::empty(); GRID_SIZE];
+        let mut num_connected: usize = 0;
+        while let Some((index, board)) = next_board(grid, &visited) {
+
+            let mut frontier = MiniGrid::default(); 
+            frontier[index] = board.lsb();
+            let connected = Self::flood_fill(&mut frontier, grid);
+
+            for i in 0..GRID_SIZE {
+                visited[i] |= connected[i];
+            }
+            num_connected += 1;
+        }
+
+        num_connected
+    }
+
+    fn neighborhood_to_grid(
+        neighborhood: &mut Neighborhood,
+        neighborhood_center: usize,
+    ) -> MiniGrid {
+        let mut grid = [AxialBitboard::empty(); 4];
+        let vertical_index = (neighborhood_center + 2) % 4;
+        let horizontal_index = neighborhood_center ^ 1;
+        let diagonal_index = ((neighborhood_center + 2) % 4) ^ 1;
+
+        let vertical = &mut grid[vertical_index];
         *vertical |= *neighborhood.top() | *neighborhood.bottom();
-        *vertical &= !self.all_pieces[vertical_index];
 
-        let horizontal = &mut self.outside[horizontal_index];
+        let horizontal = &mut grid[horizontal_index];
         *horizontal |= *neighborhood.center_left() | *neighborhood.center_right();
-        *horizontal &= !self.all_pieces[horizontal_index];
 
-        let diagonal = &mut self.outside[diagonal_index];
+        let diagonal = &mut grid[diagonal_index];
         *diagonal |= *neighborhood.top_right() | *neighborhood.bottom_left();
-        *diagonal &= !self.all_pieces[diagonal_index];
+        *diagonal |= *neighborhood.top_left() | *neighborhood.bottom_right();
 
-        let center = &mut self.outside[board_index];
+        let center = &mut grid[neighborhood_center];
         *center |= *neighborhood.center();
-        *center &= !self.all_pieces[board_index];
+
+        grid
+    }
+
+    fn combine_with_outside(&mut self, grid: &MiniGrid) {
+        for index in 0..4 {
+            self.outside[index] |= grid[index] & !self.all_pieces[index];
+        }
     }
 
     fn update_outside(&mut self) {
         for board_index in 0..4 {
             self.outside[board_index] = AxialBitboard::empty();
         }
-        for board_index in 0..4 {
-            let mut neighborhood = self.all_pieces[board_index].neighborhood();
-            self.stamp(&mut neighborhood, board_index);
+        for index in 0..4 {
+            let mut neighborhood = self.all_pieces[index].neighborhood();
+            let grid = Self::neighborhood_to_grid(&mut neighborhood, index);
+            self.combine_with_outside(&grid);
         }
     }
 
@@ -509,21 +579,20 @@ impl MiniBitGrid {
             || self.metainfo.column_presence.count_ones() >= height_heuristic as u32
     }
 
-
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
         if change.removed.mask != 0 {
             let piece = change.removed.piece;
-            let location = MiniBitGridLocation{
-                board_index : change.removed.board_index,
-                mask : change.removed.mask,
+            let location = MiniBitGridLocation {
+                board_index: change.removed.board_index,
+                mask: change.removed.mask,
             };
             self.add_top(piece, location);
         }
 
-        let location = MiniBitGridLocation{
-            board_index : change.added.board_index,
-            mask : change.added.mask,
+        let location = MiniBitGridLocation {
+            board_index: change.added.board_index,
+            mask: change.added.mask,
         };
 
         self.remove_top(location);
@@ -1198,5 +1267,75 @@ pub mod tests {
 
         let converted_hex: HexGrid = mini.into();
         assert_eq!(hex_grid, converted_hex);
+    }
+
+    #[test]
+    pub fn flood_fill() {
+        let mut all_pieces = MiniGrid::default();
+        
+        //all_pieces[1]
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ ■ 
+        //□ □ □ □ □ □ ■ ■ 
+        //□ □ □ □ □ ■ ■ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        all_pieces[1] = AxialBitboard::from_u64(0x10306000000);
+
+        //all_pieces[0]
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ ■ □ □ □ □ 
+        //□ □ □ ■ □ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ ■ ■ ■ ■ □ □ □ 
+        //□ ■ ■ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        all_pieces[0] = AxialBitboard::from_u64(0x10148c0c786000);
+
+        //frontier[0] == init == : 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //■ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        let mut frontier = MiniGrid::default();
+        let init = AxialBitboard::from_u64(0x8000000000);
+        frontier[0] = init;
+        let result = MiniBitGrid::flood_fill(&mut frontier, &all_pieces);
+        assert_eq!(result[1], all_pieces[1]);
+        assert_eq!(result[0], init);
+    
+
+        //frontier[0]: 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ ■ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        let mut frontier = MiniGrid::default();
+        frontier[0] = AxialBitboard::from_u64(0x400000);
+
+        //expected
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ ■ ■ ■ ■ □ □ □ 
+        //□ ■ ■ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        let expected = AxialBitboard::from_u64(0x40c0c786000);
+        let result = MiniBitGrid::flood_fill(&mut frontier, &all_pieces);
+        assert_eq!(result[0], expected);
+        assert!(result[1].is_empty());
     }
 }

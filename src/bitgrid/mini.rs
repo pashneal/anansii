@@ -223,16 +223,17 @@ impl MiniBitGrid {
         let next_board = |grid: &MiniGrid, visited: &MiniGrid| {
             grid.iter()
                 .enumerate()
-                .find(|&(index, &board)| !(board & visited[index]).is_empty())
+                .find(|&(index, &board)| !((board & !visited[index]).is_empty()))
                 .map(|(index, &board)| (index, board))
         };
 
         let mut visited = [AxialBitboard::empty(); GRID_SIZE];
         let mut num_connected: usize = 0;
-        while let Some((index, board)) = next_board(grid, &visited) {
 
+        while let Some((index, board)) = next_board(grid, &visited) {
             let mut frontier = MiniGrid::default(); 
-            frontier[index] = board.lsb();
+            // Select only one bit that has not yet been visited
+            frontier[index] = (board & !visited[index]).lsb();
             let connected = Self::flood_fill(&mut frontier, grid);
 
             for i in 0..GRID_SIZE {
@@ -1270,7 +1271,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn flood_fill() {
+    pub fn test_flood_fill() {
         let mut all_pieces = MiniGrid::default();
         
         //all_pieces[1]
@@ -1337,5 +1338,34 @@ pub mod tests {
         let result = MiniBitGrid::flood_fill(&mut frontier, &all_pieces);
         assert_eq!(result[0], expected);
         assert!(result[1].is_empty());
+    }
+
+    #[test]
+    pub fn test_num_connected_components() {
+        let mut all_pieces = MiniGrid::default();
+        
+        //all_pieces[1]
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ ■ 
+        //□ □ □ □ □ □ ■ ■ 
+        //□ □ □ □ □ ■ ■ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        all_pieces[1] = AxialBitboard::from_u64(0x10306000000);
+
+        //all_pieces[0]
+        //□ □ □ □ □ □ □ □ 
+        //□ □ □ ■ □ □ □ □ 
+        //□ □ □ ■ □ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ □ □ □ ■ ■ □ □ 
+        //□ ■ ■ ■ ■ □ □ □ 
+        //□ ■ ■ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □ 
+        all_pieces[0] = AxialBitboard::from_u64(0x10148c0c786000);
+
+        assert_eq!(MiniBitGrid::num_connected_components(&all_pieces), 3);
     }
 }

@@ -231,7 +231,7 @@ impl MiniBitGrid {
         let mut num_connected: usize = 0;
 
         while let Some((index, board)) = next_board(grid, &visited) {
-            let mut frontier = MiniGrid::default(); 
+            let mut frontier = MiniGrid::default();
             // Select only one bit that has not yet been visited
             frontier[index] = (board & !visited[index]).lsb();
             let connected = Self::flood_fill(&mut frontier, grid);
@@ -1280,67 +1280,66 @@ pub mod tests {
     #[test]
     pub fn test_flood_fill() {
         let mut all_pieces = MiniGrid::default();
-        
+
         //all_pieces[1]
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ ■ 
-        //□ □ □ □ □ □ ■ ■ 
-        //□ □ □ □ □ ■ ■ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ ■
+        //□ □ □ □ □ □ ■ ■
+        //□ □ □ □ □ ■ ■ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         all_pieces[1] = AxialBitboard::from_u64(0x10306000000);
 
         //all_pieces[0]
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ ■ □ □ □ □ 
-        //□ □ □ ■ □ ■ □ □ 
-        //■ □ □ □ ■ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
-        //□ ■ ■ ■ ■ □ □ □ 
-        //□ ■ ■ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □
+        //□ □ □ ■ □ □ □ □
+        //□ □ □ ■ □ ■ □ □
+        //■ □ □ □ ■ ■ □ □
+        //□ □ □ □ ■ ■ □ □
+        //□ ■ ■ ■ ■ □ □ □
+        //□ ■ ■ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         all_pieces[0] = AxialBitboard::from_u64(0x10148c0c786000);
 
-        //frontier[0] == init == : 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //■ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //frontier[0] == init == :
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //■ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         let mut frontier = MiniGrid::default();
         let init = AxialBitboard::from_u64(0x8000000000);
         frontier[0] = init;
         let result = MiniBitGrid::flood_fill(&mut frontier, &all_pieces);
         assert_eq!(result[1], all_pieces[1]);
         assert_eq!(result[0], init);
-    
 
-        //frontier[0]: 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ ■ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //frontier[0]:
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ ■ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         let mut frontier = MiniGrid::default();
         frontier[0] = AxialBitboard::from_u64(0x400000);
 
         //expected
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
-        //□ ■ ■ ■ ■ □ □ □ 
-        //□ ■ ■ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ ■ □ □
+        //□ □ □ □ ■ ■ □ □
+        //□ □ □ □ ■ ■ □ □
+        //□ ■ ■ ■ ■ □ □ □
+        //□ ■ ■ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         let expected = AxialBitboard::from_u64(0x40c0c786000);
         let result = MiniBitGrid::flood_fill(&mut frontier, &all_pieces);
         assert_eq!(result[0], expected);
@@ -1350,27 +1349,27 @@ pub mod tests {
     #[test]
     pub fn test_num_connected_components() {
         let mut all_pieces = MiniGrid::default();
-        
+
         //all_pieces[1]
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ ■ 
-        //□ □ □ □ □ □ ■ ■ 
-        //□ □ □ □ □ ■ ■ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ ■
+        //□ □ □ □ □ □ ■ ■
+        //□ □ □ □ □ ■ ■ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         all_pieces[1] = AxialBitboard::from_u64(0x10306000000);
 
         //all_pieces[0]
-        //□ □ □ □ □ □ □ □ 
-        //□ □ □ ■ □ □ □ □ 
-        //□ □ □ ■ □ ■ □ □ 
-        //■ □ □ □ ■ ■ □ □ 
-        //□ □ □ □ ■ ■ □ □ 
-        //□ ■ ■ ■ ■ □ □ □ 
-        //□ ■ ■ □ □ □ □ □ 
-        //□ □ □ □ □ □ □ □ 
+        //□ □ □ □ □ □ □ □
+        //□ □ □ ■ □ □ □ □
+        //□ □ □ ■ □ ■ □ □
+        //■ □ □ □ ■ ■ □ □
+        //□ □ □ □ ■ ■ □ □
+        //□ ■ ■ ■ ■ □ □ □
+        //□ ■ ■ □ □ □ □ □
+        //□ □ □ □ □ □ □ □
         all_pieces[0] = AxialBitboard::from_u64(0x10148c0c786000);
 
         assert_eq!(MiniBitGrid::num_connected_components(&all_pieces), 3);
@@ -1378,7 +1377,7 @@ pub mod tests {
 
     #[test]
     pub fn test_pinned_check() {
-        let grid : MiniBitGrid = HexGrid::from_dsl(concat!(
+        let grid: MiniBitGrid = HexGrid::from_dsl(concat!(
             ". . . a . . .\n",
             " . . a a . . .\n",
             ". . a . . . .\n",
@@ -1387,7 +1386,9 @@ pub mod tests {
             " . . . . . . .\n",
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
-        )).try_into().unwrap();
+        ))
+        .try_into()
+        .unwrap();
 
         let pinned_locations = HexGrid::selector(concat!(
             ". . . a . . .\n",
@@ -1419,5 +1420,4 @@ pub mod tests {
             assert!(!grid.is_pinned(location.into()));
         }
     }
-
 }

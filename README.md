@@ -1,7 +1,7 @@
 # Anansii
 I've decided to finish projects that I've started, starting with this one.
 
-- [ ] Simplify over engineered code
+- [ ] Simplify over engineered code (first do better naming)
   - [ ] src/*.rs
   - [ ] src/bitgrid/*.rs
   - [ ] src/data_analysis/*.rs

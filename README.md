@@ -3,6 +3,8 @@ I've decided to finish projects that I've started, starting with this one.
 
 - [ ] Simplify over engineered code (first do better naming)
   - [ ] src/*.rs
+    - [ ] better naming
+    - [ ] better public interface 
   - [ ] src/bitgrid/*.rs
   - [ ] src/data_analysis/*.rs
   - [ ] src/generator/*.rs

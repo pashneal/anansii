@@ -3,11 +3,11 @@ I've decided to finish projects that I've started, starting with this one.
 
 - [ ] Simplify over engineered code (first do better naming)
   - [ ] src/*.rs
-    - [ ] better naming
+    - [x] better naming
     - [ ] better public interface 
   - [ ] src/bitgrid/*.rs
   - [ ] src/data_analysis/*.rs
-  - [ ] src/generator/*.rs
+  - [x] src/generator/*.rs
   - [ ] src/testing_utils/*.rs 
 - [ ] Get Move Generator up and running
 - [ ] Get Move Generator running on Bitgrid

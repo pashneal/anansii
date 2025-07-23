@@ -38,7 +38,7 @@ impl Stats {
 }
 
 pub fn get_size(game: &GameDebugger) -> usize {
-    let position: Result<BasicBitGrid, _> = game.position().try_into();
+    let position: Result<BasicBitGrid, _> = game.current_position().try_into();
     let position = position.expect("Failed to convert game position to bitgrid");
     let bounds = position.bounding_box();
     if bounds.is_none() {

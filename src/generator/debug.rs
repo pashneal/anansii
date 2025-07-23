@@ -37,8 +37,9 @@ impl PositionGeneratorDebugger {
         location: HexLocation,
         mut visited: Vec<HexLocation>,
         depth: usize,
-        spider_removed: &HexGrid,
+        grid_with_spider_removed: &HexGrid,
     ) -> Vec<HexLocation> {
+
         if visited.contains(&location) {
             return vec![];
         }
@@ -50,12 +51,12 @@ impl PositionGeneratorDebugger {
 
         let mut result = vec![];
 
-        for slidable_location in spider_removed.slidable_locations_2d(location).iter() {
+        for slidable_location in grid_with_spider_removed.get_slidable_2d_neighbors(location).iter() {
             let found = self.spider_dfs(
                 *slidable_location,
                 visited.clone(),
                 depth + 1,
-                spider_removed,
+                grid_with_spider_removed,
             );
             result.extend(found);
         }
@@ -64,7 +65,9 @@ impl PositionGeneratorDebugger {
     }
 
     fn pieces_in_hand(&self, color: PieceColor) -> Vec<Piece> {
+
         let all_pieces = self.grid.pieces();
+
         let friendly_pieces = all_pieces
             .iter()
             .flat_map(|(stack, _)| stack)
@@ -218,7 +221,7 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
         queen_removed.remove(location);
         let outside = queen_removed.outside();
 
-        for slidable_location in self.grid.slidable_locations_2d(location).iter() {
+        for slidable_location in self.grid.get_slidable_2d_neighbors(location).iter() {
             if outside.contains(slidable_location) {
                 let mut new_grid = self.grid.clone();
                 new_grid.remove(location);
@@ -247,7 +250,7 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
             }
             visited.insert(location);
 
-            for slidable_location in grid.slidable_locations_2d(location).iter() {
+            for slidable_location in grid.get_slidable_2d_neighbors(location).iter() {
                 // In contact with the hive
                 if !grid.get_neighbors(*slidable_location).is_empty() {
                     dfs(*slidable_location, visited, grid);
@@ -299,11 +302,13 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
         beetle_removed.remove(location);
         let outside = beetle_removed.outside();
 
-        for slidable_location in self.grid.slidable_locations_3d(location).iter() {
-            if outside.contains(slidable_location) || hive.contains(slidable_location) {
+        let effective_height = self.grid.peek(location).len();
+        let neighbors = self.grid.get_3d_slidable_neighbors(location, effective_height);
+        for slidable_location in neighbors {
+            if outside.contains(&slidable_location) || hive.contains(&slidable_location) {
                 let mut new_grid = self.grid.clone();
                 new_grid.remove(location);
-                new_grid.add(beetle, *slidable_location);
+                new_grid.add(beetle, slidable_location);
                 result.push(new_grid);
             }
         }
@@ -339,7 +344,7 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
 
         // First move unto the hive
         let height = 1;
-        let slidable_locs = ladybug_removed.slidable_locations_3d_height(location, height);
+        let slidable_locs = ladybug_removed.get_3d_slidable_neighbors(location, height);
         let neighbors = slidable_locs.iter().filter(|loc| hive.contains(loc));
 
         // Then climb across the hive
@@ -347,14 +352,14 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
             // The height must account for an imaginary ladybug now being on top of
             // the existing board
             let effective_height = ladybug_removed.peek(*loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
+            ladybug_removed.get_3d_slidable_neighbors(*loc, effective_height)
         });
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
         // Then climb off the hive
         let climb_down = climb_atop.flat_map(|loc| {
             let height = ladybug_removed.peek(loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(loc, height)
+            ladybug_removed.get_3d_slidable_neighbors(loc, height)
         });
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
@@ -385,7 +390,7 @@ impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
         let pillbug = pillbug_removed.remove(location).unwrap();
 
         let mut result = vec![];
-        for slidable_location in pillbug_removed.slidable_locations_2d(location).iter() {
+        for slidable_location in pillbug_removed.get_slidable_2d_neighbors(location).iter() {
             let mut new_grid = self.grid.clone();
             new_grid.remove(location);
             new_grid.add(pillbug, *slidable_location);
@@ -484,7 +489,7 @@ impl SwapGenerator<HexGrid> for PositionGeneratorDebugger {
 
             // Pretend the candidate moved to height 2 and attempted to slide to
             // the pillbug
-            let slidable = self.grid.slidable_locations_3d_height(candidate_loc, 2);
+            let slidable = self.grid.get_3d_slidable_neighbors(candidate_loc, 2);
             if !slidable.contains(&pillbug_location) {
                 continue;
             }
@@ -493,7 +498,7 @@ impl SwapGenerator<HexGrid> for PositionGeneratorDebugger {
         }
 
         let mut empty_neighbors = Vec::new();
-        let slidable = self.grid.slidable_locations_3d_height(pillbug_location, 2);
+        let slidable = self.grid.get_3d_slidable_neighbors(pillbug_location, 2);
         for &candidate_loc in slidable.iter() {
             if self.grid.peek(candidate_loc).is_empty() {
                 empty_neighbors.push(candidate_loc);

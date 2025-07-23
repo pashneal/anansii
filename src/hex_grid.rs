@@ -80,8 +80,6 @@ impl HexGrid {
         }
     }
 
-    /// Depth first search on the stack with a location not allowed to be visited
-    /// to determine if the location contains a pinned piece
     fn dfs(
         &self,
         visited: &mut HashSet<HexLocation>,
@@ -119,11 +117,11 @@ impl HexGrid {
         outside
     }
 
-    /// Returns the locations in the hive that are "pinned",
-    /// in other words, removing the pieces in that stack would violate the One Hive rule
+    /// Returns the locations in the hive that are "pinned"
     ///
-    /// returns in board order, that is, first top-to-bottom then left-to-right
-    /// Assumes that the pieces on the board already form "One Hive"
+    /// Invariants:
+    ///  - returns in board order, that is, first top-to-bottom then left-to-right
+    ///  - assumes the pieces on the board already form "One Hive"
     pub fn pinned(&self) -> Vec<HexLocation> {
         let mut pinned = vec![];
         let hive = self
@@ -171,11 +169,21 @@ impl HexGrid {
     }
 
     /// Returns locations that are neighbors of an given location but are
-    /// "slidable", that is, they do not form gates that are inaccessible for
-    /// sliding pieces and maintains contact with at least one of its original neighbors
+    /// "slidable"
     ///
-    /// Specifies the effective height of the piece, to see if the piece can jump over the gate
-    pub fn slidable_locations_3d_height(
+    /// accepts the effective height of the piece, to see if the piece can jump over the gate
+    ///
+    /// Example 
+    ///        " . . . . . ."
+    ///        ". . 3 . a . "
+    ///        " . Y X Z .  "
+    ///        ". . 2 a . . "
+    ///        " . . a a . ."
+    ///        ". . . . . . "   
+    ///
+    /// the piece at X can only slide to Y if it's current height is 2 or more,
+    /// and can slide to Z if its effective height is >= 1 
+    pub fn get_3d_slidable_neighbors(
         &self,
         location: HexLocation,
         effective_height: usize,
@@ -189,8 +197,8 @@ impl HexGrid {
             let final_height = destination_height + 1;
             let effective_height = final_height.max(effective_height);
 
-            let (left_dir, right_dir) = direction.adjacent();
-            let (left, right) = (location.apply(left_dir), location.apply(right_dir));
+            let (left_gate_dir, right_gate_dir) = direction.adjacent();
+            let (left, right) = (location.apply(left_gate_dir), location.apply(right_gate_dir));
             let (left_stack, right_stack) = (self.peek(left), self.peek(right));
 
             // Must be high enough to step over and through gate
@@ -220,23 +228,10 @@ impl HexGrid {
     }
 
     /// Returns locations that are neighbors of an given location but are
-    /// "slidable", that is, they do not form gates that are inaccessible for
-    /// sliding pieces and maintains contact with at least one of its original neighbors
-    ///
-    /// "3D" because it allows climbing up the hive
-    pub fn slidable_locations_3d(&self, location: HexLocation) -> Vec<HexLocation> {
-        let effective_height = self.peek(location).len();
-        self.slidable_locations_3d_height(location, effective_height)
-    }
-
-    /// Returns locations that are neighbors of an given location but are
-    /// "slidable", that is, they do not form gates that are inaccessible for
-    /// sliding pieces and maintains contact with at least one of its original neighbors
-    ///
-    /// "2D" because it ignores the height of the pieces, disallowing climbing up the hive
-    pub fn slidable_locations_2d(&self, location: HexLocation) -> Vec<HexLocation> {
+    /// "slidable", ignoring the height of the piece or destintions
+    pub fn get_slidable_2d_neighbors(&self, location: HexLocation) -> Vec<HexLocation> {
         debug_assert!(self.peek(location).len() <= 1); // Cannot climb up the hive
-        let all_locations = self.slidable_locations_3d_height(location, 1);
+        let all_locations = self.get_3d_slidable_neighbors(location, 1);
         all_locations
             .into_iter()
             .filter(|&loc| self.peek(loc).is_empty())
@@ -244,8 +239,10 @@ impl HexGrid {
     }
 
     /// Returns the first occurrence of a specified piece in the grid.
-    /// The search occurs in board order, that is, from top to bottom, then left to right.
     /// If the piece is not found, None is returned.
+    ///
+    /// Returns the first matching piece. If multiple pieces match it returns
+    /// the first one found in board order (first top to bottom, then left to right).
     pub fn find(&self, piece: Piece) -> Option<(HexLocation, Height)> {
         for (stack, location) in self.pieces() {
             for (height, &stack_piece) in stack.iter().enumerate() {

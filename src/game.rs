@@ -13,13 +13,13 @@ pub enum GameDebuggerError {
 
 pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 
-/// Represents a game of Hive with only legal moves taken and positions resulting
-/// from legal moves.
+/// Represents a game of Hive.
 ///
-/// It is intended that game positions, moves, locations and other game state
-/// information can be translated to (and from) this struct.
+/// Invariant:
+/// - all moves in the move history of this GameDebugger are legal
 ///
-/// This means optimized code does not need to concern itself with
+/// Why?:
+/// So that optimized code does not need to concern itself with
 /// simplicity, visual representation, slow debugging methods,
 /// or extremely complicated testing harnesses - a hard lesson learned
 /// from the first version of this project. It leaves optimized code to more easily
@@ -39,19 +39,7 @@ pub enum GameResult {
 }
 
 impl GameDebugger {
-    /// Give a list of legal UHP moves starting from the empty board,
-    /// create and return a GameDebugger with positions after the moves are
-    /// played on the board.
-    ///
-    /// assumes Base+MLP
-    pub fn from_moves(moves: &[String]) -> Result<Self> {
-        GameDebugger::from_moves_custom(moves, GameType::MLP)
-    }
-
-    /// Give a list of legal UHP moves starting from the empty board and a game type,
-    /// create and return a GameDebugger with positions after the moves are
-    /// played on the board.
-    pub fn from_moves_custom(moves: &[String], game_type: GameType) -> Result<Self> {
+    pub fn new(moves: &[String], game_type: GameType) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
         let mut game = GameDebugger {
@@ -63,36 +51,6 @@ impl GameDebugger {
         for mv in moves.iter() {
             game.make_move(mv)?;
         }
-        Ok(game)
-    }
-
-    /// Given all positions arrived at within the game create
-    /// and return a GameDebugger with the positions accounted for.
-    /// assumes Base+MLP
-    pub fn from_positions<P: Position>(positions: &Vec<P>) -> Result<Self> {
-        GameDebugger::from_positions_custom(positions, GameType::MLP)
-    }
-
-    pub fn from_positions_custom<P: Position>(
-        positions: &Vec<P>,
-        game_type: GameType,
-    ) -> Result<Self> {
-        let annotator = Annotator::new();
-        let annotations = vec![annotator];
-        let mut game = GameDebugger {
-            annotations,
-            generator: ReferenceGenerator::new(game_type),
-            game_type,
-        };
-
-        // Must begin with the empty board
-        debug_assert!(!positions.is_empty() && positions[0].to_hex_grid() == HexGrid::new());
-
-        // Skip the first position, as it is the empty board
-        for pos in positions.iter().skip(1) {
-            game.append_position(pos)?;
-        }
-
         Ok(game)
     }
 
@@ -121,7 +79,7 @@ impl GameDebugger {
         self.append_position(annotator.position())
     }
 
-    pub fn player_to_move(&self) -> PieceColor {
+    pub fn get_player_to_move(&self) -> PieceColor {
         match self.annotations.len() % 2 {
             1 => PieceColor::White,
             _ => PieceColor::Black,
@@ -129,7 +87,6 @@ impl GameDebugger {
     }
 
     /// Adds a new position to the game, assuming it arrived after a legal move
-    /// made on the last position stored in this GameDebugger
     pub fn append_position<P: Position>(&mut self, position: &P) -> Result<()> {
         let grid = position.to_hex_grid();
 
@@ -137,7 +94,7 @@ impl GameDebugger {
             return Err(GameDebuggerError::AnnotationError(UHPError::IllegalMove {
                 info: format!(
                     "\nPrevious position:\n{}\nLatest position:\n{}",
-                    self.position().to_dsl(),
+                    self.current_position().to_dsl(),
                     grid.to_dsl()
                 ),
             }));
@@ -158,13 +115,13 @@ impl GameDebugger {
         Ok(())
     }
 
-    /// Returns a set of legal positions that can be arrived at
-    /// from the current position
+    /// Returns a set of legal positions that can occur after 
+    /// the current game state
     pub fn legal_positions(&mut self) -> HashSet<HexGrid> {
         // If the game is over, no legal moves
         match self.game_result() {
             Some(_) => HashSet::new(),
-            _ => self.generator.generate_positions_for(self.player_to_move()),
+            _ => self.generator.generate_positions_for(self.get_player_to_move()),
         }
     }
 
@@ -208,7 +165,7 @@ impl GameDebugger {
     }
 
     /// Get the latest position in the game
-    pub fn position(&self) -> &HexGrid {
+    pub fn current_position(&self) -> &HexGrid {
         self.annotations.last().unwrap().position()
     }
 }
@@ -239,7 +196,7 @@ mod tests {
             String::from(r"wB1 \bL"),
         ];
 
-        let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+        let mut game = GameDebugger::new(&[], GameType::MLP).unwrap();
         for pos in white_wins.iter() {
             assert!(game.game_result().is_none());
             game.make_move(pos).unwrap();
@@ -264,7 +221,7 @@ mod tests {
             String::from(r"wA2 wQ\"),
         ];
 
-        let mut game = GameDebugger::from_positions(&vec![HexGrid::new()]).unwrap();
+        let mut game = GameDebugger::new(&[], GameType::MLP).unwrap();
         for move_ in black_wins.iter() {
             assert!(game.game_result().is_none());
             game.make_move(move_).unwrap();
@@ -290,8 +247,8 @@ mod tests {
             String::from(r"bQ bA1-"),
         ];
 
-        let game = GameDebugger::from_moves(&draw).unwrap();
-        println!("game\n:{}", game.position().to_dsl());
+        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
+        println!("game\n:{}", game.current_position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }
 
@@ -321,8 +278,8 @@ mod tests {
             String::from(r"bG1 wB1\"),
         ];
 
-        let game = GameDebugger::from_moves(&draw).unwrap();
-        println!("game\n:{}", game.position().to_dsl());
+        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
+        println!("game\n:{}", game.current_position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }
 }

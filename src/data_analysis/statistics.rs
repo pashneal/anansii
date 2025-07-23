@@ -38,7 +38,7 @@ impl Stats {
 }
 
 pub fn get_size(game: &GameDebugger) -> usize {
-    let position: Result<BasicBitGrid, _> = game.position().try_into();
+    let position: Result<BasicBitGrid, _> = game.current_position().try_into();
     let position = position.expect("Failed to convert game position to bitgrid");
     let bounds = position.bounding_box();
     if bounds.is_none() {
@@ -55,7 +55,7 @@ pub fn check_positions() {
 
     let mut uhp = UHPInterface::new();
     for (index, game) in games.iter().enumerate() {
-        let output = uhp.command(&format!("newgame {}", game));
+        let output = uhp.run_command(&format!("newgame {}", game));
 
         if output.contains("err") {
             //println!("Failed to load game: {}", game);

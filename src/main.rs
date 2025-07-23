@@ -32,16 +32,16 @@ enum MainCommands {
     Bitboard { number: u64 },
 }
 
-pub fn run_uhp() {
+pub fn run_universal_hive_protocol() {
     let mut uhp = UHPInterface::new();
     let mut input = String::new();
-    let output = uhp.command("info");
+    let output = uhp.run_command("info");
     print!("{}", output);
 
     loop {
         input.clear();
         std::io::stdin().read_line(&mut input).unwrap();
-        let output = uhp.command(&input);
+        let output = uhp.run_command(&input);
         print!("{}", output);
     }
 }
@@ -49,13 +49,13 @@ pub fn run_uhp() {
 pub fn main() {
     let args = Cli::parse();
     match args.command {
-        Some(MainCommands::Uhp) => run_uhp(),
+        Some(MainCommands::Uhp) => run_universal_hive_protocol(),
         Some(MainCommands::Analyze) => data_analysis::check_positions(),
         Some(MainCommands::Bitboard { number }) => {
             let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
             println!("{}", bitboard);
         }
 
-        None => run_uhp(),
+        None => run_universal_hive_protocol(),
     }
 }

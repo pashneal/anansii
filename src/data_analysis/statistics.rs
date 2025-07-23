@@ -55,7 +55,7 @@ pub fn check_positions() {
 
     let mut uhp = UHPInterface::new();
     for (index, game) in games.iter().enumerate() {
-        let output = uhp.command(&format!("newgame {}", game));
+        let output = uhp.run_command(&format!("newgame {}", game));
 
         if output.contains("err") {
             //println!("Failed to load game: {}", game);

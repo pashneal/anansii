@@ -39,19 +39,7 @@ pub enum GameResult {
 }
 
 impl GameDebugger {
-    /// Give a list of legal UHP moves starting from the empty board,
-    /// create and return a GameDebugger with positions after the moves are
-    /// played on the board.
-    ///
-    /// assumes Base+MLP
-    pub fn from_moves(moves: &[String]) -> Result<Self> {
-        GameDebugger::from_moves_custom(moves, GameType::MLP)
-    }
-
-    /// Give a list of legal UHP moves starting from the empty board and a game type,
-    /// create and return a GameDebugger with positions after the moves are
-    /// played on the board.
-    pub fn from_moves_custom(moves: &[String], game_type: GameType) -> Result<Self> {
+    pub fn new(moves: &[String], game_type: GameType) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
         let mut game = GameDebugger {
@@ -290,7 +278,7 @@ mod tests {
             String::from(r"bQ bA1-"),
         ];
 
-        let game = GameDebugger::from_moves(&draw).unwrap();
+        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
         println!("game\n:{}", game.position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }
@@ -321,7 +309,7 @@ mod tests {
             String::from(r"bG1 wB1\"),
         ];
 
-        let game = GameDebugger::from_moves(&draw).unwrap();
+        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
         println!("game\n:{}", game.position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }

@@ -1,7 +1,6 @@
 use crate::bitgrid::mini::*;
 use crate::constants::EXPECTED_MAX_BRANCHING_FACTOR;
-use crate::generator::change::*;
-use crate::generator::debug::{FromHexGrid, MoveGenerator};
+use crate::generator::*;
 use crate::hex_grid::{HexGrid, HexLocation};
 use crate::uhp::GameType;
 

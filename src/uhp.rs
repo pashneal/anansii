@@ -188,19 +188,21 @@ impl Annotator {
             let piece = piece.last().unwrap();
             let id = ids.get(&nw).unwrap().last().unwrap().unwrap();
 
-            create_uhp_string(Direction::NW, &piece.to_uhp(id))
 
+            create_uhp_string(Direction::NW, &piece.to_uhp(id))
+          
         } else if !hex_grid.peek(sw).is_empty() {
             let piece = hex_grid.peek(sw);
             let piece = piece.last().unwrap();
             let id = ids.get(&sw).unwrap().last().unwrap().unwrap();
 
             create_uhp_string(Direction::SW, &piece.to_uhp(id))
-
+          
         } else if !hex_grid.peek(ne).is_empty() {
             let piece = hex_grid.peek(ne);
             let piece = piece.last().unwrap();
             let id = ids.get(&ne).unwrap().last().unwrap().unwrap();
+
 
             create_uhp_string(Direction::NE, &piece.to_uhp(id))
 

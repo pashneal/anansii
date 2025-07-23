@@ -1,2 +1,14 @@
 # Anansii
-I've decided to remake my [original](https://www.github.com/pashneal/WaspAI) C++ bot for the Hive board game into one that more so incorporates my modern sensibilities and style in terms of coding practices that I've acquired in the last few years. 
+I've decided to finish projects that I've started, starting with this one.
+
+- [ ] Simplify over engineered code (first do better naming)
+  - [ ] src/*.rs
+    - [ ] better naming
+    - [ ] better public interface 
+  - [ ] src/bitgrid/*.rs
+  - [ ] src/data_analysis/*.rs
+  - [ ] src/generator/*.rs
+  - [ ] src/testing_utils/*.rs 
+- [ ] Get Move Generator up and running
+- [ ] Get Move Generator running on Bitgrid
+- [ ] Attack and solve this [issue](https://github.com/pashneal/anansii/issues/1)

@@ -5,17 +5,12 @@ use crate::uhp::GameType;
 use std::collections::HashSet;
 
 pub trait FromHexGrid {
-    /// Initializes this type from a HexGrid,
-    /// with the previous change being the destination of the piece
-    /// that was manuevered in the previous turn.
     fn from_hex_grid(
         grid: &HexGrid,
         game_type: GameType,
         previous_change: Option<HexLocation>,
     ) -> Self;
 
-    /// Initializes this type from a HexGrid, with the previous change being None, and with a
-    /// default GameType
     fn from_default(grid: &HexGrid) -> Self
     where
         Self: Sized,

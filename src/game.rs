@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, GameDebuggerError>;
 #[derive(Clone, Debug)]
 pub struct GameDebugger {
     annotations: Vec<Annotator>,
-    generator: ReferenceGenerator,
+    generator: PositionGeneratorDebugger,
     game_type: GameType,
 }
 
@@ -44,7 +44,7 @@ impl GameDebugger {
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
-            generator: ReferenceGenerator::new(game_type),
+            generator: PositionGeneratorDebugger::new(game_type),
             game_type,
         };
 
@@ -61,7 +61,7 @@ impl GameDebugger {
         }
         self.annotations.pop();
         let last_move = self.annotations.last().unwrap().last_move();
-        self.generator = ReferenceGenerator::from_hex_grid(
+        self.generator = PositionGeneratorDebugger::from_hex_grid(
             self.annotations.last().unwrap().position(),
             self.game_type,
             last_move,
@@ -105,7 +105,7 @@ impl GameDebugger {
             .next_state(&grid)
             .map_err(GameDebuggerError::AnnotationError)?;
 
-        self.generator = ReferenceGenerator::from_hex_grid(
+        self.generator = PositionGeneratorDebugger::from_hex_grid(
             annotator.position(),
             self.game_type,
             annotator.last_move(),

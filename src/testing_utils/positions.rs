@@ -516,7 +516,7 @@ pub mod test_suite {
     ) -> std::result::Result<(), ()>
     where
         Fa: FnMut(&mut M, HexLocation) -> Vec<I>,
-        Fb: FnMut(&mut ReferenceGenerator, HexLocation) -> Vec<HexGrid>,
+        Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation) -> Vec<HexGrid>,
     {
         let locations = dsl_to_locations(dsls, target);
         let hex_grids = dsl_to_hex_grids(dsls);
@@ -524,7 +524,7 @@ pub mod test_suite {
         let (mut gen_func, mut ref_func) = funcs;
 
         for (location, hex_grid) in locations.iter().zip(hex_grids.iter()) {
-            let mut reference_generator = ReferenceGenerator::from_default(&hex_grid);
+            let mut reference_generator = PositionGeneratorDebugger::from_default(&hex_grid);
             let mut generator = M::from_default(&hex_grid);
 
             println!("generating positions from:\n{}\n...", hex_grid.to_dsl());
@@ -569,7 +569,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Spider, White),
             &SPIDER_MOVES[..],
-            (M::spider_moves, ReferenceGenerator::spider_moves),
+            (M::spider_moves, PositionGeneratorDebugger::spider_moves),
         )
     }
 
@@ -577,7 +577,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Grasshopper, White),
             &GRASSHOPPER_MOVES[..],
-            (M::grasshopper_moves, ReferenceGenerator::grasshopper_moves),
+            (M::grasshopper_moves, PositionGeneratorDebugger::grasshopper_moves),
         )
     }
 
@@ -585,7 +585,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Queen, White),
             &QUEEN_MOVES[..],
-            (M::queen_moves, ReferenceGenerator::queen_moves),
+            (M::queen_moves, PositionGeneratorDebugger::queen_moves),
         )
     }
 
@@ -593,7 +593,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Ant, White),
             &ANT_MOVES[..],
-            (M::ant_moves, ReferenceGenerator::ant_moves),
+            (M::ant_moves, PositionGeneratorDebugger::ant_moves),
         )
     }
 
@@ -601,7 +601,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Beetle, White),
             &BEETLE_MOVES[..],
-            (M::beetle_moves, ReferenceGenerator::beetle_moves),
+            (M::beetle_moves, PositionGeneratorDebugger::beetle_moves),
         )
     }
 
@@ -609,7 +609,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Ladybug, White),
             &LADYBUG_MOVES[..],
-            (M::ladybug_moves, ReferenceGenerator::ladybug_moves),
+            (M::ladybug_moves, PositionGeneratorDebugger::ladybug_moves),
         )
     }
 
@@ -617,7 +617,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Pillbug, White),
             &PILLBUG_MOVES[..],
-            (M::pillbug_moves, ReferenceGenerator::pillbug_moves),
+            (M::pillbug_moves, PositionGeneratorDebugger::pillbug_moves),
         )
     }
 
@@ -625,7 +625,7 @@ pub mod test_suite {
         move_test(
             Piece::new(Mosquito, White),
             &MOSQUITO_MOVES[..],
-            (M::mosquito_moves, ReferenceGenerator::mosquito_moves),
+            (M::mosquito_moves, PositionGeneratorDebugger::mosquito_moves),
         )
     }
 }

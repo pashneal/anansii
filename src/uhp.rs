@@ -137,10 +137,15 @@ impl Annotator {
         diffs
     }
 
-    /// Computes the second part of a UHP MoveString, the anchor.
-    /// destination - the piece's new location after moving
-    /// hex_grid - the newest state of the hexgrid
-    /// ids - mappings from the newest state of the board to unique identifiers for each piece
+    /// Computes the second part of a UHP MoveString: the "anchor".
+    ///
+    /// Arguments:
+    ///     destination - the piece's new location after moving
+    ///     hex_grid - the newest state of the hexgrid
+    ///     ids - unique identifier numbers for each piece
+    ///
+    /// Invariant:
+    ///    hex_grid represents a legal "One Hive" state of the game
     fn anchor_reference(
         hex_grid: &HexGrid,
         destination: HexLocation,
@@ -167,7 +172,7 @@ impl Annotator {
         let e = destination.apply(Direction::E);
         let w = destination.apply(Direction::W);
 
-        fn relative_direction(direction: Direction, uhp: &str) -> String {
+        fn create_uhp_string(direction: Direction, uhp: &str) -> String {
             match direction {
                 Direction::E => format!("-{}", uhp),
                 Direction::W => format!("{}-", uhp),
@@ -183,42 +188,44 @@ impl Annotator {
             let piece = piece.last().unwrap();
             let id = ids.get(&nw).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::NW, &piece.to_uhp(id))
 
+            create_uhp_string(Direction::NW, &piece.to_uhp(id))
+          
         } else if !hex_grid.peek(sw).is_empty() {
             let piece = hex_grid.peek(sw);
             let piece = piece.last().unwrap();
             let id = ids.get(&sw).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::SW, &piece.to_uhp(id))
-
+            create_uhp_string(Direction::SW, &piece.to_uhp(id))
+          
         } else if !hex_grid.peek(ne).is_empty() {
             let piece = hex_grid.peek(ne);
             let piece = piece.last().unwrap();
             let id = ids.get(&ne).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::NE, &piece.to_uhp(id))
+
+            create_uhp_string(Direction::NE, &piece.to_uhp(id))
 
         } else if !hex_grid.peek(se).is_empty() {
             let piece = hex_grid.peek(se);
             let piece = piece.last().unwrap();
             let id = ids.get(&se).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::SE, &piece.to_uhp(id))
+            create_uhp_string(Direction::SE, &piece.to_uhp(id))
 
         } else if !hex_grid.peek(e).is_empty() {
             let piece = hex_grid.peek(e);
             let piece = piece.last().unwrap();
             let id = ids.get(&e).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::E, &piece.to_uhp(id))
+            create_uhp_string(Direction::E, &piece.to_uhp(id))
 
         } else if !hex_grid.peek(w).is_empty() {
             let piece = hex_grid.peek(w);
             let piece = piece.last().unwrap();
             let id = ids.get(&w).unwrap().last().unwrap().unwrap();
 
-            relative_direction(Direction::W, &piece.to_uhp(id))
+            create_uhp_string(Direction::W, &piece.to_uhp(id))
 
         } else {
             panic!("No reference found, some invariant was violated!");
@@ -316,8 +323,10 @@ impl Annotator {
         }
     }
 
-    /// Add a new state to the annotator, representing a single legal move taken
-    /// from the last state of the board to the current state of the board.
+    /// Add a new state to the annotator representing a single legal move 
+    ///
+    /// Invariant:
+    ///     - the current_grid can be legally reached from the current Annotator's game state
     pub fn next_state(&self, current_grid: &HexGrid) -> Result<Annotator> {
         let mut total_count = 0;
         for count in self.piece_counts.values() {
@@ -401,7 +410,7 @@ impl Annotator {
     /// Assuming an valid annotator, find the piece, location and height
     /// uniquely described by the given piece string.
     ///
-    /// examples of piece strings are "wQ1", "bM1", etc
+    /// examples of `piece_string`s are "wQ1", "bM1", "wG1", etc...
     fn find(&self, piece_string: &str) -> Option<(Piece, HexLocation, Height)> {
         for (loc, stack) in &self.ids {
             for (height, piece_id) in stack.iter().enumerate() {
@@ -416,17 +425,13 @@ impl Annotator {
         None
     }
 
-    /// Add a new state to the annotator, representing a "standard" move string with unique
-    /// identifiers appended to all pieces. (e.g. wQ1, bM1, etc).
-    ///
-    /// Preserves the input move's text verbatim to be accessed later by the
-    /// standard_move_strings() or uhp_move_strings() functions.
-    ///
-    /// The move must represent a legal Hive move from the last state of the annotator. The
-    /// identifier must correct represent the first, second, third, etc piece of that type
-    /// to be placed
-    ///
+    /// Add a new move to the annotator 
     /// Returns the resulting state of the annotator after the move is applied.
+    ///
+    /// Invariants:
+    ///     - move_string is stored in Annotator verbatim
+    ///     - the id number in the move_string is legal and well-ordered on piece types
+    ///       (the first grasshopper = wG1, the second grasshopper = wG2, etc..)
     pub fn next_standard_move(&self, move_string: &str) -> Result<Annotator> {
         debug_assert!(move_string.trim() == move_string);
 
@@ -502,20 +507,16 @@ impl Annotator {
         })
     }
 
-    /// Add a new state the annotator, representing a UHP move string with identifiers
-    /// not appended to the mosquito, pillbug, ladybug and queen pieces. (e.g. wQ, bM, etc)
-    ///
-    /// The move must represent a legal Hive move from the last state of the board
-    /// to the current state.
-    ///
+    /// Add a new state the annotator, representing a "UHP" move string
     /// Returns the resulting state of the annotator after the move is applied
     pub fn next_uhp_move(&self, move_string: &str) -> Result<Annotator> {
         let move_string = Annotator::uhp_to_standard(move_string);
         self.next_standard_move(&move_string)
     }
 
-    /// Give a MoveString representation of the moves infered so far by this annotator.
-    /// They are almost UHP compatible, expect for the fact that Queens, Mosquitos,
+    /// Give a "standard" representation of the moves infered so far by this annotator.
+    ///
+    /// NOTE: These "standard" strings are almost "UHP" representation, expect for the fact that Queens, Mosquitos,
     /// Pillbugs and Ladybugs have ids appended to them. (e.g. wQ1, bM1, etc)
     pub fn standard_move_strings(&self) -> Vec<String> {
         self.move_strings.clone()
@@ -541,7 +542,7 @@ impl Annotator {
             .replace('Q', "Q1")
     }
 
-    /// Give a UHP-compatible MoveString representation of the moves
+    /// Give a UHP-compatible representation of the moves
     /// infered so for by this annotator. If the game state started from
     /// an empty board and only legal moves were taken,
     /// then these strings will be correct according to the UHP.

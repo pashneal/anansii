@@ -2,6 +2,7 @@ use crate::hex_grid::{HexGrid, HexLocation, Shiftable};
 use crate::location::Direction;
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, PIECE_COUNTS};
 use crate::uhp::GameType;
+use crate::generator::*;
 use std::collections::HashSet;
 
 /// Represents a HexGrid wrapper that can generate new positions.
@@ -13,7 +14,7 @@ use std::collections::HashSet;
 /// The move generator is only guaranteed to generate moves correctly
 /// for positions that follow the One Hive Rule
 #[derive(Clone, Debug)]
-pub struct ReferenceGenerator {
+pub struct PositionGeneratorDebugger {
     grid: HexGrid,
     pinned: Vec<HexLocation>,
     outside: HashSet<HexLocation>,
@@ -21,9 +22,9 @@ pub struct ReferenceGenerator {
     immobilized: Option<HexLocation>,
 }
 
-impl ReferenceGenerator {
-    pub fn new(game_type: GameType) -> ReferenceGenerator {
-        ReferenceGenerator {
+impl PositionGeneratorDebugger {
+    pub fn new(game_type: GameType) -> PositionGeneratorDebugger {
+        PositionGeneratorDebugger {
             grid: HexGrid::new(),
             pinned: Vec::new(),
             outside: HashSet::new(),
@@ -37,8 +38,9 @@ impl ReferenceGenerator {
         location: HexLocation,
         mut visited: Vec<HexLocation>,
         depth: usize,
-        spider_removed: &HexGrid,
+        grid_with_spider_removed: &HexGrid,
     ) -> Vec<HexLocation> {
+
         if visited.contains(&location) {
             return vec![];
         }
@@ -50,12 +52,12 @@ impl ReferenceGenerator {
 
         let mut result = vec![];
 
-        for slidable_location in spider_removed.slidable_locations_2d(location).iter() {
+        for slidable_location in grid_with_spider_removed.get_slidable_2d_neighbors(location).iter() {
             let found = self.spider_dfs(
                 *slidable_location,
                 visited.clone(),
                 depth + 1,
-                spider_removed,
+                grid_with_spider_removed,
             );
             result.extend(found);
         }
@@ -64,7 +66,9 @@ impl ReferenceGenerator {
     }
 
     fn pieces_in_hand(&self, color: PieceColor) -> Vec<Piece> {
+
         let all_pieces = self.grid.pieces();
+
         let friendly_pieces = all_pieces
             .iter()
             .flat_map(|(stack, _)| stack)
@@ -72,7 +76,7 @@ impl ReferenceGenerator {
             .collect::<Vec<_>>();
         let mut result = Vec::new();
 
-        for piece in PieceType::all(self.game_type) {
+        for piece in PieceType::all_pieces(self.game_type) {
             let num_placed = friendly_pieces
                 .iter()
                 .filter(|p| p.piece_type == piece)
@@ -90,13 +94,13 @@ impl ReferenceGenerator {
     }
 }
 
-impl FromHexGrid for ReferenceGenerator {
+impl FromHexGrid for PositionGeneratorDebugger {
     fn from_hex_grid(
         grid: &HexGrid,
         game_type: GameType,
         previous_change: Option<HexLocation>,
-    ) -> ReferenceGenerator {
-        ReferenceGenerator {
+    ) -> PositionGeneratorDebugger {
+        PositionGeneratorDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
             outside: grid.outside(),
@@ -106,7 +110,7 @@ impl FromHexGrid for ReferenceGenerator {
     }
 }
 
-impl PlacementGenerator for ReferenceGenerator {
+impl PlacementGenerator for PositionGeneratorDebugger {
     fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
 
@@ -135,7 +139,7 @@ impl PlacementGenerator for ReferenceGenerator {
     }
 }
 
-impl MoveGenerator<HexGrid> for ReferenceGenerator {
+impl MoveGenerator<HexGrid> for PositionGeneratorDebugger {
     fn spider_moves(&mut self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);
         debug_assert!(stack.len() == 1_usize);
@@ -218,7 +222,7 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
         queen_removed.remove(location);
         let outside = queen_removed.outside();
 
-        for slidable_location in self.grid.slidable_locations_2d(location).iter() {
+        for slidable_location in self.grid.get_slidable_2d_neighbors(location).iter() {
             if outside.contains(slidable_location) {
                 let mut new_grid = self.grid.clone();
                 new_grid.remove(location);
@@ -247,7 +251,7 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
             }
             visited.insert(location);
 
-            for slidable_location in grid.slidable_locations_2d(location).iter() {
+            for slidable_location in grid.get_slidable_2d_neighbors(location).iter() {
                 // In contact with the hive
                 if !grid.get_neighbors(*slidable_location).is_empty() {
                     dfs(*slidable_location, visited, grid);
@@ -299,11 +303,13 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
         beetle_removed.remove(location);
         let outside = beetle_removed.outside();
 
-        for slidable_location in self.grid.slidable_locations_3d(location).iter() {
-            if outside.contains(slidable_location) || hive.contains(slidable_location) {
+        let effective_height = self.grid.peek(location).len();
+        let neighbors = self.grid.get_3d_slidable_neighbors(location, effective_height);
+        for slidable_location in neighbors {
+            if outside.contains(&slidable_location) || hive.contains(&slidable_location) {
                 let mut new_grid = self.grid.clone();
                 new_grid.remove(location);
-                new_grid.add(beetle, *slidable_location);
+                new_grid.add(beetle, slidable_location);
                 result.push(new_grid);
             }
         }
@@ -339,7 +345,7 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
 
         // First move unto the hive
         let height = 1;
-        let slidable_locs = ladybug_removed.slidable_locations_3d_height(location, height);
+        let slidable_locs = ladybug_removed.get_3d_slidable_neighbors(location, height);
         let neighbors = slidable_locs.iter().filter(|loc| hive.contains(loc));
 
         // Then climb across the hive
@@ -347,14 +353,14 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
             // The height must account for an imaginary ladybug now being on top of
             // the existing board
             let effective_height = ladybug_removed.peek(*loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(*loc, effective_height)
+            ladybug_removed.get_3d_slidable_neighbors(*loc, effective_height)
         });
         let climb_atop = climb_atop.filter(|loc| hive.contains(loc));
 
         // Then climb off the hive
         let climb_down = climb_atop.flat_map(|loc| {
             let height = ladybug_removed.peek(loc).len() + 1;
-            ladybug_removed.slidable_locations_3d_height(loc, height)
+            ladybug_removed.get_3d_slidable_neighbors(loc, height)
         });
 
         let climb_down = climb_down.filter(|loc| outside.contains(loc));
@@ -385,7 +391,7 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
         let pillbug = pillbug_removed.remove(location).unwrap();
 
         let mut result = vec![];
-        for slidable_location in pillbug_removed.slidable_locations_2d(location).iter() {
+        for slidable_location in pillbug_removed.get_slidable_2d_neighbors(location).iter() {
             let mut new_grid = self.grid.clone();
             new_grid.remove(location);
             new_grid.add(pillbug, *slidable_location);
@@ -447,7 +453,7 @@ impl MoveGenerator<HexGrid> for ReferenceGenerator {
     }
 }
 
-impl SwapGenerator<HexGrid> for ReferenceGenerator {
+impl SwapGenerator<HexGrid> for PositionGeneratorDebugger {
     fn pillbug_swaps(
         &mut self,
         pillbug_location: HexLocation,
@@ -484,7 +490,7 @@ impl SwapGenerator<HexGrid> for ReferenceGenerator {
 
             // Pretend the candidate moved to height 2 and attempted to slide to
             // the pillbug
-            let slidable = self.grid.slidable_locations_3d_height(candidate_loc, 2);
+            let slidable = self.grid.get_3d_slidable_neighbors(candidate_loc, 2);
             if !slidable.contains(&pillbug_location) {
                 continue;
             }
@@ -493,7 +499,7 @@ impl SwapGenerator<HexGrid> for ReferenceGenerator {
         }
 
         let mut empty_neighbors = Vec::new();
-        let slidable = self.grid.slidable_locations_3d_height(pillbug_location, 2);
+        let slidable = self.grid.get_3d_slidable_neighbors(pillbug_location, 2);
         for &candidate_loc in slidable.iter() {
             if self.grid.peek(candidate_loc).is_empty() {
                 empty_neighbors.push(candidate_loc);
@@ -511,7 +517,7 @@ impl SwapGenerator<HexGrid> for ReferenceGenerator {
     }
 }
 
-impl PositionGenerator<HexGrid> for ReferenceGenerator {
+impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
     fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
@@ -585,123 +591,6 @@ impl PositionGenerator<HexGrid> for ReferenceGenerator {
     }
 }
 
-pub trait FromHexGrid {
-    /// Initializes this type from a HexGrid,
-    /// with the previous change being the destination of the piece
-    /// that was manuevered in the previous turn.
-    fn from_hex_grid(
-        grid: &HexGrid,
-        game_type: GameType,
-        previous_change: Option<HexLocation>,
-    ) -> Self;
-
-    /// Initializes this type from a HexGrid, with the previous change being None, and with a
-    /// default GameType
-    fn from_default(grid: &HexGrid) -> Self
-    where
-        Self: Sized,
-    {
-        Self::from_hex_grid(grid, GameType::default(), None)
-    }
-}
-
-pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
-    /// Returns a list of all possible moves for a spider at a given location
-    /// if the spider is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn spider_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a grasshopper at a given location
-    /// if the grasshopper is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a queen at a given location
-    /// if the queen is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn queen_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for an ant at a given location
-    /// if the ant is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn ant_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a beetle at a given location
-    /// if the beetle is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn beetle_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a ladybug at a given location
-    /// if the ladybug is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a pillbug at a given location
-    /// if the pillbug is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-
-    /// Returns a list of all possible moves for a mosquito at a given location
-    /// if the mosquito is not covered by any other pieces.
-    /// (ignores pillbug swaps)
-    fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Position> {
-        unimplemented!();
-    }
-}
-
-pub trait PlacementGenerator: FromHexGrid {
-    /// Returns locations that follow the typical placement rules for a given
-    /// color. These are all locations which are:
-    ///  1) adjacent to some piece on the hive
-    ///  2) not adjacent to a piece of the opposite color
-    ///  3) unoccupied
-    ///
-    /// If the board has no pieces, placement occurs at the center HexLocation
-    /// If the board has one piece, placement only needs follow rule 1
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation>;
-}
-
-pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
-    /// Returns a list of all positions with each possible swap applied to adjacent pieces by
-    /// the top-facing pillbug at a given *location*.
-    ///
-    /// Adjacent pieces that are not allowed to be swapped are:
-    ///
-    /// - a piece at the specified *immobilized* location
-    /// - pieces in a stack of height > 1
-    /// - pieces whose absence would violate the One Hive Rule
-    /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
-    ///
-    /// Additionally, the pillbug is not able to swap if it is at the immobilized
-    /// location
-    fn pillbug_swaps(
-        &mut self,
-        pillbug_location: HexLocation,
-        immobilized: Option<HexLocation>,
-    ) -> Vec<Position>;
-}
-
-pub trait PositionGenerator<Position: IntoPieces>:
-    MoveGenerator<Position> + PlacementGenerator + SwapGenerator<Position>
-{
-    /// Returns the legal positions reachable from the current board state
-    /// as if it is the turn of the specified color.
-    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<Position>;
-}
 
 pub trait Position: Sized {
     fn new() -> Self;
@@ -711,7 +600,7 @@ pub trait Position: Sized {
 
 #[cfg(test)]
 mod tests {
-    use super::ReferenceGenerator;
+    use super::PositionGeneratorDebugger;
     use super::*;
     use crate::testing_utils::compare_moves;
 
@@ -730,7 +619,7 @@ mod tests {
         ));
         let legal_moves: Vec<_> = vec![];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid
             .find(Piece::new(PieceType::Spider, PieceColor::White))
             .unwrap();
@@ -750,7 +639,7 @@ mod tests {
         ));
         let legal_moves = vec![];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid
             .find(Piece::new(PieceType::Spider, PieceColor::White))
             .unwrap();
@@ -774,7 +663,7 @@ mod tests {
             "start - [0 0]\n\n"
         ));
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         assert!(spider_moves.is_empty());
@@ -789,7 +678,7 @@ mod tests {
             "start - [0 0]\n\n"
         ));
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         assert!(spider_moves.is_empty());
@@ -820,7 +709,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         compare_moves(spider, selector, &grid, &spider_moves);
@@ -845,7 +734,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         compare_moves(spider, selector, &grid, &spider_moves);
@@ -870,7 +759,7 @@ mod tests {
             "start - [0 0]\n\n"
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         compare_moves(spider, selector, &grid, &spider_moves);
@@ -899,7 +788,7 @@ mod tests {
             "start - [0 0]\n\n"
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (spider, _) = grid.find(Piece::new(Spider, White)).unwrap();
         let spider_moves = generator.spider_moves(spider);
         compare_moves(spider, selector, &grid, &spider_moves);
@@ -937,7 +826,7 @@ mod tests {
             "start - [0 0]\n\n"
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
         let grasshopper_moves = generator.grasshopper_moves(grasshopper);
         compare_moves(grasshopper, selector, &grid, &grasshopper_moves);
@@ -957,7 +846,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (grasshopper, _) = grid.find(Piece::new(Grasshopper, White)).unwrap();
         let grasshopper_moves = generator.grasshopper_moves(grasshopper);
         assert!(grasshopper_moves.is_empty());
@@ -976,7 +865,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
         let queen_moves = generator.queen_moves(queen);
         assert!(queen_moves.is_empty());
@@ -1005,7 +894,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
         let queen_moves = generator.queen_moves(queen);
         compare_moves(queen, selector, &grid, &queen_moves);
@@ -1029,7 +918,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
         let queen_moves = generator.queen_moves(queen);
         compare_moves(queen, selector, &grid, &queen_moves);
@@ -1053,7 +942,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
         let queen_moves = generator.queen_moves(queen);
         compare_moves(queen, selector, &grid, &queen_moves);
@@ -1079,7 +968,7 @@ mod tests {
             ". a a a . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (queen, _) = grid.find(Piece::new(Queen, White)).unwrap();
         let queen_moves = generator.queen_moves(queen);
         compare_moves(queen, selector, &grid, &queen_moves);
@@ -1112,7 +1001,7 @@ mod tests {
             ". . . . . . . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
         let ant_moves = generator.ant_moves(ant);
         compare_moves(ant, selector, &grid, &ant_moves);
@@ -1134,7 +1023,7 @@ mod tests {
             ". . . . . . . . .\n\n",
             "start - [0 0]\n\n"
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (ant, _) = grid.find(Piece::new(Ant, White)).unwrap();
         let ant_moves = generator.ant_moves(ant);
         assert!(ant_moves.is_empty());
@@ -1161,7 +1050,7 @@ mod tests {
             ". a a a . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1183,7 +1072,7 @@ mod tests {
             ". a a a . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1207,7 +1096,7 @@ mod tests {
             "start - [0 0]\n\n",
             "2 - [a B]\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1244,7 +1133,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1270,7 +1159,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1298,7 +1187,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1317,7 +1206,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         assert!(beetle_moves.is_empty());
@@ -1347,7 +1236,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (beetle, _) = grid.find(Piece::new(Beetle, White)).unwrap();
         let beetle_moves = generator.beetle_moves(beetle);
         compare_moves(beetle, selector, &grid, &beetle_moves);
@@ -1388,7 +1277,7 @@ mod tests {
             "2 - [a b]\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
         let ladybug_moves = generator.ladybug_moves(ladybug);
         compare_moves(ladybug, selector, &grid, &ladybug_moves);
@@ -1420,7 +1309,7 @@ mod tests {
             "start - [0 0]\n\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
         let ladybug_moves = generator.ladybug_moves(ladybug);
         compare_moves(ladybug, selector, &grid, &ladybug_moves);
@@ -1443,7 +1332,7 @@ mod tests {
             "2 - [a b]\n",
             "2 - [a b]\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
         let ladybug_moves = generator.ladybug_moves(ladybug);
         assert!(ladybug_moves.is_empty());
@@ -1470,7 +1359,7 @@ mod tests {
             ". a a a . . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let pillbug_moves = generator.pillbug_moves(pillbug);
         compare_moves(pillbug, selector, &grid, &pillbug_moves);
@@ -1491,7 +1380,7 @@ mod tests {
             ". a a a a . .\n\n",
             "start - [0 0]\n\n"
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let pillbug_moves = generator.pillbug_moves(pillbug);
         compare_moves(pillbug, selector, &grid, &pillbug_moves);
@@ -1514,7 +1403,7 @@ mod tests {
         ));
 
         let pillbug_loc = grid.find(Piece::new(Pillbug, White)).unwrap().0;
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let pillbug_swaps = generator.pillbug_swaps(pillbug_loc, None);
 
         assert!(!pillbug_swaps.is_empty());
@@ -1582,7 +1471,7 @@ mod tests {
             )),
         ];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let pillbug_moves = generator.pillbug_swaps(pillbug, None);
         assert_eq!(pillbug_moves.len(), expected.len());
@@ -1629,7 +1518,7 @@ mod tests {
             )),
         ];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
         let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
@@ -1656,7 +1545,7 @@ mod tests {
 
         let expected = vec![];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let (queen, _) = grid.find(Piece::new(Queen, Black)).unwrap();
         let pillbug_moves = generator.pillbug_swaps(pillbug, Some(queen));
@@ -1705,7 +1594,7 @@ mod tests {
             )),
         ];
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let pillbug_moves = generator.pillbug_swaps(pillbug, None);
         assert_eq!(pillbug_moves.len(), expected.len());
@@ -1732,7 +1621,7 @@ mod tests {
             "2 - [m b]\n",
         ));
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (pillbug, _) = grid.find(Piece::new(Pillbug, White)).unwrap();
         let pillbug_moves = generator.pillbug_moves(pillbug);
         assert!(pillbug_moves.is_empty());
@@ -1773,7 +1662,7 @@ mod tests {
             "2 - [A b]\n",
             "2 - [m B]\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let white_placements = generator.placements(White);
         let black_placements = generator.placements(Black);
 
@@ -1804,7 +1693,7 @@ mod tests {
         let grid = HexGrid::from_dsl(concat!(".\n\n", "start - [0 0]\n\n",));
         let selector = HexGrid::selector(concat!("*\n\n", "start - [0 0]\n\n",));
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let placements = generator.placements(White);
         let expected = selector;
         assert_eq!(placements, expected);
@@ -1831,7 +1720,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let placements = generator.placements(Black);
         for placement in expected.iter() {
             assert!(
@@ -1856,7 +1745,7 @@ mod tests {
             ". . . . . . .\n\n",
             "start - [0 0]\n\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
         let mosquito_moves = generator.mosquito_moves(mosquito);
         assert!(mosquito_moves.is_empty());
@@ -1887,7 +1776,7 @@ mod tests {
             "2 - [a S]\n",
         );
 
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
         let mosquito_moves = generator.mosquito_moves(mosquito);
         compare_moves(mosquito, selector, &grid, &mosquito_moves);
@@ -1919,7 +1808,7 @@ mod tests {
             "2 - [a M]\n",
             "2 - [a S]\n",
         );
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
         let mosquito_moves = generator.mosquito_moves(mosquito);
         compare_moves(mosquito, selector, &grid, &mosquito_moves);
@@ -1939,7 +1828,7 @@ mod tests {
             "start - [0 0]\n\n",
             "2 - [a B]\n",
         ));
-        let mut generator = ReferenceGenerator::from_default(&grid);
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let (mosquito, _) = grid.find(Piece::new(Mosquito, White)).unwrap();
         let mosquito_moves = generator.mosquito_moves(mosquito);
         assert!(mosquito_moves.is_empty());

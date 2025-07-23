@@ -42,7 +42,7 @@ impl PieceType {
         }
     }
 
-    pub fn all(game_type: GameType) -> Vec<PieceType> {
+    pub fn all_pieces(game_type: GameType) -> Vec<PieceType> {
         use GameType::*;
         use PieceType::*;
         match game_type {
@@ -66,10 +66,6 @@ impl PieceType {
         }
     }
 
-    fn try_from_char(c: &char) -> Result<PieceType> {
-        let string = c.to_string();
-        PieceType::try_from_str(&string)
-    }
     fn try_from_str(string: &str) -> Result<PieceType> {
         use PieceType::*;
         match string.to_uppercase().as_str() {
@@ -89,7 +85,8 @@ impl PieceType {
 impl TryFrom<char> for PieceType {
     type Error = HexGridError;
     fn try_from(c: char) -> Result<PieceType> {
-        PieceType::try_from_char(&c)
+        let string = c.to_string();
+        PieceType::try_from_str(&string)
     }
 }
 
@@ -169,7 +166,7 @@ impl Piece {
             _ => return Err(HexGridError::PieceError),
         };
 
-        let piece = PieceType::try_from_char(&uhp.chars().nth(1).unwrap())?;
+        let piece = PieceType::try_from(uhp.chars().nth(1).unwrap())?;
         Ok(Piece::new(piece, color))
     }
 }

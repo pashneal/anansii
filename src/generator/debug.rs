@@ -76,7 +76,7 @@ impl PositionGeneratorDebugger {
             .collect::<Vec<_>>();
         let mut result = Vec::new();
 
-        for piece in PieceType::all(self.game_type) {
+        for piece in PieceType::all_pieces(self.game_type) {
             let num_placed = friendly_pieces
                 .iter()
                 .filter(|p| p.piece_type == piece)

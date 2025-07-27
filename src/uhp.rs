@@ -564,7 +564,7 @@ impl Annotator {
             .ok_or(UHPError::InvariantError)
     }
 
-    pub fn position(&self) -> &HexGrid {
+    pub fn current_position(&self) -> &HexGrid {
         &self.prev_grid
     }
 }
@@ -849,7 +849,7 @@ impl UHPInterface {
         self.annotations
             .last()
             .expect("There should always be a current position")
-            .position()
+            .current_position()
     }
 
     /// Parses commands according to the Universal Hive Protocol
@@ -1640,9 +1640,9 @@ mod tests {
             );
             annotator = result.unwrap();
             assert!(
-                annotator.position() == grid,
+                annotator.current_position() == grid,
                 "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
-                annotator.position().to_dsl(),
+                annotator.current_position().to_dsl(),
                 grid.to_dsl()
             );
         }
@@ -1793,9 +1793,9 @@ mod tests {
             );
             annotator = result.unwrap();
             assert!(
-                annotator.position() == grid,
+                annotator.current_position() == grid,
                 "Grids should be equal \nannotator:\n{}\ngrid:\n{}",
-                annotator.position().to_dsl(),
+                annotator.current_position().to_dsl(),
                 grid.to_dsl()
             );
         }

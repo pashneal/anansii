@@ -1,10 +1,10 @@
 # Anansii
 I've decided to finish projects that I've started, starting with this one.
 
-- [ ] Simplify over engineered code
-  - [ ] src/*.rs
+- [ ] Simplify over engineered code 
+  - [x] src/*.rs
     - [x] better naming
-    - [ ] better public interface 
+    - [x] better public interface 
   - [ ] src/bitgrid/*.rs
   - [ ] src/data_analysis/*.rs
   - [x] src/generator/*.rs

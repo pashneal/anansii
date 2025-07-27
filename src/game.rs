@@ -64,7 +64,7 @@ impl GameDebugger {
         self.annotations.pop();
         let last_move = self.annotations.last().unwrap().last_move();
         self.generator = PositionGeneratorDebugger::from_hex_grid(
-            self.annotations.last().unwrap().position(),
+            self.annotations.last().unwrap().current_position(),
             self.game_type,
             last_move,
         );
@@ -78,7 +78,7 @@ impl GameDebugger {
             .next_uhp_move(move_string)
             .map_err(GameDebuggerError::AnnotationError)?;
 
-        self.append_position(annotator.position())
+        self.append_position(annotator.current_position())
     }
 
     pub fn get_player_to_move(&self) -> PieceColor {
@@ -108,7 +108,7 @@ impl GameDebugger {
             .map_err(GameDebuggerError::AnnotationError)?;
 
         self.generator = PositionGeneratorDebugger::from_hex_grid(
-            annotator.position(),
+            annotator.current_position(),
             self.game_type,
             annotator.last_move(),
         );
@@ -133,7 +133,7 @@ impl GameDebugger {
         use PieceColor::*;
         use PieceType::*;
         let annotator = self.annotations.last().unwrap();
-        let grid = annotator.position();
+        let grid = annotator.current_position();
 
         let white_queen = grid.find(Piece::new(Queen, White));
         let black_queen = grid.find(Piece::new(Queen, Black));
@@ -155,7 +155,7 @@ impl GameDebugger {
 
         let mut position_count = 0;
         for annotator in self.annotations.iter() {
-            if annotator.position() == grid {
+            if annotator.current_position() == grid {
                 position_count += 1;
             }
             if position_count > 2 {
@@ -168,7 +168,7 @@ impl GameDebugger {
 
     /// Get the latest position in the game
     pub fn current_position(&self) -> &HexGrid {
-        self.annotations.last().unwrap().position()
+        self.annotations.last().unwrap().current_position()
     }
 }
 

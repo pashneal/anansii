@@ -5,10 +5,32 @@ I've decided to finish projects that I've started, starting with this one.
   - [x] src/*.rs
     - [x] better naming
     - [x] better public interface 
-  - [ ] src/bitgrid/*.rs
-  - [ ] src/data_analysis/*.rs
+  - [x] src/bitgrid/*.rs
+  - [x] src/data_analysis/*.rs
   - [x] src/generator/*.rs
-  - [ ] src/testing_utils/*.rs 
-- [ ] Get mini Move Generator up and running
-- [ ] Get mini Move Generator running on Bitgrid
+  - [x] src/testing_utils/*.rs 
+- [ ] Get mini board Generator tests passing
+    - [ ] spider_moves
+    - [ ] grasshopper_moves
+    - [ ] queen_moves
+    - [ ] ant_moves
+    - [ ] beetle_moves
+    - [ ] ladybug_moves
+    - [ ] pillbug_moves
+    - [ ] mosquito_moves
+    - [ ] placement generator
+    - [ ] swap generator
+- [ ] Speed tests for the mini move generator
+    - [ ] spider_moves
+    - [ ] grasshopper_moves
+    - [ ] queen_moves
+    - [ ] ant_moves
+    - [ ] beetle_moves
+    - [ ] ladybug_moves
+    - [ ] pillbug_moves
+    - [ ] mosquito_moves
+    - [ ] perft 
+        - [ ] (optional) with time breakdown by piece
+    - [ ] placement generator
+    - [ ] swap generator
 - [ ] Attack and solve this [issue](https://github.com/pashneal/anansii/issues/1)

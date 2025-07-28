@@ -1,5 +1,5 @@
 use crate::bitgrid::mini::*;
-use crate::constants::EXPECTED_MAX_BRANCHING_FACTOR;
+use crate::constants::*;
 use crate::generator::*;
 use crate::hex_grid::{HexGrid, HexLocation};
 use crate::uhp::GameType;
@@ -53,9 +53,42 @@ impl MiniGenerator {
         let undo = Change { added, removed };
         self.grid.apply_change(undo);
     }
+
+    pub fn clear_change_buffer(&mut self) {
+        self.change_buffer.clear();
+    }
+
+    pub fn generate_spider_moves(
+        &mut self,
+        location: MiniBitGridLocation,
+    ) {
+        if let Some(immobilized) = self.immobilized {
+            if immobilized == location {
+                return; 
+            }
+        }
+        if self.grid.is_pinned(location) { return; }
+         
+    }
 }
 
-impl MoveGenerator<MiniBitGrid> for MiniGenerator {}
+/// NOTE: everything in this implementation can be slow,
+/// because it is simply used for correctness testing.
+impl MoveGenerator<MiniBitGrid> for MiniGenerator {
+    fn spider_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
+        self.clear_change_buffer();
+        self.generate_spider_moves(location.into());
+
+        let mut boards : Vec<MiniBitGrid> = vec![];
+        for change in self.change_buffer.iter() {
+            let mut new_board = self.grid.clone();
+            new_board.apply_change(*change);
+            boards.push(new_board);
+        }
+
+        boards
+    }
+}
 
 #[cfg(test)]
 mod tests {

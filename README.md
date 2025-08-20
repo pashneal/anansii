@@ -1,5 +1,5 @@
 # Anansii
-I've decided to finish projects that I've started, starting with this one.
+I've decided to finish projects that I've started, including this one.
 
 - [ ] Simplify over engineered code 
   - [x] src/*.rs

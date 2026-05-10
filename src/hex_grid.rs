@@ -64,6 +64,20 @@ impl HexGrid {
         Parser::parse_hex_grid(input).expect("Failed to parse input into HexGrid")
     }
 
+    pub fn is_one_hive(&self) -> bool {
+        let pieces = self.pieces();
+        let stack_loc = pieces.first();
+        let start_location = match stack_loc {
+            Some(&(_, location)) => location,
+            None => return true,
+        };
+
+        let mut visited = HashSet::new();
+        
+        self.dfs(&mut visited, None, start_location);
+        visited.len() == self.pieces().len()
+    }
+
     pub fn from_pieces(input: Vec<(Vec<Piece>, HexLocation)>) -> Self {
         let mut grid = HexGrid::new();
         for (stack, location) in input {
@@ -80,17 +94,19 @@ impl HexGrid {
         }
     }
 
+
     fn dfs(
         &self,
         visited: &mut HashSet<HexLocation>,
-        disallowed: HexLocation,
+        disallowed: Option<HexLocation>,
         current_location: HexLocation,
     ) {
         if visited.contains(&current_location) {
             return;
         }
-        if current_location == disallowed {
-            return;
+        match disallowed {
+            Some(loc) if loc == current_location => return,
+            _ => (),
         }
         visited.insert(current_location);
         for neighbor in self.get_neighbors(current_location) {
@@ -134,7 +150,7 @@ impl HexGrid {
             let mut visited = HashSet::new();
             let neighbors = self.get_neighbors(candidate);
             if !neighbors.is_empty() {
-                self.dfs(&mut visited, candidate, neighbors[0])
+                self.dfs(&mut visited, Some(candidate), neighbors[0])
             }
 
             visited.insert(candidate);

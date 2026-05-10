@@ -100,6 +100,7 @@ impl FromHexGrid for PositionGeneratorDebugger {
         game_type: GameType,
         previous_change: Option<HexLocation>,
     ) -> PositionGeneratorDebugger {
+        assert!(grid.is_one_hive(), "The grid must be one hive to generate the correct moves. See the invariants of PositionGeneratorDebugger.");
         PositionGeneratorDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
@@ -1258,7 +1259,6 @@ mod tests {
             ". . a a L . .\n",
             " . . 2 a . . .\n",
             ". . . . . . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",
@@ -1270,7 +1270,6 @@ mod tests {
             ". . a a L . .\n",
             " . * 2 a * . .\n",
             ". . * * * . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",
@@ -1316,6 +1315,42 @@ mod tests {
     }
 
     #[test]
+    pub(crate) fn test_ladybug_walk_across_different_levels() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Regression: hivegame.com had a major bug that existed for 2+ years
+        // this is the board state that triggered the bug
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . . . S . .\n",
+            ". . . . m p .\n",
+            " . . q s 2 . .\n",
+            ". . . 2 2 . .\n",
+            " . . . . L . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+            "2 - [a B]\n",
+        ));
+        let selector = concat!(
+            ". . . . . . .\n",
+            " . . . . S . .\n",
+            ". . . * m p .\n",
+            " . . q s 2 * .\n",
+            ". . * 2 2 * .\n",
+            " . . * * L . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a b]\n",
+            "2 - [a b]\n",
+            "2 - [a B]\n",
+        );
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let (ladybug, _) = grid.find(Piece::new(Ladybug, White)).unwrap();
+        let ladybug_moves = generator.ladybug_moves(ladybug);
+        compare_moves(ladybug, selector, &grid, &ladybug_moves);
+    }
+
+    #[test]
     pub(crate) fn test_ladybug_pinned() {
         use PieceColor::*;
         use PieceType::*;
@@ -1327,7 +1362,6 @@ mod tests {
             ". . a . L . .\n",
             " . . 2 a . . .\n",
             ". . . . . . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",

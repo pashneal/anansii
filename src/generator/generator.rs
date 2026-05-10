@@ -21,28 +21,28 @@ pub trait FromHexGrid {
 
 pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
     /// Returns a list of all possible moves for a spider at a given location
-    /// if the spider is not covered by any other pieces.
+    /// if the spider is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
     fn spider_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a grasshopper at a given location
-    /// if the grasshopper is not covered by any other pieces.
+    /// if the grasshopper is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
     fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a queen at a given location
-    /// if the queen is not covered by any other pieces.
+    /// if the queen is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
     fn queen_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for an ant at a given location
-    /// if the ant is not covered by any other pieces.
+    /// if the ant is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
     fn ant_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
@@ -56,21 +56,22 @@ pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
     }
 
     /// Returns a list of all possible moves for a ladybug at a given location
-    /// if the ladybug is not covered by any other pieces.
+    /// if the ladybug is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
     fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a pillbug at a given location
-    /// if the pillbug is not covered by any other pieces.
+    /// if the pillbug is not covered by any other pieces. Returns an empty 
+    /// list if the pillbug is not on the ground.
     /// (ignores pillbug swaps)
     fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a mosquito at a given location
-    /// if the mosquito is not covered by any other pieces.
+    /// if the mosquito is not covered by any other pieces. 
     /// (ignores pillbug swaps)
     fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Position> {
         unimplemented!();
@@ -91,7 +92,7 @@ pub trait PlacementGenerator: FromHexGrid {
 
 pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
     /// Returns a list of all positions with each possible swap applied to adjacent pieces by
-    /// the top-facing pillbug at a given *location*.
+    /// a top-facing pillbug at a given *location*.
     ///
     /// Adjacent pieces that are not allowed to be swapped are:
     ///
@@ -101,7 +102,7 @@ pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
     /// - pieces that must pass through a gate of height > 1 to slide on/off the top of the pillbug
     ///
     /// Additionally, the pillbug is not able to swap if it is at the immobilized
-    /// location
+    /// location. Returns an empty list if the piece at the pillbug_location is not on the ground.
     fn pillbug_swaps(
         &mut self,
         pillbug_location: HexLocation,

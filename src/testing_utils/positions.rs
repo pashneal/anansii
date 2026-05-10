@@ -309,7 +309,7 @@ pub const PILLBUG_MOVES: [&str; 2] = [
     ),
 ];
 
-pub const PILLBUG_SWAPS: [&str; 11] = [
+pub const PILLBUG_SWAPS: [&str; 12] = [
     concat!(
         ". . . . . . .\n",
         " . . . 2 . . .\n",
@@ -415,6 +415,19 @@ pub const PILLBUG_SWAPS: [&str; 11] = [
         "start - [0 0]\n\n",
         "2 - [m b]\n",
     ),
+    // Technically, this case cannot appear in a legal game,
+    // but we want to be sure that movement for a pillbug on top of the 
+    // hive is well defined + tested - for ease of implementation of the
+    // mosquito, which can copy the pillbug's swapping movement
+    concat!(
+        ". . . . . . .\n",
+        " . . . a . . .\n",
+        ". . a 2 a . .\n",
+        " . . l a . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [m P]\n"
+    )
 ];
 
 pub const PLACEMENTS: [&str; 3] = [
@@ -446,7 +459,7 @@ pub const PLACEMENTS: [&str; 3] = [
     ),
 ];
 
-pub const MOSQUITO_MOVES: [&str; 4] = [
+pub const MOSQUITO_MOVES: [&str; 5] = [
     concat!(
         ". . . . . . .\n",
         " . . . . . . .\n",
@@ -482,6 +495,15 @@ pub const MOSQUITO_MOVES: [&str; 4] = [
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a B]\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . . g . . .\n",
+        ". a b 2 p . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a M]\n",
     ),
 ];
 

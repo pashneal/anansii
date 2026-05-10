@@ -6,15 +6,12 @@ use crate::generator::*;
 use std::collections::HashSet;
 
 /// Represents a HexGrid wrapper that can generate new positions.
-/// It will create new positions according to the rules that govern pieces as if the
-/// game state could not be swapped by the Pillbug.
+/// It will create new positions according to the rules that govern pieces as 
+/// specified in the MoveGenerator and SwapGenerator traits. 
 ///
-/// For moves of pieces behaving like the pillbug and pillbug adjacent pieces, 
-/// see pillbug_swaps() and pillbug_moves()
+/// The PositionGeneratorDebugger cannot generate moves for HexGrids that don't follow the One Hive Rule.  
 ///
-/// The move generator cannot generate moves for positions that don't follow the One Hive Rule. 
-///
-/// Note: the HexGrid is not assumed to be derived from a valid game history, so it may not be a
+/// Note: the HexGrid is not assumed to be derived from a valid game history, so it may represent a 
 /// position that could be reached in an actual game.
 #[derive(Clone, Debug)]
 pub struct PositionGeneratorDebugger {

@@ -649,4 +649,7 @@ pub mod test_suite {
             (M::mosquito_moves, PositionGeneratorDebugger::mosquito_moves),
         )
     }
+
+    // TODO: swap generator tests, especially with mosquito interactions and 
+    // mosquito being beside or not beside a pillbug
 }

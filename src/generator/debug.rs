@@ -1914,5 +1914,163 @@ mod tests {
         let mosquito_moves = generator.pillbug_swaps(mosquito, None);
         assert!(mosquito_moves.is_empty());
     }
+    #[test]
+    pub(crate) fn test_mosquito_swaps_on_hive_2_stack_regression() {
+        use PieceColor::*;
+
+        // Be sure that swaps are not allowed when the mosquito is upper level
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . q . . . .\n",
+            ". a b 2 p . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+            "2 - [a M]\n",
+        ));
+
+        let expected = vec![
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a 2 a p . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [b M]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . 2 . . . .\n",
+                ". a b a p . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [q M]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a b a 2 . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+                "2 - [p M]\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q M . . .\n",
+                ". a b a p . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a b a p . .\n",
+                " . . . M . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a b a p . .\n",
+                " . . M . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+        ];
+
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let positions = generator.generate_positions_for(White);
+
+        assert_eq!(positions.len(), expected.len());
+        for grid in expected {
+            assert!(
+                positions.contains(&grid),
+                "Expected grid not found in generated positions: \n{}",
+                grid.to_dsl()
+            );
+        }
+    }
+    #[test]
+    pub(crate) fn test_mosquito_swaps_on_hive_ground_regression() {
+        use PieceColor::*;
+
+        // A mosquito on the ground should be able to copy the pillbug's power
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . . .\n",
+            " . . q . . . .\n",
+            ". a b M p . .\n",
+            " . . . . . . .\n",
+            ". . . . . . .\n\n",
+            "start - [0 0]\n\n",
+        ));
+        let expected = vec![
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q p . . .\n",
+                ". a b M . . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a b M . . .\n",
+                " . . p . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . q . . . .\n",
+                ". a b M . . .\n",
+                " . . . p . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . . . . .\n",
+                ". a b M p . .\n",
+                " . . q . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . q . . .\n",
+                ". a b M p . .\n",
+                " . . . . . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+            HexGrid::from_dsl(concat!(
+                ". . . . . . .\n",
+                " . . . . . . .\n",
+                ". a b M p . .\n",
+                " . . . q . . .\n",
+                ". . . . . . .\n\n",
+                "start - [0 0]\n\n",
+            )),
+        ];
+        
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let positions = generator.generate_positions_for(White);
+
+        assert_eq!(positions.len(), expected.len());
+        for grid in expected {
+            assert!(
+                positions.contains(&grid),
+                "Expected grid not found in generated positions: \n{}",
+                grid.to_dsl()
+            );
+        }
+
+    }
 
 }

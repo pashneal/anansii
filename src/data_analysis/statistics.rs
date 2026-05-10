@@ -51,6 +51,7 @@ pub fn get_size(game: &GameDebugger) -> usize {
 pub fn check_positions() {
     let mut stats = Stats::new();
     let games = uhp_strings();
+    println!("GAAAAAMES {}", games.len());
     let mut failures = 0;
 
     let mut uhp = UHPInterface::new();
@@ -58,8 +59,8 @@ pub fn check_positions() {
         let output = uhp.run_command(&format!("newgame {}", game));
 
         if output.contains("err") {
-            //println!("Failed to load game: {}", game);
-            //println!("{}", output);
+            println!("Failed to load game: {}", game);
+            println!("{}", output);
             failures += 1;
             continue;
         }

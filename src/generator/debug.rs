@@ -581,9 +581,19 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
                 PieceType::Pillbug => self.pillbug_moves(location),
             };
 
-            let swaps = match top.piece_type {
-                PieceType::Pillbug => self.pillbug_swaps(location, self.immobilized),
-                PieceType::Mosquito => self.pillbug_swaps(location, self.immobilized),
+            let neighbors = self.grid.get_neighbors(location);
+            let has_pillbug_neighbor = neighbors.iter().any(|&neighbor| {
+                if let Some(top) = self.grid.top(neighbor) {
+                    top.piece_type == PieceType::Pillbug
+                } else {
+                    false
+                }
+            });
+
+
+            let swaps = match (top.piece_type, has_pillbug_neighbor) {
+                (PieceType::Pillbug, _) => self.pillbug_swaps(location, self.immobilized),
+                (PieceType::Mosquito, true) => self.pillbug_swaps(location, self.immobilized),
                 _ => Vec::new(),
             };
 
@@ -2075,7 +2085,28 @@ mod tests {
                 grid.to_dsl()
             );
         }
+    }
 
+    #[test]
+    pub(crate) fn test_no_moves_available() {
+        use PieceColor::*;
+        // Regression test:
+        // Test a board state where no moves are available to ensure 
+        // it doesn't error out
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . .\n",
+            " . . . B . .\n",
+            ". . . . Q .\n",
+            " . L b q . .\n",
+            ". . . m . .\n",
+            " . . . A . .\n",
+            ". . . . . .\n\n",
+            "start - [ -2 -2 ]\n\n",
+        ));
+
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let positions = generator.generate_positions_for(Black);
+        assert_eq!(positions.len(), 1, "expected 'pass' to be the only legal option");
     }
 
 }

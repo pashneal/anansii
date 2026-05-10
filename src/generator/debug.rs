@@ -581,11 +581,9 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
                 PieceType::Pillbug => self.pillbug_moves(location),
             };
 
-            // TODO two violations to consider
-            // 1) If the piece is behaving like a pillbug, it must be on the ground to activate its power
-            // 2) This doesn't consider that a mosquito can copy a pillbug 
             let swaps = match top.piece_type {
                 PieceType::Pillbug => self.pillbug_swaps(location, self.immobilized),
+                PieceType::Mosquito => self.pillbug_swaps(location, self.immobilized),
                 _ => Vec::new(),
             };
 
@@ -2062,7 +2060,14 @@ mod tests {
         let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let positions = generator.generate_positions_for(White);
 
-        assert_eq!(positions.len(), expected.len());
+        for position in &positions {
+            assert!(
+                expected.contains(position),
+                "Generated position not found in expected: \n{}",
+                position.to_dsl()
+            );
+        }
+
         for grid in expected {
             assert!(
                 positions.contains(&grid),

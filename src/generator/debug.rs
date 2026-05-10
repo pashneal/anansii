@@ -461,11 +461,14 @@ impl SwapGenerator<HexGrid> for PositionGeneratorDebugger {
         immobilized: Option<HexLocation>,
     ) -> Vec<HexGrid> {
         let height = self.grid.peek(pillbug_location).len();
-        debug_assert!(height == 1, "The stack must only contain the pillbug");
         debug_assert!(
             self.grid.top(pillbug_location).unwrap().piece_type == PieceType::Pillbug
                 || self.grid.top(pillbug_location).unwrap().piece_type == PieceType::Mosquito
         );
+
+        if height > 1 {
+            return vec![];
+        }
 
         match immobilized {
             Some(loc) if loc == pillbug_location => return vec![],
@@ -574,6 +577,9 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
                 PieceType::Pillbug => self.pillbug_moves(location),
             };
 
+            // TODO two violations to consider
+            // 1) If the piece is behaving like a pillbug, it must be on the ground to activate its power
+            // 2) This doesn't consider that a mosquito can copy a pillbug 
             let swaps = match top.piece_type {
                 PieceType::Pillbug => self.pillbug_swaps(location, self.immobilized),
                 _ => Vec::new(),

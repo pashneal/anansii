@@ -100,6 +100,7 @@ impl FromHexGrid for PositionGeneratorDebugger {
         game_type: GameType,
         previous_change: Option<HexLocation>,
     ) -> PositionGeneratorDebugger {
+        assert!(grid.is_one_hive(), "The grid must be one hive to generate the correct moves. See the invariants of PositionGeneratorDebugger.");
         PositionGeneratorDebugger {
             grid: grid.clone(),
             pinned: grid.pinned(),
@@ -1258,7 +1259,6 @@ mod tests {
             ". . a a L . .\n",
             " . . 2 a . . .\n",
             ". . . . . . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",
@@ -1270,7 +1270,6 @@ mod tests {
             ". . a a L . .\n",
             " . * 2 a * . .\n",
             ". . * * * . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",
@@ -1363,7 +1362,6 @@ mod tests {
             ". . a . L . .\n",
             " . . 2 a . . .\n",
             ". . . . . . .\n\n",
-            " . . . . . a .\n",
             "start - [0 0]\n\n",
             "2 - [a b]\n",
             "2 - [a b]\n",

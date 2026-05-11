@@ -572,9 +572,12 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
             },
         );
 
+        // Early return if the queen isn't placed yet
+        if queen.is_none() {
+            return positions
+        }
+
         // Then 2. Calculate moves
-        //  TODO: does this test that the piece is not allowed to 
-        //  move before a queen is placed?
         for (stack, location) in all_pieces {
             let top = stack.last().unwrap();
             if top.color != color {

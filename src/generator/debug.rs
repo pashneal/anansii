@@ -35,6 +35,10 @@ impl PositionGeneratorDebugger {
         }
     }
 
+    pub fn set_immobilized(&mut self, location: Option<HexLocation>) {
+        self.immobilized = location;
+    }
+
     pub fn set_queen_first_allowed(&mut self, allowed: bool) {
         self.queen_first_allowed = allowed;
     }
@@ -579,6 +583,15 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
 
         // Then 2. Calculate moves
         for (stack, location) in all_pieces {
+
+            // immobilized pieces can't move or be swapped, 
+            // so skip them entirely when generating moves
+            if let Some(disallowed) = self.immobilized { 
+                if location == disallowed {
+                    continue;
+                }
+            }
+
             let top = stack.last().unwrap();
             if top.color != color {
                 continue;
@@ -2167,4 +2180,33 @@ mod tests {
         }
     }
 
+    #[test]
+    pub(crate) fn test_immobilized_piece_move() {
+        use PieceColor::*;
+        use PieceType::*;
+        // Regression test: make sure that if a piece is immobilized, it cannot move
+        let grid = HexGrid::from_dsl(concat!(
+            " A . . A . .\n",
+            "A . b . A .\n",
+            " A . q A . .\n",
+            ". A A Q . .\n",
+            " . . . . . .\n\n",
+            "start - [ -2 -2 ]\n\n",
+        ));
+
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let black_beetle_loc = grid.find(Piece::new(Beetle, Black)).unwrap().0;
+        generator.set_immobilized(Some(black_beetle_loc));
+        let positions = generator.generate_positions_for(Black);
+
+        // all positions must be the same as the original grid, since the beetle is immobilized
+        assert_eq!(positions.len(), 1, "Expected only the original position to be generated when piece is immobilized");
+        for position in positions {
+            assert_eq!(
+                position, grid,
+                "Expected no moves to be generated when piece is immobilized"
+            );
+        }
+
+    }
 }

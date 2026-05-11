@@ -31,6 +31,8 @@ pub struct GameDebugger {
     annotations: Vec<Annotator>,
     generator: PositionGeneratorDebugger,
     game_type: GameType,
+    is_3_fold_repetition_draw: bool,
+    queen_first_allowed: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -41,14 +43,18 @@ pub enum GameResult {
 }
 
 impl GameDebugger {
-    pub fn new(moves: &[String], game_type: GameType) -> Result<Self> {
+    pub fn new(moves: &[String], game_type: GameType, is_3_fold_repetition_draw: bool, queen_first_allowed: bool) -> Result<Self> {
         let annotator = Annotator::new();
         let annotations = vec![annotator];
         let mut game = GameDebugger {
             annotations,
             generator: PositionGeneratorDebugger::new(game_type),
             game_type,
+            is_3_fold_repetition_draw,
+            queen_first_allowed,
         };
+
+        game.generator.set_queen_first_allowed(queen_first_allowed);
 
         for mv in moves.iter() {
             game.make_move(mv)?;
@@ -68,6 +74,7 @@ impl GameDebugger {
             self.game_type,
             last_move,
         );
+        self.generator.set_queen_first_allowed(self.queen_first_allowed);
         Ok(())
     }
 
@@ -112,6 +119,8 @@ impl GameDebugger {
             self.game_type,
             annotator.last_move(),
         );
+        self.generator.set_queen_first_allowed(self.queen_first_allowed);
+
         self.annotations.push(annotator);
 
         Ok(())
@@ -153,6 +162,24 @@ impl GameDebugger {
             _ => {}
         }
 
+        if self.is_3_fold_repetition_draw {
+            self.check_three_fold_repetition()
+        } else {
+            None
+        }
+    }
+
+    pub fn get_3_fold_repetition_draw(&self) -> bool {
+        self.is_3_fold_repetition_draw
+    }
+
+    pub fn get_queen_first_allowed(&self) -> bool {
+        self.queen_first_allowed
+    }
+
+    fn check_three_fold_repetition(&self) -> Option<GameResult> {
+        let annotator = self.annotations.last().unwrap();
+        let grid = annotator.current_position();
         let mut position_count = 0;
         for annotator in self.annotations.iter() {
             if annotator.current_position() == grid {
@@ -162,13 +189,20 @@ impl GameDebugger {
                 return Some(GameResult::Draw);
             }
         }
-
         None
     }
 
     /// Get the latest position in the game
     pub fn current_position(&self) -> &HexGrid {
         self.annotations.last().unwrap().current_position()
+    }
+
+    pub fn set_queen_first(&mut self, is_queen_first_allowed: bool) {
+        self.queen_first_allowed = is_queen_first_allowed;
+    }
+
+    pub fn set_threefold_repetition(&mut self, is_3_fold_repetition_draw: bool) {
+        self.is_3_fold_repetition_draw = is_3_fold_repetition_draw;
     }
 }
 
@@ -198,7 +232,7 @@ mod tests {
             String::from(r"wB1 \bL"),
         ];
 
-        let mut game = GameDebugger::new(&[], GameType::MLP).unwrap();
+        let mut game = GameDebugger::new(&[], GameType::MLP, true, false).unwrap();
         for pos in white_wins.iter() {
             assert!(game.game_result().is_none());
             game.make_move(pos).unwrap();
@@ -223,7 +257,7 @@ mod tests {
             String::from(r"wA2 wQ\"),
         ];
 
-        let mut game = GameDebugger::new(&[], GameType::MLP).unwrap();
+        let mut game = GameDebugger::new(&[], GameType::MLP, true, false).unwrap();
         for move_ in black_wins.iter() {
             assert!(game.game_result().is_none());
             game.make_move(move_).unwrap();
@@ -249,7 +283,7 @@ mod tests {
             String::from(r"bQ bA1-"),
         ];
 
-        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
+        let game = GameDebugger::new(&draw, GameType::MLP, true, false).unwrap();
         println!("game\n:{}", game.current_position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }
@@ -280,7 +314,7 @@ mod tests {
             String::from(r"bG1 wB1\"),
         ];
 
-        let game = GameDebugger::new(&draw, GameType::MLP).unwrap();
+        let game = GameDebugger::new(&draw, GameType::MLP, true, false).unwrap();
         println!("game\n:{}", game.current_position().to_dsl());
         assert_eq!(game.game_result(), Some(GameResult::Draw));
     }

@@ -56,6 +56,8 @@ pub fn check_positions() {
 
     let mut uhp = UHPInterface::new();
     for (index, game) in games.iter().enumerate() {
+        uhp.run_command("options 3fold false");
+        uhp.run_command("options queenfirst true");
         let output = uhp.run_command(&format!("newgame {}", game));
 
         if output.contains("err") {

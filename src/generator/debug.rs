@@ -20,6 +20,7 @@ pub struct PositionGeneratorDebugger {
     outside: HashSet<HexLocation>,
     game_type: GameType,
     immobilized: Option<HexLocation>,
+    queen_first_allowed: bool,
 }
 
 impl PositionGeneratorDebugger {
@@ -30,9 +31,14 @@ impl PositionGeneratorDebugger {
             outside: HashSet::new(),
             game_type,
             immobilized: None,
+            queen_first_allowed: false,
         }
     }
 
+    pub fn set_queen_first_allowed(&mut self, allowed: bool) {
+        self.queen_first_allowed = allowed;
+    }
+    
     fn spider_dfs(
         &self,
         location: HexLocation,
@@ -107,6 +113,7 @@ impl FromHexGrid for PositionGeneratorDebugger {
             outside: grid.outside(),
             game_type,
             immobilized: previous_change,
+            queen_first_allowed: false,
         }
     }
 }
@@ -526,6 +533,7 @@ impl SwapGenerator<HexGrid> for PositionGeneratorDebugger {
 }
 
 impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
+    // TODO: test suite for just this
     fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<HexGrid> {
         let mut positions = HashSet::new();
         let queen = self.grid.find(Piece::new(PieceType::Queen, color));
@@ -538,7 +546,7 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
         let num_friendly_pieces = friendly_pieces.len();
 
         // Queen not placed
-        if queen.is_none() {
+        if queen.is_none() && !self.queen_first_allowed{
             // Forced to place a queen by 4th turn
             if num_friendly_pieces == 3 {
                 for placement in self.placements(color) {
@@ -554,7 +562,7 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
         itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
             |(piece, placement)| {
                 let placement_disallowed =
-                    piece.piece_type == PieceType::Queen && num_friendly_pieces == 0;
+                    piece.piece_type == PieceType::Queen && num_friendly_pieces == 0 && !self.queen_first_allowed;
 
                 if !placement_disallowed {
                     let mut new_grid = self.grid.clone();
@@ -565,6 +573,8 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
         );
 
         // Then 2. Calculate moves
+        //  TODO: does this test that the piece is not allowed to 
+        //  move before a queen is placed?
         for (stack, location) in all_pieces {
             let top = stack.last().unwrap();
             if top.color != color {
@@ -2107,6 +2117,38 @@ mod tests {
         let mut generator = PositionGeneratorDebugger::from_default(&grid);
         let positions = generator.generate_positions_for(Black);
         assert_eq!(positions.len(), 1, "expected 'pass' to be the only legal option");
+    }
+
+    #[test]
+    pub(crate) fn no_piece_allowed_to_move_until_queen() {
+        use PieceColor::*;
+        // Regression test: make sure that until the queen is placed, no pieces are allowed to
+        // move, even if they are not pinned
+        let grid = HexGrid::from_dsl(concat!(
+            ". . . . . .\n",
+            " . . . b . .\n",
+            ". . . . A .\n",
+            " . . . . . .\n",
+            ". . . . . .\n",
+            " . . . . . .\n",
+            ". . . . . .\n\n",
+            "start - [ -2 -2 ]\n\n",
+        ));
+
+        let mut generator = PositionGeneratorDebugger::from_default(&grid);
+        let positions = generator.generate_positions_for(Black);
+
+        // all positions of black must have 3 pieces (signifying a placement)
+        // rather than a move
+        for position in positions {
+            let piece_count = position
+                .pieces()
+                .iter()
+                .map(|(stack, _)| stack.len())
+                .sum::<usize>();
+                
+            assert_eq!(piece_count, 3, "Expected only placements to be allowed until queen is placed");
+        }
     }
 
 }

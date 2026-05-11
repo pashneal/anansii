@@ -26,14 +26,16 @@ type StackIds = Vec<Option<u8>>;
 ///
 /// Invariant : The Annotator assumes that Hive pieces can only be placed or moved
 /// but never removed from the board. Furthermore, it assumes that piece movements observe the
-/// One Hive Rule. If this is the case, all legal moves will be annotated correctly as
+/// One Hive Rule. If this is the case, all game-legal moves will be annotated correctly as
 /// UHP MoveStrings.
 ///
 /// valid changes to the Annotator from state to state are as follows:
 ///
 /// - pass : no additions or removals made from the board
 /// - placement : a single piece is added to top of the board which did not previously exist
-/// - movement : a single piece is moved from the top of one location to top of another. The resulting board must have greater than 1 piece on the board's lowest level
+/// - movement : a single piece is moved from the top of one location to top of another. 
+/// 
+/// The resulting board must have greater than 1 piece on the board's lowest level
 #[derive(Debug, Clone)]
 pub struct Annotator {
     /// An array of locations that we can currently identify
@@ -543,7 +545,7 @@ impl Annotator {
     }
 
     /// Give a UHP-compatible representation of the moves
-    /// infered so for by this annotator. If the game state started from
+    /// inferred so far by this annotator. If the game state started from
     /// an empty board and only legal moves were taken,
     /// then these strings will be correct according to the UHP.
     ///
@@ -609,7 +611,7 @@ impl UHPInterface {
         UHPInterface {
             annotations: vec![Annotator::new()],
             game_type: GameType::Standard,
-            game: GameDebugger::new(&[], GameType::MLP).unwrap(),
+            game: GameDebugger::new(&[], GameType::MLP, true, false).unwrap(),
             player_to_move: PieceColor::White,
         }
     }
@@ -647,6 +649,8 @@ impl UHPInterface {
         self.game = GameDebugger::new(
             &self.annotations.last().unwrap().uhp_move_strings(),
             self.game_type,
+            self.game.get_3_fold_repetition_draw(),
+            self.game.get_queen_first_allowed(),
         )
         .unwrap();
 
@@ -841,8 +845,25 @@ impl UHPInterface {
         game_string
     }
 
-    fn options(&mut self, _input: &str) -> CommandResult {
-        todo!()
+    fn options(&mut self, input: &str) -> CommandResult {
+        let input = input.trim();
+        if input == "options 3fold true" {
+            self.game.set_threefold_repetition(true);
+            return Ok("".to_string());
+        }
+        if input == "options 3fold false" {
+            self.game.set_threefold_repetition(false);
+            return Ok("".to_string());
+        }
+        if input == "options queenfirst true" {
+            self.game.set_queen_first(true);
+            return Ok("".to_string());
+        }
+        if input == "options queenfirst false" {
+            self.game.set_queen_first(false);
+            return Ok("".to_string());
+        }
+        Err("Unknown option".to_string())
     }
 
     pub fn current_position(&self) -> &HexGrid {
@@ -873,7 +894,7 @@ impl UHPInterface {
         };
         let response = match response {
             Ok(response) => response,
-            Err(response) => "err ".to_string() + &response,
+            Err(response) => "err ".to_string() + &response.trim(),
         };
 
         debug_assert!(
@@ -2002,4 +2023,157 @@ mod tests {
     pub fn test_valid_moves() {
         //Note: we use nokamute for testing!
     }
+
+    #[test]
+    pub fn test_game_option_3fold() {
+        let mut uhp = UHPInterface::new();
+        // This is a game with a position repeated 3 times
+        // which should technically be a draw depending on the
+        // tournament rule set
+        let game_with_three_fold = [
+            r"wM",
+            r"bL /wM",
+            r"wP wM/",
+            r"bQ -bL",
+            r"wQ wM-",
+            r"bA1 bL\",
+            r"wG1 wQ-",
+            r"bM bQ\",
+            r"wA1 -wP",
+            r"bP -bQ",
+            r"wA1 /bM",
+            r"bA2 -bP",
+            r"wB1 -wP",
+            r"bA1 \wB1",
+            r"wA1 -bA2",
+            r"bB1 bP\",
+            r"wG1 bQ/",
+            r"bL wQ-",
+            r"wP bQ-",
+            r"bM wP",
+            r"wL wB1-",
+            r"bA3 bA2\",
+            r"wL bP/",
+            r"bQ bA2/",
+            r"wA2 wB1-",
+            r"bA3 wA2/",
+            r"wB2 \wA1",
+            r"bA3 \wB2",
+            r"wS1 /wA1",
+            r"bS1 bA2\",
+            r"wA2 bB1\",
+            r"bS1 wA2\",
+            r"wS1 -bA3",
+            r"bB2 bA2\",
+            r"wG2 wB1-",
+            r"bB2 bP",
+            r"wM bM",
+            r"bB2 wL",
+            r"wG3 wG1-",
+            r"bQ bA2\",
+            r"wG2 bB2/",
+            r"bA1 wB1/",
+            r"wG2 wB1-",
+            r"bA1 wG2/",
+            r"wB1 wG3",
+            r"bG1 /bS1",
+            r"wS2 wM-",
+            r"bG1 wA2-",
+            r"wB1 wM",
+            r"bG1 bQ\",
+            r"wA3 /wA1",
+            r"bA1 -wA3",
+            r"wG3 bA2/",
+            r"bL \wG2",
+            r"wG3 bS1\",
+            r"bB1 bP",
+            r"wS1 \bA1",
+            r"bB1 bB2",
+            r"wB1 wG1-",
+            r"bB1 wG1",
+            r"wB1 bB1",
+            r"bB2 wB1",
+            r"wM bB2",
+            r"bM wM",
+            r"wS1 -bA3",
+            r"bA1 /wA3",
+            r"wS1 -wA3",
+            r"bA1 -wS1",
+            r"wG3 bQ-",
+            r"bG1 wA2-",
+            r"pass",
+            r"bS1 /bQ",
+            r"pass",
+            r"bA1 /wS1",
+            r"pass",
+            r"bA1 \wS1",
+            r"pass",
+            r"bS1 wS1\",
+            r"pass",
+            r"bA1 -wS1",
+            r"pass",
+            r"bS1 -bA1",
+            r"pass",
+            r"bA3 -wB2",
+            r"pass",
+            r"bS1 -bA3",
+            r"pass",
+            r"bA1 /wS1",
+            r"pass",
+            r"bS1 -bA1",
+            r"pass",
+            r"bA3 \wB2",
+            r"pass",
+            r"bS2 /bS1",
+            r"pass",
+            r"bS2 bS1/",
+            r"pass",
+            r"bA1 wQ-",
+            r"pass",
+            r"bS1 wA3\",
+            r"pass",
+            r"bS1 /bS2",
+            r"pass",
+            r"bS1 bS2/",
+            r"pass",
+            r"bS1 -bA3",
+            r"pass",
+            r"bS1 bA3-",
+            r"pass",
+            r"bA3 wG2-",
+            r"pass",
+            r"bG2 bA3-",
+            r"pass",
+            r"bG2 wS2-",
+            r"pass",
+            r"bM wM-"
+        ];
+
+        uhp.run_command("newgame Base+MLP;NotStarted;White[1]");
+        uhp.run_command("options 3fold false");
+        for move_string in game_with_three_fold {
+            let output = uhp.run_command(&format!("play {}", move_string));
+            if output.contains("err") {
+                panic!("Move {:?} should be legal, but got error: {}", move_string, output);
+            }
+        }
+
+    }
+
+    #[test]
+    pub fn test_uhp_interface_queen_first() {
+        let mut uhp = UHPInterface::new();
+        let output = uhp.run_command("options queenfirst true");
+        assert!(
+            !output.contains("err"), 
+            "Setting queenfirst should not produce an error, but got: {}",
+            output
+        );
+        let output = uhp.run_command("newgame Base+MLP;InProgress;White[3];wQ;bQ -wQ");
+        if output.contains("err") {
+            println!("VALIDMOVES: {}", uhp.run_command("validmoves"));
+        }
+        assert!(!output.contains("err"));
+    }
+
 }

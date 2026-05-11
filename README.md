@@ -20,6 +20,7 @@ I've decided to finish projects that I've started, including this one.
     - [ ] mosquito_moves
     - [ ] placement generator
     - [ ] swap generator
+    - [ ] integration test suite
 - [ ] Speed tests for the mini move generator
     - [ ] spider_moves
     - [ ] grasshopper_moves
@@ -33,4 +34,5 @@ I've decided to finish projects that I've started, including this one.
         - [ ] (optional) with time breakdown by piece
     - [ ] placement generator
     - [ ] swap generator
-- [ ] Attack and solve this [issue](https://github.com/pashneal/anansii/issues/1)
+    - [ ] integration test suite
+- [x] Attack and solve this [issue](https://github.com/pashneal/anansii/issues/1)

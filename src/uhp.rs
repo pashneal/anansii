@@ -702,7 +702,7 @@ impl UHPInterface {
 
             let num = turn_string[6..turn_string.len() - 1].to_string();
             let _ = num
-                .parse::<u8>()
+                .parse::<u16>()
                 .map_err(|_| "Expected number at position 2 of GameString")?;
 
             for move_string in delimited {
@@ -2174,6 +2174,17 @@ mod tests {
             println!("VALIDMOVES: {}", uhp.run_command("validmoves"));
         }
         assert!(!output.contains("err"));
+    }
+
+    #[test]
+    pub fn test_extremely_long_game() {
+        // Regression test: used to panic on this game string
+        let mut uhp = UHPInterface::new();
+        let long_game_string = r"Base+MLP;WhiteWins;White[284]";
+
+        let command = &format!("newgame {}", long_game_string);
+        let result = uhp.run_command(command);
+        assert!(!result.contains("err"), "Loading a long game should not produce an error, but got: {}", result);
     }
 
 }

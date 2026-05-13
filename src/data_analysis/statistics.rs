@@ -51,7 +51,7 @@ pub fn get_size(game: &GameDebugger) -> usize {
 pub fn check_positions() {
     let mut stats = Stats::new();
     let games = uhp_strings();
-    println!("GAAAAAMES {}", games.len());
+    println!("Total number of games {}", games.len());
     let mut failures = 0;
 
     let mut uhp = UHPInterface::new();

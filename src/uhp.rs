@@ -2149,7 +2149,6 @@ mod tests {
             r"bM wM-"
         ];
 
-        uhp.run_command("newgame Base+MLP;NotStarted;White[1]");
         uhp.run_command("options 3fold false");
         for move_string in game_with_three_fold {
             let output = uhp.run_command(&format!("play {}", move_string));

@@ -807,7 +807,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
+    pub fn test_pillbug_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
         swap_parity_test(
             Piece::new(Pillbug, White),
             &PILLBUG_SWAPS[..],
@@ -815,9 +815,13 @@ pub mod test_suite {
         )
     }
 
-    // TODO: swap generator tests, especially with mosquito interactions and 
-    // mosquito being beside or not beside a pillbug (still need the mosquito)
-    
+    pub fn test_mosquito_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()>{
+        swap_parity_test(
+            Piece::new(Mosquito, White),
+            &MOSQUITO_SWAPS[..],
+            (S::pillbug_swaps, PositionGeneratorDebugger::pillbug_swaps),
+        )
+    }
 
     // TODO: placement generator tests
     

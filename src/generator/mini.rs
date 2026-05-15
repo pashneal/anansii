@@ -114,7 +114,13 @@ mod tests {
 
     #[test]
     fn test_pillbug_swaps_suite() {
-        let result = test_swaps::<_, MiniGenerator>();
+        let result = test_pillbug_swaps::<_, MiniGenerator>();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_mosquito_swaps_suite() {
+        let result = test_mosquito_swaps::<_, MiniGenerator>();
         assert!(result.is_ok());
     }
 }

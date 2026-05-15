@@ -107,7 +107,9 @@ pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
         &mut self,
         pillbug_location: HexLocation,
         immobilized: Option<HexLocation>,
-    ) -> Vec<Position>;
+    ) -> Vec<Position> {
+        unimplemented!();
+    }
 }
 
 pub trait PositionGenerator<Position: IntoPieces>:

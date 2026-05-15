@@ -58,11 +58,13 @@ pub fn check_positions() {
     for (index, game) in games.iter().enumerate() {
         uhp.run_command("options 3fold false");
         uhp.run_command("options queenfirst true");
+        println!("Loading game {}: {}", index, game);
         let output = uhp.run_command(&format!("newgame {}", game));
 
         if output.contains("err") {
-            println!("Failed to load game: {}", game);
+            println!("Failed to load game (index: {}): {}", index, game);
             println!("{}", output);
+            println!("Num failures: {}", failures);
             failures += 1;
             continue;
         }
@@ -79,7 +81,6 @@ pub fn check_positions() {
         }
 
         if index % 100 == 0 {
-            println!("Processed {} games, with {} failures", index + 1, failures);
             println!("Current stats:");
             stats.print();
         }

@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable};
 use crate::piece::*;
 use crate::uhp::GameType;
 
@@ -507,6 +507,54 @@ pub const MOSQUITO_MOVES: [&str; 5] = [
     ),
 ];
 
+pub const MOSQUITO_SWAPS: [&str; 5] = [
+    concat!(
+        ". . . . . . .\n",
+        " . . . . . . .\n",
+        ". a m M . . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . q g . . .\n",
+        ". a b M 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a S]\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . q . . . .\n",
+        ". a b 2 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a M]\n",
+        "2 - [a S]\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . . g . . .\n",
+        ". a b M 2 . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a B]\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . . g . . .\n",
+        ". a b 2 p . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a M]\n",
+    ),
+];
+
 pub mod test_suite {
     use super::*;
     use PieceColor::*;
@@ -527,10 +575,119 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
+    // -dsls must contain exactly one piece match the target
+    fn swap_parity_test<I: IntoPieces, S: SwapGenerator<I>, Fa, Fb>(
+        target: Piece,
+        dsls: &[&'static str],
+        funcs: (Fa, Fb),
+    ) -> std::result::Result<(), ()>
+    where
+        Fa: FnMut(&mut S, HexLocation, Option<HexLocation>) -> Vec<I>,
+        Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation, Option<HexLocation>) -> Vec<HexGrid>,
+    {
+        // the methodology for this is just that we need to generate
+        // good "immobilized" positions. For now, since it's underspecified 
+        // whether an immobilized location *must* contain a piece
+        // we'll stick to the strict spec of SwapGenerator and generate
+        // the cartesian product of:
+        // - dsls
+        // - all 6 locations adjacent to the target piece + 
+        //      the location of the target piece + 
+        //      no location
+
+        let locations = dsl_to_locations(dsls, target);
+        let hex_grids = dsl_to_hex_grids(dsls);
+
+        let (mut gen_func, mut ref_func) = funcs;
+
+        let translation_funcs = [
+            HexLocation::shift_east,
+            HexLocation::shift_northeast,
+            HexLocation::shift_northwest,
+            HexLocation::shift_west,
+            HexLocation::shift_southwest,
+            HexLocation::shift_southeast,
+            |x: &HexLocation| *x, 
+
+        ];
+
+
+        let immobilized_locations = locations
+            .iter()
+            .flat_map(|location| {
+                translation_funcs
+                    .iter()
+                    .map(|func| func(location))
+                    .map(|loc| Some(loc))
+            })
+            .collect::<Vec<_>>();
+
+        let immobilized_locations = immobilized_locations
+            .into_iter()
+            .chain(std::iter::once(None))
+            .collect::<Vec<_>>();
+
+
+        let triplets = locations
+            .iter()
+            .zip(hex_grids.iter())
+            .flat_map(|(location, hex_grid)| {
+                immobilized_locations
+                    .iter()
+                    .map(move |immobilized_location| (location, hex_grid, immobilized_location))
+            })
+            .collect::<Vec<_>>();
+        for (location, hex_grid, immobilized_location) in triplets {
+            let mut reference_generator = PositionGeneratorDebugger::from_default(&hex_grid);
+            let mut generator = S::from_default(&hex_grid);
+
+            println!("generating swaps from:\n{}\n...", hex_grid.to_dsl());
+            println!(
+                "immobilized location: {:?}\n", immobilized_location
+            );
+
+            let actual_result = gen_func(&mut generator, *location, *immobilized_location);
+            let expected_result = ref_func(&mut reference_generator, *location, *immobilized_location);
+
+            let actual_result = actual_result
+                .into_iter()
+                .map(|x| x.to_hex_grid())
+                .collect::<Vec<_>>();
+
+            for position in expected_result.iter() {
+                if !actual_result.contains(&position) {
+                    println!("----------");
+                    println!("expected position missing:\n{}\n", position.to_dsl());
+                    println!("----------");
+                }
+            }
+
+            for position in actual_result.iter() {
+                if !expected_result.contains(&position) {
+                    println!("----------");
+                    println!("unexpected position:\n{}\n", position.to_dsl());
+                    println!("----------");
+                }
+            }
+
+            if !expected_result.iter().all(|x| actual_result.contains(x)) {
+                return Err(());
+            }
+            if !actual_result.iter().all(|x| expected_result.contains(x)) {
+                return Err(());
+            }
+
+            println!("...success\n");
+        }
+
+        Ok(())
+    }
+
     // this is the most garbage function definition I've ever written :D,
     // just wanted to play around with generics and closures
     // ... well maybe it's not all that bad, look how clean the final interface ends up being!
-    fn move_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
+    // -dsls must contain exactly one piece match the target
+    fn move_parity_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
         target: Piece,
         dsls: &[&'static str],
         funcs: (Fa, Fb),
@@ -587,7 +744,7 @@ pub mod test_suite {
     }
 
     pub fn test_spider_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Spider, White),
             &SPIDER_MOVES[..],
             (M::spider_moves, PositionGeneratorDebugger::spider_moves),
@@ -595,7 +752,7 @@ pub mod test_suite {
     }
 
     pub fn test_grasshopper_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Grasshopper, White),
             &GRASSHOPPER_MOVES[..],
             (M::grasshopper_moves, PositionGeneratorDebugger::grasshopper_moves),
@@ -603,7 +760,7 @@ pub mod test_suite {
     }
 
     pub fn test_queen_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Queen, White),
             &QUEEN_MOVES[..],
             (M::queen_moves, PositionGeneratorDebugger::queen_moves),
@@ -611,7 +768,7 @@ pub mod test_suite {
     }
 
     pub fn test_ant_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Ant, White),
             &ANT_MOVES[..],
             (M::ant_moves, PositionGeneratorDebugger::ant_moves),
@@ -619,7 +776,7 @@ pub mod test_suite {
     }
 
     pub fn test_beetle_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Beetle, White),
             &BEETLE_MOVES[..],
             (M::beetle_moves, PositionGeneratorDebugger::beetle_moves),
@@ -627,7 +784,7 @@ pub mod test_suite {
     }
 
     pub fn test_ladybug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Ladybug, White),
             &LADYBUG_MOVES[..],
             (M::ladybug_moves, PositionGeneratorDebugger::ladybug_moves),
@@ -635,7 +792,7 @@ pub mod test_suite {
     }
 
     pub fn test_pillbug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Pillbug, White),
             &PILLBUG_MOVES[..],
             (M::pillbug_moves, PositionGeneratorDebugger::pillbug_moves),
@@ -643,13 +800,27 @@ pub mod test_suite {
     }
 
     pub fn test_mosquito_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
-        move_test(
+        move_parity_test(
             Piece::new(Mosquito, White),
             &MOSQUITO_MOVES[..],
             (M::mosquito_moves, PositionGeneratorDebugger::mosquito_moves),
         )
     }
 
+    pub fn test_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
+        swap_parity_test(
+            Piece::new(Pillbug, White),
+            &PILLBUG_SWAPS[..],
+            (S::pillbug_swaps, PositionGeneratorDebugger::pillbug_swaps),
+        )
+    }
+
     // TODO: swap generator tests, especially with mosquito interactions and 
-    // mosquito being beside or not beside a pillbug
+    // mosquito being beside or not beside a pillbug (still need the mosquito)
+    
+
+    // TODO: placement generator tests
+    
+
+    // TODO: tournament rules integration test suite with generate_positions_for
 }

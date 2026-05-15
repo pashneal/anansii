@@ -57,6 +57,8 @@ impl MiniGenerator {
 
 impl MoveGenerator<MiniBitGrid> for MiniGenerator {}
 
+impl SwapGenerator<MiniBitGrid> for MiniGenerator {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,6 +103,18 @@ mod tests {
     #[test]
     fn test_pillbug_moves_suite() {
         let result = test_pillbug_moves::<_, MiniGenerator>();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ladybug_moves_suite() {
+        let result = test_ladybug_moves::<_, MiniGenerator>();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_pillbug_swaps_suite() {
+        let result = test_swaps::<_, MiniGenerator>();
         assert!(result.is_ok());
     }
 }

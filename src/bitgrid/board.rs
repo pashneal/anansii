@@ -714,4 +714,5 @@ mod tests {
         assert_eq!(*result.top_left(), expected_top_left);
         assert_eq!(*result.bottom_left(), expected_bottom_left);
     }
+
 }

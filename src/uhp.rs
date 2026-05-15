@@ -2187,5 +2187,4 @@ mod tests {
         let result = uhp.run_command(command);
         assert!(!result.contains("err"), "Loading a long game should not produce an error, but got: {}", result);
     }
-
 }

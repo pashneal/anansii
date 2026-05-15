@@ -3,6 +3,7 @@ use crate::constants::EXPECTED_MAX_BRANCHING_FACTOR;
 use crate::generator::*;
 use crate::hex_grid::{HexGrid, HexLocation};
 use crate::uhp::GameType;
+pub use crate::piece::*;
 
 /// Generator that generates legal positions
 /// for the MiniBitGrid representation of Hive
@@ -55,7 +56,34 @@ impl MiniGenerator {
     }
 }
 
-impl MoveGenerator<MiniBitGrid> for MiniGenerator {}
+
+impl MoveGenerator<MiniBitGrid> for MiniGenerator {
+    
+    fn queen_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
+        // TODO make this a little bit more parametric
+        let location = location.into();
+        let pinned = self.grid.is_pinned(location);
+        if pinned {
+            return Vec::new();
+        } 
+
+        let piece = self.grid.top(location)
+            .expect("Expected piece at location");
+
+        let changes = MiniBitGrid::decompose(
+            self.grid.queen_moves(location),
+            Some(location),
+            piece,
+        );
+
+        changes.into_iter().map(|change| {
+            let mut new_grid = self.grid.clone();
+            new_grid.apply_change(change);
+            new_grid
+        }).collect()
+
+    }
+}
 
 impl SwapGenerator<MiniBitGrid> for MiniGenerator {}
 

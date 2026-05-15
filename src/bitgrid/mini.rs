@@ -1,5 +1,5 @@
 use super::*;
-use crate::generator::change::Change;
+use crate::generator::change::{Change, Diff};
 use crate::hex_grid::{HexGrid, HexGridConvertible};
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
@@ -123,6 +123,73 @@ impl MiniBitGrid {
             stacks: BasicBitStack::new(),
             metainfo: MiniMetaInfo::new(),
         }
+    }
+
+
+    pub fn decompose(
+        mini_grid: MiniGrid, 
+        original: Option<MiniBitGridLocation>,
+        piece: Piece,
+    ) -> Vec<Change> {
+        let mut changes = Vec::new();
+        let removed  = original.map(|location| Diff {
+            piece,
+            board_index: location.board_index,
+            mask: location.mask,
+        }).unwrap_or(Diff {
+            piece,
+            board_index: 0,
+            mask: 0,
+        });
+
+        // TODO There's a bit twiddling hack
+        // to speed this up
+        for board_index in 0..GRID_SIZE {
+            let board = mini_grid[board_index];
+            for bit_index in 0..64 {
+                if board.peek(bit_index) {
+                    let mask = 1u64 << bit_index;
+                    changes.push(Change {
+                        removed,
+                        added: Diff {
+                            piece,
+                            board_index,
+                            mask,
+                        },
+                    });
+                }
+            }
+        }
+
+        changes
+
+    }
+
+    pub fn queen_moves(&self, location: MiniBitGridLocation ) -> MiniGrid {
+        // TODO: CONTINUE WORKING HERE,
+        // whatever the hell is happening with queen moves 
+        // to produce both 0 board and not taking gates into 
+        // account.
+        debug_assert!(
+            self.queens[location.board_index] & location.mask != 0, 
+            "No queen at the given location"
+        );
+
+        let queen = self.queens[location.board_index] & location.mask;
+        let mut neighborhood = queen.neighborhood();
+        let mut grid = Self::neighborhood_to_grid(
+            &mut neighborhood, 
+            location.board_index,
+        );
+
+        for index in 0..GRID_SIZE {
+            grid[index] &= self.outside[index];
+        }
+        grid[location.board_index] &= !location.mask;
+
+        grid
+
+
     }
 
     /// Returns true only if the current grid follows the One Hive rule
@@ -589,21 +656,22 @@ impl MiniBitGrid {
 
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
+
         if change.removed.mask != 0 {
-            let piece = change.removed.piece;
             let location = MiniBitGridLocation {
                 board_index: change.removed.board_index,
                 mask: change.removed.mask,
             };
-            self.add_top(piece, location);
+            self.remove_top(location);
         }
 
+        let piece = change.added.piece;
         let location = MiniBitGridLocation {
             board_index: change.added.board_index,
             mask: change.added.mask,
         };
 
-        self.remove_top(location);
+        self.add_top(piece, location);
     }
 }
 
@@ -745,6 +813,7 @@ impl MiniBitGridLocation {
         };
         1 << (column + delta)
     }
+
 }
 
 impl Into<BasicStackLocation> for MiniBitGridLocation {

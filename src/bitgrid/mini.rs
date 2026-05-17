@@ -166,10 +166,6 @@ impl MiniBitGrid {
     }
 
     pub fn queen_moves(&self, location: MiniBitGridLocation ) -> MiniGrid {
-        // TODO: CONTINUE WORKING HERE,
-        // whatever the hell is happening with queen moves 
-        // to produce both 0 board and not taking gates into 
-        // account.
         debug_assert!(
             self.queens[location.board_index] & location.mask != 0, 
             "No queen at the given location"

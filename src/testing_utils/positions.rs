@@ -686,7 +686,7 @@ pub mod test_suite {
     // this is the most garbage function definition I've ever written :D,
     // just wanted to play around with generics and closures
     // ... well maybe it's not all that bad, look how clean the final interface ends up being!
-    // -dsls must contain exactly one piece match the target
+    // -dsls must contain exactly one piece matching the target
     fn move_parity_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
         target: Piece,
         dsls: &[&'static str],
@@ -726,7 +726,7 @@ pub mod test_suite {
             for position in actual_result.iter() {
                 if !expected_result.contains(&position) {
                     println!("----------");
-                    println!("unexpected position:\n{}\n", position.to_dsl());
+                    println!("unexpected position found:\n{}\n", position.to_dsl());
                     println!("----------");
                 }
             }
@@ -807,7 +807,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
+    pub fn test_pillbug_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
         swap_parity_test(
             Piece::new(Pillbug, White),
             &PILLBUG_SWAPS[..],
@@ -815,9 +815,13 @@ pub mod test_suite {
         )
     }
 
-    // TODO: swap generator tests, especially with mosquito interactions and 
-    // mosquito being beside or not beside a pillbug (still need the mosquito)
-    
+    pub fn test_mosquito_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()>{
+        swap_parity_test(
+            Piece::new(Mosquito, White),
+            &MOSQUITO_SWAPS[..],
+            (S::pillbug_swaps, PositionGeneratorDebugger::pillbug_swaps),
+        )
+    }
 
     // TODO: placement generator tests
     

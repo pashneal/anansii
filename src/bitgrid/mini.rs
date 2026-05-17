@@ -1,5 +1,5 @@
 use super::*;
-use crate::generator::change::Change;
+use crate::generator::change::{Change, Diff};
 use crate::hex_grid::{HexGrid, HexGridConvertible};
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
@@ -125,6 +125,111 @@ impl MiniBitGrid {
         }
     }
 
+
+    pub fn decompose(
+        mini_grid: MiniGrid, 
+        original: Option<MiniBitGridLocation>,
+        piece: Piece,
+    ) -> Vec<Change> {
+        let mut changes = Vec::new();
+        let removed  = original.map(|location| Diff {
+            piece,
+            board_index: location.board_index,
+            mask: location.mask,
+        }).unwrap_or(Diff {
+            piece,
+            board_index: 0,
+            mask: 0,
+        });
+
+        // TODO There's a bit twiddling hack
+        // to speed this up
+        for board_index in 0..GRID_SIZE {
+            let board = mini_grid[board_index];
+            for bit_index in 0..64 {
+                if board.peek(bit_index) {
+                    let mask = 1u64 << bit_index;
+                    changes.push(Change {
+                        removed,
+                        added: Diff {
+                            piece,
+                            board_index,
+                            mask,
+                        },
+                    });
+                }
+            }
+        }
+
+        changes
+
+    }
+
+    pub fn queen_moves(&self, location: MiniBitGridLocation ) -> MiniGrid {
+        debug_assert!(
+            self.queens[location.board_index] & location.mask != 0, 
+            "No queen at the given location"
+        );
+
+        // TODO extremely inefficient for now, but correctness is our first concern
+        let mut grid_without_queen = self.clone();
+        grid_without_queen.remove_top(location).unwrap();
+        let queen = self.queens[location.board_index] & location.mask;
+        let mut grid = [AxialBitboard::empty(); 4];
+
+
+        // must be in contact with one of its original neighbors
+        let mut adjacent = queen.neighborhood();
+        let mut original_neighbors = Self::neighborhood_to_grid(
+            &mut adjacent, 
+            location.board_index,
+        );
+        for index in 0..GRID_SIZE {
+            original_neighbors[index] &= self.all_pieces[index];
+        }
+
+
+
+        for direction in Direction::all() {
+            let next_loc = location.apply(direction);
+            if grid_without_queen.presence(next_loc) == false {
+                let (left_gate, right_gate) = direction.adjacent();
+                let left = location.apply(left_gate);
+                let right = location.apply(right_gate);
+
+                // TODO(performance): pretty sure this can be a lookup table
+                // must not be gated off
+                if grid_without_queen.presence(left) && grid_without_queen.presence(right) {
+                    continue;
+                }
+
+                // TODO(style): can likely encapsulate bit operations better
+                // TODO(performance): also can just use bit twiddling tricks
+                let new_queen = AxialBitboard::from_u64(next_loc.mask);
+                let mut new_neighborhood = new_queen.neighborhood();
+                let new_neighbors = Self::neighborhood_to_grid(
+                    &mut new_neighborhood, next_loc.board_index
+                );
+                let mut has_contact = false;
+
+
+                for index in 0..GRID_SIZE {
+                    if new_neighbors[index] & original_neighbors[index] != 0 {
+                        has_contact = true;
+                    }
+                }
+
+                if has_contact {
+                    grid[next_loc.board_index] |= new_queen & grid_without_queen.outside[next_loc.board_index];
+                }
+
+                
+            }
+        }
+
+        grid
+    }
+
     /// Returns true only if the current grid follows the One Hive rule
     fn is_one_hive(&self) -> bool {
         if self.is_empty() {
@@ -158,7 +263,15 @@ impl MiniBitGrid {
             self.find_one_hex().unwrap().into(),
         );
 
-        found_locations.len() == self.pieces().len()
+
+        found_locations.len() == self.count_ones()
+    }
+
+    fn count_ones(&self) -> usize {
+        self.all_pieces
+            .iter()
+            .map(|board| board.count_ones())
+            .sum::<u32>() as usize
     }
 
     /// Deterministically chooses a HexLocation that contains at least one piece
@@ -589,26 +702,32 @@ impl MiniBitGrid {
 
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
+
         if change.removed.mask != 0 {
-            let piece = change.removed.piece;
             let location = MiniBitGridLocation {
                 board_index: change.removed.board_index,
                 mask: change.removed.mask,
             };
-            self.add_top(piece, location);
+            self.remove_top(location);
         }
 
+        let piece = change.added.piece;
         let location = MiniBitGridLocation {
             board_index: change.added.board_index,
             mask: change.added.mask,
         };
 
-        self.remove_top(location);
+        self.add_top(piece, location);
     }
 }
 
 impl IntoPieces for MiniBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        debug_assert!(
+            self.is_one_hive(), 
+            "Expected grid to satisfy the One Hive rule, otherwise the conversion to HexLocation is not well defined. {:?}",
+            self 
+        );
         // We use the fact that the equivalence of
         // MiniBitGridLocation to HexLocation is closed under adjacency to
         // convert a set of MiniBitGridLocations to an equivalent set of HexLocations
@@ -745,6 +864,7 @@ impl MiniBitGridLocation {
         };
         1 << (column + delta)
     }
+
 }
 
 impl Into<BasicStackLocation> for MiniBitGridLocation {
@@ -991,6 +1111,10 @@ impl TryFrom<HexGrid> for MiniBitGrid {
         if !mini.is_one_hive() {
             return Err("Expected One Hive rule to be observed");
         }
+        assert!(
+            grid.pieces().len() == mini.count_ones(), 
+            "Expected number of stacks in HexGrid and MiniBitGrid to match",
+        );
 
         Ok(mini)
     }

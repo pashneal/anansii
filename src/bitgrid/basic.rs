@@ -5,6 +5,7 @@ use crate::piece::*;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 
+
 const CENTER_BOARD_INDEX: usize = 24;
 const CENTER_BITBOARD_INDEX: usize = 28;
 const GRID_WIDTH: usize = 7;
@@ -667,6 +668,7 @@ mod tests {
     use super::BasicBitGrid;
     use super::BitGridLocation;
     use super::*;
+    use crate::testing_utils::positions::test_suite::*;
     use crate::testing_utils::is_localized;
     pub const MAX_WRAP_BEFORE_COLLISION: usize = 28;
 
@@ -1161,4 +1163,5 @@ mod tests {
         assert_eq!(height, 1);
         assert_eq!(bounds.top_left, bounds.bottom_right);
     }
+
 }

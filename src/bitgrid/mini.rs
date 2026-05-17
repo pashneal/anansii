@@ -223,7 +223,7 @@ impl MiniBitGrid {
         grid
     }
 
-    pub fn queen_moves(&self, location: MiniBitGridLocation ) -> MiniGrid {
+    pub fn queen_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
             self.queens[location.board_index] & location.mask != 0, 
             "No queen at the given location"
@@ -240,6 +240,32 @@ impl MiniBitGrid {
 
         self.single_step(location)
     }
+
+    pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.grasshoppers[location.board_index] & location.mask != 0, 
+            "No grasshopper at the given location"
+        );
+
+        let mut grid = [AxialBitboard::empty(); 4];
+
+        for direction in Direction::all() {
+            let mut next_loc = location.apply(direction);
+            let mut has_jumped = false;
+
+            while self.presence(next_loc) {
+                has_jumped = true;
+                next_loc = next_loc.apply(direction);
+            }
+
+            if has_jumped {
+                grid[next_loc.board_index] |= AxialBitboard::from_u64(next_loc.mask) & self.outside[next_loc.board_index];
+            }
+        }
+
+        grid
+    }
+
 
     /// Returns true only if the current grid follows the One Hive rule
     fn is_one_hive(&self) -> bool {

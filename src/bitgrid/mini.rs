@@ -170,9 +170,6 @@ impl MiniBitGrid {
         // whatever the hell is happening with queen moves 
         // to produce both 0 board and not taking gates into 
         // account.
-        //
-        // additionally, we need to consider the gates
-        // so that the queen doesn't think it's free to move anywhere
         debug_assert!(
             self.queens[location.board_index] & location.mask != 0, 
             "No queen at the given location"
@@ -180,17 +177,58 @@ impl MiniBitGrid {
 
         // TODO extremely inefficient for now, but correctness is our first concern
         let mut grid_without_queen = self.clone();
-        grid_without_queen.remove_top(location);
-
+        grid_without_queen.remove_top(location).unwrap();
         let queen = self.queens[location.board_index] & location.mask;
-        let mut neighborhood = queen.neighborhood();
-        let mut grid = Self::neighborhood_to_grid(
-            &mut neighborhood, 
+        let mut grid = [AxialBitboard::empty(); 4];
+
+
+        // must be in contact with one of its original neighbors
+        let mut adjacent = queen.neighborhood();
+        let mut original_neighbors = Self::neighborhood_to_grid(
+            &mut adjacent, 
             location.board_index,
         );
-
         for index in 0..GRID_SIZE {
-            grid[index] &= grid_without_queen.outside[index];
+            original_neighbors[index] &= self.all_pieces[index];
+        }
+
+
+
+        for direction in Direction::all() {
+            let next_loc = location.apply(direction);
+            if grid_without_queen.presence(next_loc) == false {
+                let (left_gate, right_gate) = direction.adjacent();
+                let left = location.apply(left_gate);
+                let right = location.apply(right_gate);
+
+                // TODO(performance): pretty sure this can be a lookup table
+                // must not be gated off
+                if grid_without_queen.presence(left) && grid_without_queen.presence(right) {
+                    continue;
+                }
+
+                // TODO(style): can likely encapsulate bit operations better
+                // TODO(performance): also can just use bit twiddling tricks
+                let new_queen = AxialBitboard::from_u64(next_loc.mask);
+                let mut new_neighborhood = new_queen.neighborhood();
+                let new_neighbors = Self::neighborhood_to_grid(
+                    &mut new_neighborhood, next_loc.board_index
+                );
+                let mut has_contact = false;
+
+
+                for index in 0..GRID_SIZE {
+                    if new_neighbors[index] & original_neighbors[index] != 0 {
+                        has_contact = true;
+                    }
+                }
+
+                if has_contact {
+                    grid[next_loc.board_index] |= new_queen & grid_without_queen.outside[next_loc.board_index];
+                }
+
+                
+            }
         }
 
         grid

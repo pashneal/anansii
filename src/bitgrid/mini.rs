@@ -171,21 +171,16 @@ impl MiniBitGrid {
         // to produce both 0 board and not taking gates into 
         // account.
         //
-        // I think we need to consider outside *AFTER*
-        // we've removed the queen from the grid
-        // otherwise we can break the hive
-        //
         // additionally, we need to consider the gates
         // so that the queen doesn't think it's free to move anywhere
-        //
-        // finally we need to throw a check in our test suite
-        // that moves don't break the hive (quicker to check)
-        // board above silently broke a guarantee (that boards
-        // satisfy the One hive rule)
         debug_assert!(
             self.queens[location.board_index] & location.mask != 0, 
             "No queen at the given location"
         );
+
+        // TODO extremely inefficient for now, but correctness is our first concern
+        let mut grid_without_queen = self.clone();
+        grid_without_queen.remove_top(location);
 
         let queen = self.queens[location.board_index] & location.mask;
         let mut neighborhood = queen.neighborhood();
@@ -195,7 +190,7 @@ impl MiniBitGrid {
         );
 
         for index in 0..GRID_SIZE {
-            grid[index] &= self.outside[index];
+            grid[index] &= grid_without_queen.outside[index];
         }
 
         grid

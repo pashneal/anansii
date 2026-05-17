@@ -206,6 +206,10 @@ impl AxialBitboard {
         AxialBitboard(0)
     }
 
+    pub fn count_ones(&self) -> u32 {
+        self.0.count_ones()
+    }
+
     #[inline(always)]
     pub fn lsb(&self) -> Self {
         let bit = ((self.0 as i64) & -(self.0 as i64)) as u64;

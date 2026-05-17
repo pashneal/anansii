@@ -170,6 +170,18 @@ impl MiniBitGrid {
         // whatever the hell is happening with queen moves 
         // to produce both 0 board and not taking gates into 
         // account.
+        //
+        // I think we need to consider outside *AFTER*
+        // we've removed the queen from the grid
+        // otherwise we can break the hive
+        //
+        // additionally, we need to consider the gates
+        // so that the queen doesn't think it's free to move anywhere
+        //
+        // finally we need to throw a check in our test suite
+        // that moves don't break the hive (quicker to check)
+        // board above silently broke a guarantee (that boards
+        // satisfy the One hive rule)
         debug_assert!(
             self.queens[location.board_index] & location.mask != 0, 
             "No queen at the given location"
@@ -185,11 +197,8 @@ impl MiniBitGrid {
         for index in 0..GRID_SIZE {
             grid[index] &= self.outside[index];
         }
-        grid[location.board_index] &= !location.mask;
 
         grid
-
-
     }
 
     /// Returns true only if the current grid follows the One Hive rule
@@ -225,7 +234,15 @@ impl MiniBitGrid {
             self.find_one_hex().unwrap().into(),
         );
 
-        found_locations.len() == self.pieces().len()
+
+        found_locations.len() == self.count_ones()
+    }
+
+    fn count_ones(&self) -> usize {
+        self.all_pieces
+            .iter()
+            .map(|board| board.count_ones())
+            .sum::<u32>() as usize
     }
 
     /// Deterministically chooses a HexLocation that contains at least one piece
@@ -677,6 +694,11 @@ impl MiniBitGrid {
 
 impl IntoPieces for MiniBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        debug_assert!(
+            self.is_one_hive(), 
+            "Expected grid to satisfy the One Hive rule, otherwise the conversion to HexLocation is not well defined. {:?}",
+            self 
+        );
         // We use the fact that the equivalence of
         // MiniBitGridLocation to HexLocation is closed under adjacency to
         // convert a set of MiniBitGridLocations to an equivalent set of HexLocations
@@ -1060,6 +1082,10 @@ impl TryFrom<HexGrid> for MiniBitGrid {
         if !mini.is_one_hive() {
             return Err("Expected One Hive rule to be observed");
         }
+        assert!(
+            grid.pieces().len() == mini.count_ones(), 
+            "Expected number of stacks in HexGrid and MiniBitGrid to match",
+        );
 
         Ok(mini)
     }

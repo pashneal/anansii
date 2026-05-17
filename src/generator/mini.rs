@@ -76,12 +76,14 @@ impl MoveGenerator<MiniBitGrid> for MiniGenerator {
             piece,
         );
 
-        changes.into_iter().map(|change| {
+
+        let grids : Vec<MiniBitGrid> = changes.into_iter().map(|change| {
             let mut new_grid = self.grid.clone();
             new_grid.apply_change(change);
             new_grid
-        }).collect()
+        }).collect();
 
+        grids
     }
 }
 

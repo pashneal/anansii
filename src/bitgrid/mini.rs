@@ -165,7 +165,7 @@ impl MiniBitGrid {
 
     }
 
-    pub fn single_step(&self, location: MiniBitGridLocation) -> MiniGrid {
+    pub fn single_step(&self, location: MiniBitGridLocation, can_climb: bool) -> MiniGrid {
 
         // TODO extremely inefficient for now, but correctness is our first concern
         let mut grid_without_piece = self.clone();
@@ -184,17 +184,19 @@ impl MiniBitGrid {
         for index in 0..GRID_SIZE {
             original_neighbors[index] &= self.all_pieces[index];
         }
+        let height = self.peek(location).len() as u8;
 
         for direction in Direction::all() {
             let next_loc = location.apply(direction);
-            if grid_without_piece.presence(next_loc) == false {
-                let (left_gate, right_gate) = direction.adjacent();
-                let left = location.apply(left_gate);
-                let right = location.apply(right_gate);
+            if can_climb || grid_without_piece.presence(next_loc) == false {
+                dbg!(next_loc);
 
                 // TODO(performance): pretty sure this can be a lookup table
                 // must not be gated off
-                if grid_without_piece.presence(left) && grid_without_piece.presence(right) {
+                let target_height = self.peek(next_loc).len() as u8;
+                let effective_height = height.max(target_height+1);
+                if grid_without_piece.gated(effective_height, location, direction) {
+                    println!("Gated off: {:?} with height {}", direction, target_height+1);
                     continue;
                 }
 
@@ -205,7 +207,7 @@ impl MiniBitGrid {
                 let new_neighbors = Self::neighborhood_to_grid(
                     &mut new_neighborhood, next_loc.board_index
                 );
-                let mut has_contact = false;
+                let mut has_contact = effective_height > 1;
 
 
                 for index in 0..GRID_SIZE {
@@ -213,13 +215,16 @@ impl MiniBitGrid {
                         has_contact = true;
                     }
                 }
-
+                
                 if has_contact {
-                    grid[next_loc.board_index] |= new_piece & grid_without_piece.outside[next_loc.board_index];
+                    println!("New piece at {:?} with height {}", new_piece, target_height+1);
+                    println!("next loc {}", next_loc);
+                    grid[next_loc.board_index] |= new_piece; 
                 }
             }
         }
 
+        println!("{}", grid[0]);
         grid
     }
 
@@ -229,7 +234,7 @@ impl MiniBitGrid {
             "No queen at the given location"
         );
 
-        self.single_step(location)
+        self.single_step(location, false)
     }
 
     pub fn pillbug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -238,7 +243,7 @@ impl MiniBitGrid {
             "No pillbug at the given location"
         );
 
-        self.single_step(location)
+        self.single_step(location, false)
     }
 
     pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -266,6 +271,36 @@ impl MiniBitGrid {
         grid
     }
 
+    pub fn beetle_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.beetles[location.board_index] & location.mask != 0, 
+            "No beetle at the given location"
+        );
+
+        self.single_step(location, true)
+    }
+
+    pub fn gated(&self, effective_height: u8, location: MiniBitGridLocation, direction: Direction) -> bool {
+        let (left_gate, right_gate) = direction.adjacent();
+        let left = location.apply(left_gate);
+        let right = location.apply(right_gate);
+        
+        let left_height = if self.presence(left) {
+            self.peek(left).len() as u8
+        } else {
+            0
+        };
+
+        let right_height = if self.presence(right) {
+            self.peek(right).len() as u8
+        } else {
+            0
+        };
+
+        let effective_gate = left_height.min(right_height);
+        return effective_height <= effective_gate;
+
+    }
 
     /// Returns true only if the current grid follows the One Hive rule
     fn is_one_hive(&self) -> bool {
@@ -397,6 +432,11 @@ impl MiniBitGrid {
 
     pub fn is_pinned(&self, location: MiniBitGridLocation) -> bool {
         let mut grid = self.all_pieces;
+        let height = self.peek(location).len();
+        // upper level pieces can't be pinned in the traditional sense
+        if height > 1 {
+            return false;
+        }
         grid[location.board_index] &= !location.mask;
         let connected_components = Self::num_connected_components(&grid);
         connected_components > 1

@@ -58,6 +58,58 @@ impl MiniGenerator {
 
 
 impl MoveGenerator<MiniBitGrid> for MiniGenerator {
+
+    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
+        // TODO make this a little bit more parametric
+        let location = location.into();
+        let pinned = self.grid.is_pinned(location);
+        if pinned {
+            return Vec::new();
+        } 
+
+        let piece = self.grid.top(location)
+            .expect("Expected piece at location");
+
+        let changes = MiniBitGrid::decompose(
+            self.grid.grasshopper_moves(location),
+            Some(location),
+            piece,
+        );
+
+        let grids : Vec<MiniBitGrid> = changes.into_iter().map(|change| {
+            let mut new_grid = self.grid.clone();
+            new_grid.apply_change(change);
+            new_grid
+        }).collect();
+
+        grids
+    }
+    
+    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
+        // TODO make this a little bit more parametric
+        let location = location.into();
+        let pinned = self.grid.is_pinned(location);
+        if pinned {
+            return Vec::new();
+        } 
+
+        let piece = self.grid.top(location)
+            .expect("Expected piece at location");
+
+        let changes = MiniBitGrid::decompose(
+            self.grid.pillbug_moves(location),
+            Some(location),
+            piece,
+        );
+
+        let grids : Vec<MiniBitGrid> = changes.into_iter().map(|change| {
+            let mut new_grid = self.grid.clone();
+            new_grid.apply_change(change);
+            new_grid
+        }).collect();
+
+        grids
+    }
     
     fn queen_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
@@ -75,7 +127,6 @@ impl MoveGenerator<MiniBitGrid> for MiniGenerator {
             Some(location),
             piece,
         );
-
 
         let grids : Vec<MiniBitGrid> = changes.into_iter().map(|change| {
             let mut new_grid = self.grid.clone();

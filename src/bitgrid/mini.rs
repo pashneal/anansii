@@ -165,21 +165,18 @@ impl MiniBitGrid {
 
     }
 
-    pub fn queen_moves(&self, location: MiniBitGridLocation ) -> MiniGrid {
-        debug_assert!(
-            self.queens[location.board_index] & location.mask != 0, 
-            "No queen at the given location"
-        );
+    pub fn single_step(&self, location: MiniBitGridLocation) -> MiniGrid {
 
         // TODO extremely inefficient for now, but correctness is our first concern
-        let mut grid_without_queen = self.clone();
-        grid_without_queen.remove_top(location).unwrap();
-        let queen = self.queens[location.board_index] & location.mask;
+        let mut grid_without_piece = self.clone();
+        grid_without_piece.remove_top(location).unwrap();
+        let piece_type = self.piece_type(location);
+        let piece = self.piece_type_copy(piece_type, location.board_index) & location.mask;
         let mut grid = [AxialBitboard::empty(); 4];
 
 
         // must be in contact with one of its original neighbors
-        let mut adjacent = queen.neighborhood();
+        let mut adjacent = piece.neighborhood();
         let mut original_neighbors = Self::neighborhood_to_grid(
             &mut adjacent, 
             location.board_index,
@@ -188,25 +185,23 @@ impl MiniBitGrid {
             original_neighbors[index] &= self.all_pieces[index];
         }
 
-
-
         for direction in Direction::all() {
             let next_loc = location.apply(direction);
-            if grid_without_queen.presence(next_loc) == false {
+            if grid_without_piece.presence(next_loc) == false {
                 let (left_gate, right_gate) = direction.adjacent();
                 let left = location.apply(left_gate);
                 let right = location.apply(right_gate);
 
                 // TODO(performance): pretty sure this can be a lookup table
                 // must not be gated off
-                if grid_without_queen.presence(left) && grid_without_queen.presence(right) {
+                if grid_without_piece.presence(left) && grid_without_piece.presence(right) {
                     continue;
                 }
 
                 // TODO(style): can likely encapsulate bit operations better
                 // TODO(performance): also can just use bit twiddling tricks
-                let new_queen = AxialBitboard::from_u64(next_loc.mask);
-                let mut new_neighborhood = new_queen.neighborhood();
+                let new_piece = AxialBitboard::from_u64(next_loc.mask);
+                let mut new_neighborhood = new_piece.neighborhood();
                 let new_neighbors = Self::neighborhood_to_grid(
                     &mut new_neighborhood, next_loc.board_index
                 );
@@ -220,15 +215,57 @@ impl MiniBitGrid {
                 }
 
                 if has_contact {
-                    grid[next_loc.board_index] |= new_queen & grid_without_queen.outside[next_loc.board_index];
+                    grid[next_loc.board_index] |= new_piece & grid_without_piece.outside[next_loc.board_index];
                 }
-
-                
             }
         }
 
         grid
     }
+
+    pub fn queen_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.queens[location.board_index] & location.mask != 0, 
+            "No queen at the given location"
+        );
+
+        self.single_step(location)
+    }
+
+    pub fn pillbug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.pillbugs[location.board_index] & location.mask != 0, 
+            "No pillbug at the given location"
+        );
+
+        self.single_step(location)
+    }
+
+    pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.grasshoppers[location.board_index] & location.mask != 0, 
+            "No grasshopper at the given location"
+        );
+
+        let mut grid = [AxialBitboard::empty(); 4];
+
+        for direction in Direction::all() {
+            let mut next_loc = location.apply(direction);
+            let mut has_jumped = false;
+
+            while self.presence(next_loc) {
+                has_jumped = true;
+                next_loc = next_loc.apply(direction);
+            }
+
+            if has_jumped {
+                grid[next_loc.board_index] |= AxialBitboard::from_u64(next_loc.mask) & self.outside[next_loc.board_index];
+            }
+        }
+
+        grid
+    }
+
 
     /// Returns true only if the current grid follows the One Hive rule
     fn is_one_hive(&self) -> bool {
@@ -490,6 +527,19 @@ impl MiniBitGrid {
         }
     }
 
+    fn piece_type_copy(&self, piece_type: PieceType, board_index: usize) -> AxialBitboard {
+        use PieceType::*;
+        match piece_type {
+            Queen => self.queens[board_index],
+            Beetle => self.beetles[board_index],
+            Spider => self.spiders[board_index],
+            Grasshopper => self.grasshoppers[board_index],
+            Ant => self.ants[board_index],
+            Pillbug => self.pillbugs[board_index],
+            Ladybug => self.ladybugs[board_index],
+            Mosquito => self.mosquitos[board_index],
+        }
+    }
     fn piece_type_mut(&mut self, piece_type: PieceType, board_index: usize) -> &mut AxialBitboard {
         use PieceType::*;
         match piece_type {

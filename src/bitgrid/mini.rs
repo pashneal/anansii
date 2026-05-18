@@ -273,7 +273,8 @@ impl MiniBitGrid {
 
     pub fn beetle_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.beetles[location.board_index] & location.mask != 0, 
+            matches!(self.top(location), 
+            Some(piece) if piece.piece_type == PieceType::Beetle), 
             "No beetle at the given location"
         );
 

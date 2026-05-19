@@ -55,6 +55,9 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///     0 wraps to 2 and vice versa
 ///     1 wraps to 3 and vice versa
 ///
+/// TODO: it is underspecified whether the various bitboards
+/// should only represent the lower level pieces (as they currently do) 
+/// or if they should represent all pieces at a location (including stacks).
 #[derive(Clone)]
 pub struct MiniBitGrid {
     queens: MiniGrid,
@@ -279,6 +282,57 @@ impl MiniBitGrid {
         );
 
         self.single_step(location, true)
+    }
+
+    pub fn ant_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.ants[location.board_index] & location.mask != 0, 
+            "No ant at the given location"
+        );
+
+        let mut final_grid = [AxialBitboard::empty(); 4];
+        let mut grid_without_ant = self.clone();
+        grid_without_ant.remove_top(location).unwrap();
+
+        fn dfs(
+            grid: &MiniBitGrid,
+            visited: &mut HashSet<MiniBitGridLocation>,
+            loc: MiniBitGridLocation,
+        ) {
+            if visited.contains(&loc) {
+                return;
+            }
+
+            if grid.outside[loc.board_index] & loc.mask == 0 {
+                return;
+            }
+
+            visited.insert(loc);
+
+            for direction in Direction::all() {
+                if grid.gated(1, loc, direction) {
+                    continue;
+                }
+                dfs(grid, visited, loc.apply(direction));
+            }
+        }
+
+        let mut visited = HashSet::new();
+        dfs(&grid_without_ant, &mut visited, location);
+
+        for candidate in visited {
+            // make sure candidate is in the "outside" of the grid without 
+            // the ant, otherwise the ant can't move there
+            if grid_without_ant.outside[candidate.board_index] & candidate.mask != 0 {
+                final_grid[candidate.board_index] |= AxialBitboard::from_u64(candidate.mask);
+            }
+        }
+
+        // make sure final grid doesn't have location
+        final_grid[location.board_index] &= !location.mask;
+
+        final_grid
+
     }
 
     pub fn gated(&self, effective_height: u8, location: MiniBitGridLocation, direction: Direction) -> bool {

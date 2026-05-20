@@ -168,14 +168,15 @@ impl MiniBitGrid {
 
     }
 
-    pub fn single_step(&self, location: MiniBitGridLocation, can_climb: bool) -> MiniGrid {
+    pub fn single_step(&self, location: MiniBitGridLocation, can_climb: bool) -> Vec<MiniBitGridLocation> {
 
         // TODO extremely inefficient for now, but correctness is our first concern
         let mut grid_without_piece = self.clone();
         grid_without_piece.remove_top(location).unwrap();
         let piece_type = self.piece_type(location);
         let piece = self.piece_type_copy(piece_type, location.board_index) & location.mask;
-        let mut grid = [AxialBitboard::empty(); 4];
+
+        let mut final_locations :Vec<MiniBitGridLocation> = Vec::new();
 
 
         // must be in contact with one of its original neighbors
@@ -192,7 +193,6 @@ impl MiniBitGrid {
         for direction in Direction::all() {
             let next_loc = location.apply(direction);
             if can_climb || grid_without_piece.presence(next_loc) == false {
-                dbg!(next_loc);
 
                 // TODO(performance): pretty sure this can be a lookup table
                 // must not be gated off
@@ -220,15 +220,12 @@ impl MiniBitGrid {
                 }
                 
                 if has_contact {
-                    println!("New piece at {:?} with height {}", new_piece, target_height+1);
-                    println!("next loc {}", next_loc);
-                    grid[next_loc.board_index] |= new_piece; 
+                    final_locations.push(next_loc);
                 }
             }
         }
 
-        println!("{}", grid[0]);
-        grid
+        return final_locations;
     }
 
     pub fn queen_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -237,7 +234,13 @@ impl MiniBitGrid {
             "No queen at the given location"
         );
 
-        self.single_step(location, false)
+        let mut grid = [AxialBitboard::empty(); 4];
+        for location in self.single_step(location, false) {
+            grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
+        }
+
+        grid
+
     }
 
     pub fn pillbug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -246,7 +249,12 @@ impl MiniBitGrid {
             "No pillbug at the given location"
         );
 
-        self.single_step(location, false)
+        let mut grid = [AxialBitboard::empty(); 4]; 
+        for location in self.single_step(location, false) {
+            grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
+        }
+
+        grid
     }
 
     pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -281,7 +289,12 @@ impl MiniBitGrid {
             "No beetle at the given location"
         );
 
-        self.single_step(location, true)
+        let mut grid = [AxialBitboard::empty(); 4];
+        for location in self.single_step(location, false) {
+            grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
+        }
+
+        grid
     }
 
     pub fn ant_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
@@ -334,6 +347,111 @@ impl MiniBitGrid {
         final_grid
 
     }
+
+    pub fn ladybug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.ladybugs[location.board_index] & location.mask != 0, 
+            "No ladybug at the given location"
+        );
+
+
+        //TODO: clean up, this code is so ugly + inefficient it's going to make me cry
+        let mut grid = [AxialBitboard::empty(); 4];
+        let grid_without_piece = {
+            let mut grid = self.clone();
+            grid.remove_top(location).unwrap();
+            grid
+        };
+        let climb_ups : Vec<MiniBitGridLocation> = self.single_step(location, true);
+        
+        // filter out any climb ups that are not on the hive
+        let climb_ups: Vec<MiniBitGridLocation> = climb_ups.into_iter().filter(|location| {
+            grid_without_piece.presence(*location)
+        }).collect();
+
+        // for debugging, create a minibitgrid to combine all the climb up locations and print
+        let mut debug = MiniBitGrid::new();
+        for location in climb_ups.clone() {
+            debug.all_pieces[location.board_index] |= AxialBitboard::from_u64(location.mask);
+        }
+        println!("climb ups: {:?}", debug);
+
+        // convert it to the hexgrid so it's easier to read
+        let mut bitgrid = MiniBitGrid::new();
+        for location in climb_ups.clone() {
+            bitgrid.add_top(
+                Piece::new(PieceType::Beetle, PieceColor::White), 
+                location
+            );
+
+        }
+        let hex_grid = HexGrid::from(bitgrid.clone());
+        println!("climb ups hex grid: {}", hex_grid.to_dsl());
+
+
+        let mut stay_on_hive : Vec<MiniBitGridLocation> = Vec::new();
+        for location in climb_ups {
+            let next_loc = self.single_step(location, true);
+            // make sure loc is stil on top of hive
+            for n in next_loc {
+                if grid_without_piece.presence(n) {
+                    stay_on_hive.push(n);
+                }
+            }
+        }
+        
+
+        // for debugging, create a minibitgrid to combine all the stay_on_hive locations and print
+        // it
+        let mut debug = MiniBitGrid::new();
+        for location in stay_on_hive.clone() {
+            debug.all_pieces[location.board_index] |= AxialBitboard::from_u64(location.mask);
+        }
+        println!("stay on hive: {:?}", debug);
+        // convert it to the hexgrid so it's easier to read
+        let mut bitgrid = MiniBitGrid::new();
+        for location in stay_on_hive.clone() {
+            bitgrid.add_top(
+                Piece::new(PieceType::Beetle, PieceColor::White), 
+                location
+            );
+
+        }
+        let hex_grid = HexGrid::from(bitgrid.clone());
+        println!("stay on hive hex grid: {}", hex_grid.to_dsl());
+
+
+
+        let mut climb_down = Vec::new();
+        for location in stay_on_hive.clone() {
+            let next_loc = self.single_step(location, true);
+            for n in next_loc {
+                if !grid_without_piece.presence(n) {
+                    climb_down.push(n);
+                }
+            }
+        }
+
+        for loc in climb_down {
+            grid[loc.board_index] |= AxialBitboard::from_u64(loc.mask);
+        }
+
+        // can't backtrack
+        grid[location.board_index] &= !location.mask;
+
+        println!("stay on hive: {:?}", stay_on_hive);
+        let mut m = MiniBitGrid::new();
+        for i in 0..GRID_SIZE {
+            m.all_pieces[i] = grid[i];
+        }
+        println!("ladybug grid: {:?}", m);
+        // construct the grid for the initial location as well
+        let mut n = MiniBitGrid::new();
+        n.all_pieces[location.board_index] = AxialBitboard::from_u64(location.mask);
+        println!("ladybug grid piece: {:?}", n);
+
+        grid
+    } 
 
     pub fn gated(&self, effective_height: u8, location: MiniBitGridLocation, direction: Direction) -> bool {
         let (left_gate, right_gate) = direction.adjacent();
@@ -868,7 +986,12 @@ impl MiniBitGrid {
 
 impl IntoPieces for MiniBitGrid {
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
-        debug_assert!(
+        // TODO: start working from here - is this true? can't we define the 
+        // conversion from MiniBitGridLocation to HexLocation even if the One Hive rule is not
+        // satisfied?
+        // for example, using the relative locations of some starting arbitrary piece and
+        // preserving relative distances. food for thought
+        debug_assert!( 
             self.is_one_hive(), 
             "Expected grid to satisfy the One Hive rule, otherwise the conversion to HexLocation is not well defined. {:?}",
             self 

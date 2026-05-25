@@ -11,11 +11,11 @@ I've decided to finish projects that I've started, including this one.
   - [x] src/testing_utils/*.rs 
 - [ ] Get mini board Generator tests passing
     - [ ] spider_moves
-    - [ ] grasshopper_moves
-    - [ ] queen_moves
-    - [ ] ant_moves
-    - [ ] beetle_moves
-    - [ ] ladybug_moves
+    - [x] grasshopper_moves
+    - [x] queen_moves
+    - [x] ant_moves
+    - [x] beetle_moves
+    - [x] ladybug_moves
     - [ ] pillbug_moves
     - [ ] mosquito_moves
     - [ ] placement generator

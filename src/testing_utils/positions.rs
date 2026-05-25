@@ -174,7 +174,7 @@ pub const ANT_MOVES: [&str; 2] = [
     ),
 ];
 
-pub const BEETLE_MOVES: [&str; 8] = [
+pub const BEETLE_MOVES: [&str; 9] = [
     concat!(
         ". . . . . . .\n",
         " a . . a a . .\n",
@@ -250,9 +250,33 @@ pub const BEETLE_MOVES: [&str; 8] = [
         "start - [0 0]\n\n",
         "2 - [a B]\n"
     ),
+    concat!(
+        ". . . . . . .\n",
+        " . . 2 2 . . .\n",
+        ". . a a . . .\n",
+        " . . 2 2 . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a B]\n",
+    ),
 ];
 
-pub const LADYBUG_MOVES: [&str; 3] = [
+pub const LADYBUG_MOVES: [&str; 4] = [
+    concat!(
+        ". . . . . . .\n",
+        " . . 2 2 . . .\n",
+        ". . a a L . .\n",
+        " . . 2 2 . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+    ),
     concat!(
         ". . . . . . .\n",
         " . . 2 2 . . .\n",

@@ -533,7 +533,7 @@ pub const MOSQUITO_SWAPS: [&str; 6] = [
         " . . . . . . .\n",
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
-        "2 - [a S]\n",
+        "2 - [a b]\n",
     ),
     concat!(
         ". . . . . . .\n",
@@ -543,7 +543,7 @@ pub const MOSQUITO_SWAPS: [&str; 6] = [
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a M]\n",
-        "2 - [a S]\n",
+        "2 - [a b]\n",
     ),
     concat!(
         ". . . . . . .\n",

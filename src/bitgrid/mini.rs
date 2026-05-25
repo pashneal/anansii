@@ -288,7 +288,8 @@ impl MiniBitGrid {
                 let height = self.peek(*loc).len() as u8;
                 height == 1
             }).filter(|(d, loc)| {
-                !self.gated(2, *loc, *d)
+                const PILLBUG_HEIGHT: u8 = 1;
+                !self.gated(PILLBUG_HEIGHT + 1, *loc, *d)
             }).map(|(_, loc)| loc)
             .filter(|loc| Some(*loc) != immobilized);
 
@@ -298,9 +299,8 @@ impl MiniBitGrid {
             .filter(|(_, loc)| self.presence(*loc) == false)
             .filter(|(d, _)| {
                 // is not gated off
-                let height = self.peek(location).len() as u8;
-                let effective_height = height + 1;
-                !self.gated(effective_height, location, *d)
+                const PILLBUG_HEIGHT: u8 = 1;
+                !self.gated(PILLBUG_HEIGHT + 1, location, *d)
             }).map(|(_, loc)|  loc);
         
         

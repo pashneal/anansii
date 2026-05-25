@@ -257,6 +257,56 @@ impl MiniBitGrid {
         grid
     }
 
+    // TODO: will decide on more optimal return type representation 
+    // later, it's very likely not vectors of locations
+    pub fn pillbug_swaps(&self, location: MiniBitGridLocation, immobilized: Option<MiniBitGridLocation>) -> (Vec<MiniBitGridLocation>, Vec<MiniBitGridLocation>){
+        debug_assert!(
+            matches!(
+                self.top(location), 
+                Some(piece) if piece.piece_type == PieceType::Pillbug ||
+                piece.piece_type == PieceType::Mosquito 
+            ),
+            "No top-level swapper at the given location"
+        );
+
+
+        // TODO: optimization - can likely precalculate into lookup table;
+        if self.peek(location).len() != 1 {
+            // pillbug must be on the ground to swap
+            return (Vec::new(), Vec::new());
+        }
+
+        if immobilized.is_some() && immobilized.unwrap() == location {
+            return (Vec::new(), Vec::new());
+        }
+
+        let candidate_sources = Direction::all()
+            .into_iter()
+            .map(|direction| (direction.opposite(), location.apply(direction)))
+            .filter(|(_, loc)| self.presence(*loc) && !self.is_pinned(*loc))
+            .filter(|(_, loc)| {
+                let height = self.peek(*loc).len() as u8;
+                height == 1
+            }).filter(|(d, loc)| {
+                !self.gated(2, *loc, *d)
+            }).map(|(_, loc)| loc)
+            .filter(|loc| Some(*loc) != immobilized);
+
+        let candidate_sinks = Direction::all()
+            .into_iter()
+            .map(|direction| (direction, location.apply(direction)))
+            .filter(|(_, loc)| self.presence(*loc) == false)
+            .filter(|(d, _)| {
+                // is not gated off
+                let height = self.peek(location).len() as u8;
+                let effective_height = height + 1;
+                !self.gated(effective_height, location, *d)
+            }).map(|(_, loc)|  loc);
+        
+        
+        (candidate_sources.collect(), candidate_sinks.collect())
+    }
+
     pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
             self.grasshoppers[location.board_index] & location.mask != 0, 

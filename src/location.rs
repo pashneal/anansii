@@ -42,6 +42,18 @@ impl Direction {
             W => (SW, NW),
         }
     }
+
+    pub fn opposite(&self) -> Direction {
+        use Direction::*;
+        match self {
+            NW => SE,
+            NE => SW,
+            E => W,
+            SE => NW,
+            SW => NE,
+            W => E,
+        }
+    }
 }
 
 impl HexLocation {

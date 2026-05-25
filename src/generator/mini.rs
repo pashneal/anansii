@@ -216,7 +216,34 @@ impl MoveGenerator<MiniBitGrid> for MiniGenerator {
     }
 }
 
-impl SwapGenerator<MiniBitGrid> for MiniGenerator {}
+impl SwapGenerator<MiniBitGrid> for MiniGenerator {
+    fn pillbug_swaps(&mut self, location: HexLocation, immobilized: Option<HexLocation>) -> Vec<MiniBitGrid> {
+        // TODO make this a little bit more parametric
+        let location = location.into();
+        let (sources, sinks) = self.grid.pillbug_swaps(location, immobilized.map(|loc| loc.into()));
+        //cartesian product
+        itertools::iproduct!(sources, sinks).map(|(source, sink)| {
+            let piece = self.grid.top(source)
+                .expect("Expected piece at source location");
+            let change = Change {
+                added: Diff{
+                    piece,
+                    board_index: sink.board_index,
+                    mask: sink.mask,
+                },
+                removed: Diff{
+                    piece,
+                    board_index: source.board_index,
+                    mask: source.mask,
+                }
+            };
+            let mut new_grid = self.grid.clone();
+            new_grid.apply_change(change);
+            new_grid
+        }).collect()
+        
+    }
+}
 
 #[cfg(test)]
 mod tests {

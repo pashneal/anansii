@@ -174,7 +174,7 @@ pub const ANT_MOVES: [&str; 2] = [
     ),
 ];
 
-pub const BEETLE_MOVES: [&str; 8] = [
+pub const BEETLE_MOVES: [&str; 9] = [
     concat!(
         ". . . . . . .\n",
         " a . . a a . .\n",
@@ -249,6 +249,18 @@ pub const BEETLE_MOVES: [&str; 8] = [
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a B]\n"
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . . 2 2 . . .\n",
+        ". . a a . . .\n",
+        " . . 2 2 . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a b]\n",
+        "2 - [a B]\n",
     ),
 ];
 

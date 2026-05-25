@@ -348,6 +348,63 @@ impl MiniBitGrid {
         grid
     }
 
+    pub fn spider_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            self.spiders[location.board_index] & location.mask != 0, 
+            "No spider at the given location"
+        );
+
+        // TODO: optimize (likely with lookup tables?)
+        let mut final_grid = [AxialBitboard::empty(); 4];
+        let mut grid_without_spider = self.clone();
+        grid_without_spider.remove_top(location).unwrap();
+
+        fn dfs(
+            grid: MiniBitGrid,
+            visited: &mut HashSet<MiniBitGridLocation>,
+            loc: MiniBitGridLocation,
+            num: u8,
+        ) -> Vec<MiniBitGridLocation> {
+
+            let mut found = Vec::new();
+            if visited.contains(&loc) {
+                return found;
+            }
+
+            if num == 0 {
+                found.push(loc);
+                return found;
+            }
+
+            visited.insert(loc);
+
+            for new_loc in grid.single_step(loc, false, 1) {
+                let mut new_grid = grid.clone();
+                let p = new_grid.remove_top(loc).unwrap();
+                new_grid.add_top(p, new_loc);
+                for found_loc in dfs(new_grid, visited, new_loc, num - 1) {
+                    found.push(found_loc);
+                }
+            }
+
+            visited.remove(&loc);
+            found
+
+        }
+
+        let mut visited = HashSet::new();
+        let found = dfs(self.clone(), &mut visited, location, 3);
+
+        for candidate in found {
+            final_grid[candidate.board_index] |= AxialBitboard::from_u64(candidate.mask);
+        }
+
+        // make sure final grid doesn't have location
+        final_grid[location.board_index] &= !location.mask;
+
+        final_grid
+
+    }
     pub fn ant_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
             self.ants[location.board_index] & location.mask != 0, 

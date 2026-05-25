@@ -10,7 +10,7 @@ I've decided to finish projects that I've started, including this one.
   - [x] src/generator/*.rs
   - [x] src/testing_utils/*.rs 
 - [ ] Get mini board Generator tests passing
-    - [ ] spider_moves
+    - [x] spider_moves
     - [x] grasshopper_moves
     - [x] queen_moves
     - [x] ant_moves

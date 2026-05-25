@@ -1,7 +1,7 @@
 # Anansii
 I've decided to finish projects that I've started, including this one.
 
-- [ ] Simplify over engineered code 
+- [x] Simplify over engineered code 
   - [x] src/*.rs
     - [x] better naming
     - [x] better public interface 

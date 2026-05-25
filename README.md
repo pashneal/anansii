@@ -16,10 +16,10 @@ I've decided to finish projects that I've started, including this one.
     - [x] ant_moves
     - [x] beetle_moves
     - [x] ladybug_moves
-    - [ ] pillbug_moves
+    - [x] pillbug_moves
     - [ ] mosquito_moves
     - [ ] placement generator
-    - [ ] swap generator
+    - [x] swap generator
     - [ ] integration test suite
 - [ ] Speed tests for the mini move generator
     - [ ] spider_moves

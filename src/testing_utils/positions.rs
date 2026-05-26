@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, FromHex};
 use crate::piece::*;
 use crate::uhp::GameType;
 
@@ -602,6 +602,93 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
+    fn placement_parity_test<F: FromHex, P: PlacementGenerator, Fa, Fb>(
+        dsls: &[&'static str],
+        funcs: (Fa, Fb),
+    ) -> std::result::Result<(), ()>
+    where
+        Fa: FnMut(&mut P, PieceColor) -> Vec<F>,
+        Fb: FnMut(&mut PositionGeneratorDebugger, PieceColor) -> Vec<HexLocation>,
+    {
+
+        let colors = [White, Black];
+        let hex_grids = dsl_to_hex_grids(dsls);
+        let (mut gen_func, mut ref_func) = funcs;
+
+        for hex_grid in hex_grids.iter() {
+            let mut reference_generator = PositionGeneratorDebugger::from_default(&hex_grid);
+            let mut generator = P::from_default(&hex_grid);
+
+            println!("generating placements from:\n{}\n...", hex_grid.to_dsl());
+
+            for color in colors.iter() {
+                let actual_result = gen_func(&mut generator, *color);
+                let expected_result = ref_func(&mut reference_generator, *color);
+
+                //  TODO: continue working from here - hard problem.
+                //  we wanted a stateless conversion from HexLocation to F
+                //  but I don't know if that's possible given the constraints
+                //  of our board representation. So now I'm thinking of a good
+                //  stateful abstraction.
+                //
+                //  in essence, we have a surjective mapping HexLocation -> F
+                //  but not an injective one. NOTE: we can make it injective
+                //  if we narrow the input space to eliminate wrapping
+                //  concerns. This is good enough for our happy path of testing,
+                //  and minimizes the amount of state (we can designate a constant
+                //  "wrapping" number available to any F, and so we can keep our 
+                //  functions pure). Then we can construct a function that
+                //  reasons about converting Vec<HexLocation> to Vec<F> 
+                //  and generalizes to any board representation that has to contend with 
+                //  wrapping.
+                //  
+                //
+                //  The above preserves the purity/statelessness of the conversion in some sense.
+                //
+                //  Now I'm thinking, do we really care about it not preserving state that much?
+                //  What does it afford us? I suppose it means that our primitives remain
+                //  pure functions, which is nice. And I suppose statelessness gives
+                //  us flexibility to change our board representation without having to change the
+                //  conversion function, which is also nice.
+                //
+                //  On the other hand, this code is *hard* to understand without digesting a few
+                //  too many domain concepts. It might be hard to get collaborators to understand 
+                //  it in the future? Perhaps that's ok. 
+                let expected_result = expected_result
+                    .into_iter()
+                    .map(|x| F::from_hex(x))
+                    .collect::<Vec<_>>();
+
+                for location in expected_result.iter() {
+                    if !actual_result.contains(location) {
+                        println!("----------");
+                        println!("expected location missing: {:?}\n", location);
+                        println!("----------");
+                    }
+                }
+
+                for location in actual_result.iter() {
+                    if !expected_result.contains(location) {
+                        println!("----------");
+                        println!("unexpected location: {:?}\n", location);
+                        println!("----------");
+                    }
+                }
+
+                if !expected_result.iter().all(|x| actual_result.contains(x)) {
+                    return Err(());
+                }
+                if !actual_result.iter().all(|x| expected_result.contains(x)) {
+                    return Err(());
+                }
+            }
+
+            println!("...success\n");
+        }
+
+        Ok(())
+    }
+
     // -dsls must contain exactly one piece match the target
     fn swap_parity_test<I: IntoPieces, S: SwapGenerator<I>, Fa, Fb>(
         target: Piece,
@@ -850,7 +937,12 @@ pub mod test_suite {
         )
     }
 
-    // TODO: placement generator tests
+    pub fn test_placements<I: FromHex, P: PlacementGenerator>() -> Result<(), ()> {
+        placement_parity_test(
+            &PLACEMENTS[..],
+            (P::placements, PositionGeneratorDebugger::placements),
+        )
+    }
     
 
     // TODO: tournament rules integration test suite with generate_positions_for

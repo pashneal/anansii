@@ -469,7 +469,7 @@ pub const PLACEMENTS: [&str; 3] = [
     ),
 ];
 
-pub const MOSQUITO_MOVES: [&str; 5] = [
+pub const MOSQUITO_MOVES: [&str; 6] = [
     concat!(
         ". . . . . . .\n",
         " . . . . . . .\n",
@@ -491,7 +491,7 @@ pub const MOSQUITO_MOVES: [&str; 5] = [
         ". . . . . . .\n",
         " . . q . . . .\n",
         ". a b 2 2 . .\n",
-        " . . . . . . .\n",
+        " . . . l . . .\n",
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a M]\n",
@@ -510,10 +510,18 @@ pub const MOSQUITO_MOVES: [&str; 5] = [
         ". . . . . . .\n",
         " . . . g . . .\n",
         ". a b 2 p . .\n",
-        " . . . . . . .\n",
+        " . . . a . . .\n",
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a M]\n",
+    ),
+    concat!(
+        ". . . . . . .\n",
+        " . l M g . . .\n",
+        ". a b a p . .\n",
+        " . . . . . . .\n",
+        ". . . . . . .\n\n",
+        "start - [0 0]\n\n",
     ),
 ];
 

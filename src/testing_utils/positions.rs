@@ -485,7 +485,7 @@ pub const MOSQUITO_MOVES: [&str; 5] = [
         " . . . . . . .\n",
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
-        "2 - [a S]\n",
+        "2 - [a B]\n",
     ),
     concat!(
         ". . . . . . .\n",
@@ -495,7 +495,7 @@ pub const MOSQUITO_MOVES: [&str; 5] = [
         ". . . . . . .\n\n",
         "start - [0 0]\n\n",
         "2 - [a M]\n",
-        "2 - [a S]\n",
+        "2 - [a B]\n",
     ),
     concat!(
         ". . . . . . .\n",

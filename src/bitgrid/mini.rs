@@ -230,8 +230,12 @@ impl MiniBitGrid {
 
     pub fn queen_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.queens[location.board_index] & location.mask != 0, 
-            "No queen at the given location"
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Queen ||
+                piece.piece_type == PieceType::Mosquito
+            ),
+            "No queen or mosquito at the top of the given location"
         );
 
         let mut grid = [AxialBitboard::empty(); 4];
@@ -245,8 +249,12 @@ impl MiniBitGrid {
 
     pub fn pillbug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.pillbugs[location.board_index] & location.mask != 0, 
-            "No pillbug at the given location"
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Pillbug ||
+                piece.piece_type == PieceType::Mosquito
+            ),
+            "No pillbug or mosquito at the top of the given location"
         );
 
         let mut grid = [AxialBitboard::empty(); 4]; 
@@ -309,8 +317,12 @@ impl MiniBitGrid {
 
     pub fn grasshopper_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.grasshoppers[location.board_index] & location.mask != 0, 
-            "No grasshopper at the given location"
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Grasshopper ||
+                piece.piece_type == PieceType::Mosquito
+            ),
+            "No grasshopper or mosquito at the given location"
         );
 
         let mut grid = [AxialBitboard::empty(); 4];
@@ -334,9 +346,12 @@ impl MiniBitGrid {
 
     pub fn beetle_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            matches!(self.top(location), 
-            Some(piece) if piece.piece_type == PieceType::Beetle), 
-            "No beetle at the given location"
+            matches!(
+                self.top(location), 
+                Some(piece) if piece.piece_type == PieceType::Beetle ||
+                piece.piece_type == PieceType::Mosquito
+            ), 
+            "No beetle or mosquito at the top of the given location"
         );
 
         let mut grid = [AxialBitboard::empty(); 4];
@@ -350,8 +365,12 @@ impl MiniBitGrid {
 
     pub fn spider_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.spiders[location.board_index] & location.mask != 0, 
-            "No spider at the given location"
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Spider ||
+                piece.piece_type == PieceType::Mosquito
+            ),
+            "No spider or mosquito at the top of the given location"
         );
 
         // TODO: optimize (likely with lookup tables?)
@@ -407,8 +426,12 @@ impl MiniBitGrid {
     }
     pub fn ant_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.ants[location.board_index] & location.mask != 0, 
-            "No ant at the given location"
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Ant ||
+                piece.piece_type == PieceType::Mosquito,
+            ),
+            "No ant or mosquito at the top of given location"
         );
 
         let mut final_grid = [AxialBitboard::empty(); 4];
@@ -458,8 +481,12 @@ impl MiniBitGrid {
 
     pub fn ladybug_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
         debug_assert!(
-            self.ladybugs[location.board_index] & location.mask != 0, 
-            "No ladybug at the given location"
+            matches!(
+                self.top(location), 
+                Some(piece) if piece.piece_type == PieceType::Ladybug ||
+                piece.piece_type == PieceType::Mosquito
+            ),
+            "No ladybug or mosquito at the top of given location"
         );
 
 
@@ -529,6 +556,51 @@ impl MiniBitGrid {
 
         grid
     } 
+
+    pub fn mosquito_moves(&self, location: MiniBitGridLocation) -> MiniGrid {
+        debug_assert!(
+            matches!(
+                self.top(location),
+                Some(piece) if piece.piece_type == PieceType::Mosquito
+            ),
+            "No mosquito at top of the given location"
+        );
+        let mut grid = [AxialBitboard::empty(); 4];
+
+        let mut candidate_pieces : Vec<Piece> = Vec::new();
+        for direction in Direction::all() {
+            let next_loc = location.apply(direction);
+            if self.presence(next_loc) {
+                candidate_pieces
+                    .push(
+                        self.top(next_loc).expect("expected piece at presence location")
+                    );
+            }
+        }
+
+        fn piece_moves(piece: Piece, location: MiniBitGridLocation, grid: &MiniBitGrid) -> MiniGrid {
+            let height = grid.peek(location).len() as u8; 
+            match (piece.piece_type, height) {
+                (PieceType::Queen, 1) => grid.queen_moves(location),
+                (PieceType::Beetle, _) => grid.beetle_moves(location),
+                (PieceType::Spider, 1) => grid.spider_moves(location),
+                (PieceType::Grasshopper, 1) => grid.grasshopper_moves(location),
+                (PieceType::Ant, 1) => grid.ant_moves(location),
+                (PieceType::Pillbug, 1) => grid.pillbug_moves(location),
+                (PieceType::Ladybug, 1) => grid.ladybug_moves(location),
+                _ => [AxialBitboard::empty(); 4],
+            }
+        }
+
+        for piece in candidate_pieces {
+            let moves = piece_moves(piece, location, self);
+            for index in 0..GRID_SIZE {
+                grid[index] |= moves[index];
+            }
+        }
+
+        grid
+    }
 
     pub fn gated(&self, effective_height: u8, location: MiniBitGridLocation, direction: Direction) -> bool {
         let (left_gate, right_gate) = direction.adjacent();

@@ -28,6 +28,10 @@ pub enum HexGridError {
     PieceError,
     #[error("Board is illegal, too many pieces on the top of the hive")]
     TooManyPiecesOnHive,
+    #[error("Conversion is impossible, hexes do not fit within the valid bounding box")]
+    BoundingBoxError,
+    #[error("Conversion is impossible, hexes cannot be oriented")]
+    OrientationError,
 }
 
 pub type Result<T> = std::result::Result<T, HexGridError>;
@@ -580,6 +584,107 @@ impl Position for HexGrid {
 
     fn to_hex_grid(&self) -> HexGrid {
         self.clone()
+    }
+}
+
+pub trait FromWrappingHexes : FromHex {
+    // Returns a list of F that correspond to the given hexes, if the hexes can be converted to
+    // F. The list of HexLocations must be able to fit within the bounding box specified by
+    // valid_bounding_box() for the conversion. Returns an error if they cannot fit.
+    // 
+    // Return the same Vec<F> given the same Vec<HexLocation>.
+    fn from_hexes(hexes: &Vec<HexLocation>) -> Result<Vec<Self>> {
+        // hack: convert to a HexGrid first then use the bounding box
+        // TODO: generalize the bounding box to be over Vec<HexLocation> instead of HexGrid
+        let mut grid = HexGrid::new();
+        for hex in hexes {
+            grid.add(Piece::new(PieceType::Beetle, PieceColor::Black), hex.clone());
+        }
+        let bounds = grid.bounding_box().unwrap();
+        let valid_bounding_box = Self::valid_bounding_box();
+
+        if bounds.width() > valid_bounding_box.width() || 
+            bounds.height() > valid_bounding_box.height() {
+            return Err(HexGridError::BoundingBoxError);
+        }
+               
+        Ok(hexes.clone().into_iter().map(Self::from_hex).collect())
+    }
+
+    // Returns a bounding box that all HexLocations must be able to fit within 
+    // to successfully convert to Vec<F>.
+    //
+    // HexLocations are free to translate as a group to fit within the bounding box, but
+    // they must maintain the relative positions of the hexes to each other.
+    fn valid_bounding_box() ->  GridBounds {
+        unimplemented!()
+    }
+}
+
+pub trait IntoWrappingHexes: Shiftable  {
+    // Returns a list of HexLocations that correspond to the given Vec<Self>, if the Vec<Self> can be
+    // converted to HexLocations. 
+    //
+    // This is a bit of a confusing function because of the surjective relationship from 
+    // Self -> HexLocation. Consider the follow set of hexes on a wrapping board
+    //
+    //  . . . . .
+    //   . A . . .
+    //  . . . . .
+    //   . . . B .
+    //
+    // We know conversion from Self -> HexLocation is closed under adjacency. But there are many ways 
+    // for us to define adjacency on a board that wraps unto itself.
+    //
+    // Those two locations could represent the straight forward following topology:
+    //
+    //  . . . . .
+    //   . A . . .
+    //  . . * * .
+    //   . . . B .
+    //
+    // But there are multiple ways that a board which "wraps" around unto itself can satisfy 
+    // the one hive rule, consider the following topology which "wraps" around the left 
+    // and right edges of the board:
+    //
+    //  . . . . .
+    //   * A . . *
+    //  . . . . *
+    //   . . . B .
+    //
+    // Because of this, a Vec<Self> -> Vec<HexLocation> is not well defined. Our solution to 
+    // this is to require an additional parameter - orienting_topology, which is a Vec<Self> that
+    // defines the topology of the hexes in the output. The hexes in orienting_topology must obey
+    // the one hive rule, and the relative positions of the hexes in orienting_topology determine
+    // the relative positions of the hexes in the output.
+    //
+    // The set of hexes formed by orienting_topology union hexes must also satisfy the one hive
+    // rule.
+    fn into_hexes(orienting_topology: Vec<Self>, hexes: Vec<Self>) -> Result<Vec<HexLocation>> {
+
+        let combined = orienting_topology.into_iter().chain(hexes.clone().into_iter());
+        let components = Self::connected_components(combined.collect());
+        if components.len() > 1 {
+            return Err(HexGridError::OrientationError);
+        }
+        if hexes.len() == 0 {
+            return Ok(vec![]);
+        }
+
+        let route = Self::route(hexes[0].clone(), components[0].clone());
+        let mut locations = vec![];
+
+        let mut reference_hex = HexLocation::center();
+        let mut current_hex = hexes[0].clone(); 
+        for direction in route {
+            if !locations.contains(&reference_hex) && hexes.contains(&current_hex) {
+                locations.push(reference_hex.clone());
+            }
+            reference_hex = reference_hex.apply(direction);
+            current_hex = current_hex.apply(direction);
+        }
+
+        Ok(locations)
     }
 }
 

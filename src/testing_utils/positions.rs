@@ -642,7 +642,6 @@ pub mod test_suite {
                 //  and generalizes to any board representation that has to contend with 
                 //  wrapping.
                 //  
-                //
                 //  The above preserves the purity/statelessness of the conversion in some sense.
                 //
                 //  Now I'm thinking, do we really care about it not preserving state that much?

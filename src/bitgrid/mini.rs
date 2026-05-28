@@ -1,6 +1,6 @@
 use super::*;
 use crate::generator::change::{Change, Diff};
-use crate::hex_grid::{HexGrid, HexGridConvertible};
+use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes};
 use crate::location::{Direction, FromHex, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
@@ -1241,6 +1241,17 @@ impl std::fmt::Debug for MiniBitGrid {
         Ok(())
     }
 }
+
+impl FromWrappingHexes for MiniBitGridLocation {
+    fn valid_bounding_box() -> GridBounds {
+        let width: usize = 14;
+        let height: usize = 14;
+        GridBounds {
+            top_left: (0, 0),
+            bottom_right: (height, width),
+        }
+    }
+} 
 
 impl MiniBitGridLocation {
     pub fn from_index(board_index: usize, bitboard_index: usize) -> Self {

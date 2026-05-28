@@ -122,11 +122,16 @@ impl FromHex for HexLocation {
     }
 }
 
-pub trait FromHex: PartialEq + std::fmt::Debug {
+pub trait FromHex: PartialEq + std::fmt::Debug + Sized {
+    // Creates a new location from the given hex location. 
+    //
+    // Guarantees that every HexLocation has at least one
+    // corresponding location of the Self type, and that the same HexLocation 
+    // will always produce the same location of this type.
     fn from_hex(hex: HexLocation) -> Self;
 }
 
-pub trait Shiftable {
+pub trait Shiftable : Sized + std::hash::Hash + Eq + Clone {
     // Deterministically shifts the location west by one hex.
     fn shift_west(&self) -> Self;
     // Deterministically shifts the location east by one hex.
@@ -155,4 +160,80 @@ pub trait Shiftable {
             Direction::W => self.shift_west(),
         }
     }
+
+}
+
+
+pub trait Topology<T: Shiftable> {
+    fn connected_components(shiftables: Vec<T>) -> Vec<Vec<T>>;
+    fn route(start: T, available: Vec<T>) -> Vec<Direction>;
+}
+
+impl <T: Shiftable> Topology<T> for T {
+    fn connected_components(shiftables: Vec<T>) -> Vec<Vec<T>>
+    {
+        let mut components = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+
+        for shiftable in shiftables.clone().into_iter() {
+            if visited.contains(&shiftable) {
+                continue;
+            }
+
+            let mut component = Vec::new();
+            let mut stack = vec![shiftable];
+
+            while let Some(current) = stack.pop() {
+                if visited.contains(&current) {
+                    continue;
+                }
+                visited.insert(current.clone());
+                component.push(current.clone());
+
+                for direction in Direction::all() {
+                    let neighbor = current.apply(direction);
+                    if shiftables.contains(&neighbor) && !visited.contains(&neighbor) {
+                        stack.push(neighbor);
+                    }
+                }
+            }
+
+            components.push(component);
+        }
+
+        components
+    }
+
+    fn route(start: T, available: Vec<T>) -> Vec<Direction> {
+        assert!(
+            available.contains(&start),
+            "Start location must be in the list of available locations."
+        );
+
+        assert!(
+            Self::connected_components(available.clone()).len() == 1,
+            "Num components must be == 1"
+        );
+
+        let mut visited = std::collections::HashSet::new();
+        let mut route = Vec::new();
+
+        fn dfs<T: Shiftable>(current: T, available: &Vec<T>, visited: &mut std::collections::HashSet<T>, route: &mut Vec<Direction>) {
+            visited.insert(current.clone());
+
+            for direction in Direction::all() {
+                let neighbor = current.apply(direction);
+                if available.contains(&neighbor) && !visited.contains(&neighbor) {
+                    route.push(direction);
+                    dfs(neighbor, available, visited, route);
+                    route.push(direction.opposite());
+                }
+            }
+        }
+
+        dfs(start, &available, &mut visited, &mut route);
+
+        route
+    }
+
 }

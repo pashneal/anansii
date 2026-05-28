@@ -169,6 +169,8 @@ pub trait Topology<T: Shiftable> {
     fn route(start: T, available: Vec<T>) -> Vec<Direction>;
 }
 
+// TODO: replace the many many implementations of 
+// Topology across the codebase with this generic implementation.
 impl <T: Shiftable> Topology<T> for T {
     fn connected_components(shiftables: Vec<T>) -> Vec<Vec<T>>
     {

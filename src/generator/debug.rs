@@ -122,6 +122,12 @@ impl FromHexGrid for PositionGeneratorDebugger {
     }
 }
 
+impl IntoPieces for PositionGeneratorDebugger {
+    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+        self.grid.pieces()
+    }
+}
+
 impl PlacementGenerator for PositionGeneratorDebugger {
     fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();

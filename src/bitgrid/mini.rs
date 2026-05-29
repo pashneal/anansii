@@ -1138,6 +1138,23 @@ impl IntoPieces for MiniBitGrid {
         // TODO: start working from here - is this true? can't we define the 
         // conversion from MiniBitGridLocation to HexLocation even if the One Hive rule is not
         // satisfied?
+        // 
+        // No I don't think so. It's annoying but I think I have to rework IntoPieces to 
+        // decouple the converstion to HexLocation (there's already some helper 
+        // traits that can now - given that the board respects the one hive rule -
+        // convert MiniBitGridLocations to HexLocations). So IntoPieces should just be a 
+        // marker trait on top of those helpers
+        //
+        // So functionally the plan is some Trait capturing
+        // fn pieces(&self) -> Vec<(Vec<Piece>, T)> 
+        // and another capturing
+        // fn mapping(orienting board, Vec<T>) -> Vec<(T, HexLocation)>
+        // ^ where this is already implemented for you as long as you define Shiftable 
+        // and the above trait.
+        //
+        // All this because I wanted to go on a side quest to make a bijective mapping from 
+        // HexGrid to MiniBitGrid :D
+        //
         // for example, using the relative locations of some starting arbitrary piece and
         // preserving relative distances. food for thought
         debug_assert!( 

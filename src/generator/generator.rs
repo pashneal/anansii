@@ -78,7 +78,7 @@ pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
     }
 }
 
-pub trait PlacementGenerator: FromHexGrid {
+pub trait PlacementGenerator: FromHexGrid + IntoPieces{
     /// Returns locations that follow the typical placement rules for a given
     /// color. These are all locations which are:
     ///  1) adjacent to some piece on the hive

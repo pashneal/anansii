@@ -592,8 +592,8 @@ pub trait FromWrappingHexes : FromHex {
     // F. The list of HexLocations must be able to fit within the bounding box specified by
     // valid_bounding_box() for the conversion. Returns an error if they cannot fit.
     // 
-    // Return the same Vec<F> given the same Vec<HexLocation>.
-    fn from_hexes(hexes: &Vec<HexLocation>) -> Result<Vec<Self>> {
+    // Returns the same mapping given the same Vec<HexLocation>.
+    fn from_hexes(hexes: &Vec<HexLocation>) -> Result<Vec<(HexLocation, Self)>> {
         // hack: convert to a HexGrid first then use the bounding box
         // TODO: generalize the bounding box to be over Vec<HexLocation> instead of HexGrid
         let mut grid = HexGrid::new();
@@ -608,7 +608,7 @@ pub trait FromWrappingHexes : FromHex {
             return Err(HexGridError::BoundingBoxError);
         }
                
-        Ok(hexes.clone().into_iter().map(Self::from_hex).collect())
+        Ok(hexes.clone().into_iter().map(|hex| (hex, Self::from_hex(hex))).collect())
     }
 
     // Returns a bounding box that all HexLocations must be able to fit within 
@@ -660,7 +660,7 @@ pub trait IntoWrappingHexes: Shiftable  {
     //
     // The set of hexes formed by orienting_topology union hexes must also satisfy the one hive
     // rule.
-    fn into_hexes(orienting_topology: Vec<Self>, hexes: Vec<Self>) -> Result<Vec<HexLocation>> {
+    fn into_hexes(orienting_topology: Vec<Self>, hexes: Vec<Self>) -> Result<Vec<(Self, HexLocation)>> {
 
         let combined = orienting_topology.into_iter().chain(hexes.clone().into_iter());
         let components = Self::connected_components(combined.collect());
@@ -677,8 +677,8 @@ pub trait IntoWrappingHexes: Shiftable  {
         let mut reference_hex = HexLocation::center();
         let mut current_hex = hexes[0].clone(); 
         for direction in route {
-            if !locations.contains(&reference_hex) && hexes.contains(&current_hex) {
-                locations.push(reference_hex.clone());
+            if !locations.contains(&(current_hex.clone(), reference_hex.clone())) && hexes.contains(&current_hex) {
+                locations.push((current_hex.clone(), reference_hex.clone()));
             }
             reference_hex = reference_hex.apply(direction);
             current_hex = current_hex.apply(direction);
@@ -687,6 +687,22 @@ pub trait IntoWrappingHexes: Shiftable  {
         Ok(locations)
     }
 }
+
+pub trait Isomorphic: IntoWrappingHexes {
+    fn is_isomorphic(orienting_topology: Vec<Self>, hexes: Vec<Self>, comparison: Vec<HexLocation>) -> bool  {
+        let hexes = Self::into_hexes(orienting_topology, hexes).expect("Failed to convert to hexes");
+        let hexes = hexes.into_iter().map(|(_, loc)| loc).collect();
+        Distanceable::is_isomorphic(hexes, comparison)
+    }
+}
+
+
+
+
+// You get some nice traits for free if you implement Shiftable, which is the main
+// requirement for being able to convert to a HexLocation
+impl <T: Shiftable> IntoWrappingHexes for T {}
+impl <T: IntoWrappingHexes> Isomorphic for T {}
 
 #[cfg(test)]
 mod tests {

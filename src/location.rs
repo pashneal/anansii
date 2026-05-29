@@ -131,7 +131,7 @@ pub trait FromHex: PartialEq + std::fmt::Debug + Sized {
     fn from_hex(hex: HexLocation) -> Self;
 }
 
-pub trait Shiftable : Sized + std::hash::Hash + Eq + Clone {
+pub trait Shiftable : std::hash::Hash + Eq + Clone + FromHex {
     // Deterministically shifts the location west by one hex.
     fn shift_west(&self) -> Self;
     // Deterministically shifts the location east by one hex.
@@ -163,6 +163,71 @@ pub trait Shiftable : Sized + std::hash::Hash + Eq + Clone {
 
 }
 
+pub trait Distanceable: Shiftable {
+    fn distance(&self, other: &Self) -> (i8, i8); 
+
+    fn distance_func(&self, other: &Self) -> impl Fn(Self) -> Self {
+        move |loc: Self| {
+            let (mut dx, mut dy) = self.distance(&loc);
+            let mut loc = loc;
+            while dx > 0 {
+                loc = loc.shift_east();
+                dx -= 1;
+            }
+            while dx < 0 {
+                loc = loc.shift_west();
+                dx += 1;
+            }
+            while dy > 0 {
+                loc = loc.shift_southeast();
+                dy -= 1;
+            }
+            while dy < 0 {
+                loc = loc.shift_northwest();
+                dy += 1;
+            }
+
+            loc
+        }
+    }
+
+    // Returns true if the two Vec<Self> are isomorphic, meaning that there exists a
+    // bijection between the two sets of locations that preserves relative distances (after
+    // shifting).
+    fn is_isomorphic(shape1: Vec<Self>, shape2: Vec<Self>) -> bool {
+        if shape1.len() != shape2.len() {
+            return false;
+        }
+        if shape1.is_empty() {
+            return true;
+        }
+
+        // we can try a bijection from each element of shape2 to the first element of shape1, and
+        // see if any of them work. We can construct a distance function
+        // that transforms all of needle into haystack and perform set equality
+        // it's slow but it works and we are going for correctness right now
+
+        for candidate in shape2.clone().into_iter() {
+            let distance_func = shape1[0].distance_func(&candidate);
+            let transformed_needle: Vec<Self> = shape1.iter().map(|n| distance_func(n.clone())).collect();
+            if transformed_needle.iter().all(|n| shape2.contains(n)) {
+                return true;
+            }
+        }
+
+
+        false
+    }
+}
+
+
+impl Distanceable for HexLocation {
+    fn distance(&self, other: &Self) -> (i8, i8) {
+        let dx = other.x - self.x;
+        let dy = other.y - self.y;
+        (dx, dy)
+    }
+}
 
 pub trait Topology<T: Shiftable> {
     fn connected_components(shiftables: Vec<T>) -> Vec<Vec<T>>;

@@ -602,7 +602,7 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
-    fn placement_parity_test<F: FromHex, P: PlacementGenerator, Fa, Fb>(
+    fn placement_parity_test<F: Shiftable, P: PlacementGenerator, Fa, Fb>(
         dsls: &[&'static str],
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
@@ -625,61 +625,43 @@ pub mod test_suite {
                 let actual_result = gen_func(&mut generator, *color);
                 let expected_result = ref_func(&mut reference_generator, *color);
 
-                //  TODO: continue working from here - hard problem.
-                //  we wanted a stateless conversion from HexLocation to F
-                //  but I don't know if that's possible given the constraints
-                //  of our board representation. So now I'm thinking of a good
-                //  stateful abstraction.
+                let generator_pieces = generator.pieces()
+                                                .into_iter()
+                                                .map(|(_, location)| location)
+                                                .collect::<Vec<_>>();
+
+
+
+                //  TODO: hard problem. I don't know if I like the solution I came up with.
+                //  We wanted a stateless conversion from HexLocation -> F and from
+                //  F -> HexLocation. A good abstraction over the board representation
+                //  of "wrapping" boards.
                 //
-                //  in essence, we have a surjective mapping HexLocation -> F
-                //  but not an injective one. NOTE: we can make it injective
-                //  if we narrow the input space to eliminate wrapping
-                //  concerns. This is good enough for our happy path of testing,
-                //  and minimizes the amount of state (we can designate a constant
-                //  "wrapping" number available to any F, and so we can keep our 
-                //  functions pure). Then we can construct a function that
-                //  reasons about converting Vec<HexLocation> to Vec<F> 
-                //  and generalizes to any board representation that has to contend with 
-                //  wrapping.
-                //  
-                //  The above preserves the purity/statelessness of the conversion in some sense.
+                //  The crux of the problem is this, due to wrapping, we have a surjective mapping 
+                //  HexLocation -> F but not an injective one. Same for F -> HexLocation. 
                 //
-                //  Now I'm thinking, do we really care about it not preserving state that much?
-                //  What does it afford us? I suppose it means that our primitives remain
-                //  pure functions, which is nice. And I suppose statelessness gives
-                //  us flexibility to change our board representation without having to change the
-                //  conversion function, which is also nice.
+                //  We've made it injective by narrowing the input space to eliminate wrapping 
+                //  in the HexLocation -> F case, and by requiring a one-hive board orienter in the 
+                //  F -> HexLocation case (see `FromWrappingHexes` and `IntoWrappingHexes`).
                 //
-                //  On the other hand, this code is *hard* to understand without digesting a few
+                //  But that means, this code is *hard* to understand without digesting a few
                 //  too many domain concepts. It might be hard to get collaborators to understand 
-                //  it in the future? Perhaps that's ok. 
-                let expected_result = expected_result
-                    .into_iter()
-                    .map(|x| F::from_hex(x))
-                    .collect::<Vec<_>>();
+                //  it in the future? Perhaps that's ok for the flexibility afforded. 
+                //
+                //  The main benefit is that we have an incredibly expressive and flexible 
+                //  test harness, and as much as we can we can create "drop" in test cases
+                //  by just writing out the expected results in the same DSL as the input boards.
+                //
+                //  Our test framework (in part, here) handles the conversion from DSL -> HexGrid -> F and
+                //  from DSL -> HexGrid -> HexLocation, so the test cases themselves can just be in
+                //  terms of the DSL which is much easier to understand.
+                //
+                //  Neal: This may be overcorrecting on my part with my earlier iteration of 
+                //  this bot (where I found myself writing out tests that were hard to understand +
+                //  debug, and board representations that were too tightly coupled and not ready
+                //  for change). But hey, you live, you learn.
 
-                for location in expected_result.iter() {
-                    if !actual_result.contains(location) {
-                        println!("----------");
-                        println!("expected location missing: {:?}\n", location);
-                        println!("----------");
-                    }
-                }
 
-                for location in actual_result.iter() {
-                    if !expected_result.contains(location) {
-                        println!("----------");
-                        println!("unexpected location: {:?}\n", location);
-                        println!("----------");
-                    }
-                }
-
-                if !expected_result.iter().all(|x| actual_result.contains(x)) {
-                    return Err(());
-                }
-                if !actual_result.iter().all(|x| expected_result.contains(x)) {
-                    return Err(());
-                }
             }
 
             println!("...success\n");

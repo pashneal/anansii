@@ -49,7 +49,7 @@ pub fn compare_moves(
 ///
 /// This is useful for checking the minimum safe size of a wrapping board,
 /// as wrapping boards eventually must collide with itself.
-pub fn is_localized<H: Shiftable + FromHex>(
+pub fn is_localized<H: Shiftable + FromHexLocation>(
     start: H,
     reference: HexLocation,
     distance: usize,
@@ -63,7 +63,7 @@ pub fn is_localized<H: Shiftable + FromHex>(
         return false;
     }
 
-    pub fn dfs<H: Shiftable + FromHex>(
+    pub fn dfs<H: Shiftable + FromHexLocation>(
         visited_references: &mut HashSet<HexLocation>,
         dfs_stack: &mut Vec<H>,
         reference: HexLocation,

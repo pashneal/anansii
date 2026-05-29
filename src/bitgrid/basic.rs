@@ -135,9 +135,9 @@ impl BasicBitGrid {
         }
     }
 
-    /// Deterministically chooses a HexLocation that contains to a single piece
+    /// Deterministically chooses a BitGridLocation that contains to a single piece
     /// on the board. Returns none if no piece exists within the bounds of an equivalent HexGrid
-    fn find_one_hex(&self) -> Option<HexLocation> {
+    fn find_one_hex(&self) -> Option<BitGridLocation> {
         let left = -((HEX_GRID_SIZE / 2) as i8);
         let right = (HEX_GRID_SIZE / 2) as i8;
         let top = -((HEX_GRID_SIZE / 2) as i8);
@@ -148,7 +148,7 @@ impl BasicBitGrid {
                 let hex_location = HexLocation::new(row, col);
                 let bit_location: BitGridLocation = hex_location.into();
                 if !self.peek(bit_location).is_empty() {
-                    return Some(hex_location);
+                    return Some(bit_location);
                 }
             }
         }
@@ -467,7 +467,7 @@ impl BitGridLocation {
     }
 }
 
-impl FromHex for BitGridLocation {
+impl FromHexLocation for BitGridLocation {
     fn from_hex(hex: HexLocation) -> Self {
         let center_x = (CENTER_BITBOARD_INDEX % BITBOARD_WIDTH) as i8;
         let center_y = (CENTER_BITBOARD_INDEX / BITBOARD_HEIGHT) as i8;
@@ -529,7 +529,9 @@ impl Shiftable for BitGridLocation {
 }
 
 impl IntoPieces for BasicBitGrid {
-    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+    type Output = BitGridLocation;
+
+    fn pieces(&self) -> Vec<(Vec<Piece>, BitGridLocation)> {
         // We use the fact that the equivalence of
         // BasicBitGridLocation to HexLocation is closed under adjacency to
         // convert a set of BasicBitGridLocations to an equivalent set of HexLocations
@@ -556,15 +558,15 @@ impl IntoPieces for BasicBitGrid {
 
         fn dfs(
             grid: &BasicBitGrid,
-            current_loc: HexLocation,
-            visited: &mut HashSet<HexLocation>,
-            result: &mut Vec<(Vec<Piece>, HexLocation)>,
+            current_loc: BitGridLocation,
+            visited: &mut HashSet<BitGridLocation>,
+            result: &mut Vec<(Vec<Piece>, BitGridLocation)>,
         ) {
             if visited.contains(&current_loc) {
                 return;
             }
 
-            let pieces = grid.peek(current_loc.into());
+            let pieces = grid.peek(current_loc);
 
             if pieces.is_empty() {
                 return;
@@ -586,7 +588,8 @@ impl IntoPieces for BasicBitGrid {
         dfs(self, hex, &mut visited, &mut result);
 
         // First sort by Hexlocation y then by x
-        result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
+        // TODO: figure out sorting for non-orientable boards
+        //result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
 
         result
     }
@@ -594,7 +597,8 @@ impl IntoPieces for BasicBitGrid {
 
 impl PartialEq<HexGrid> for BasicBitGrid {
     fn eq(&self, other: &HexGrid) -> bool {
-        self.pieces() == other.pieces()
+        unimplemented!("need to implement partial eq for hex grid first")
+        //self.pieces() == other.pieces()
     }
 }
 
@@ -645,9 +649,7 @@ impl<I: BasicBitConvertible> From<I> for BasicBitGrid {
     fn from(iter: I) -> Self {
         let mut grid = BasicBitGrid::new();
         for (stack, loc) in iter.pieces() {
-            for piece in stack {
-                grid.add(piece, BitGridLocation::from_hex(loc));
-            }
+            unimplemented!()
         }
         grid
     }
@@ -655,7 +657,8 @@ impl<I: BasicBitConvertible> From<I> for BasicBitGrid {
 
 impl<I: BasicBitConvertible> PartialEq<I> for BasicBitGrid {
     fn eq(&self, other: &I) -> bool {
-        self.pieces() == other.pieces()
+        unimplemented!()
+        //self.pieces() == other.pieces()
     }
 }
 

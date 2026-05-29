@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable, FromHex};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, FromHexLocation};
 use crate::piece::*;
 use crate::uhp::GameType;
 
@@ -602,12 +602,12 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
-    fn placement_parity_test<F: Shiftable, P: PlacementGenerator, Fa, Fb>(
+    fn placement_parity_test<P: PlacementGenerator, Fa, Fb>(
         dsls: &[&'static str],
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut P, PieceColor) -> Vec<F>,
+        Fa: FnMut(&mut P, PieceColor) -> Vec<P::Output>,
         Fb: FnMut(&mut PositionGeneratorDebugger, PieceColor) -> Vec<HexLocation>,
     {
 
@@ -625,10 +625,10 @@ pub mod test_suite {
                 let actual_result = gen_func(&mut generator, *color);
                 let expected_result = ref_func(&mut reference_generator, *color);
 
-                let generator_pieces = generator.pieces()
-                                                .into_iter()
-                                                .map(|(_, location)| location)
-                                                .collect::<Vec<_>>();
+                //let generator_pieces = generator.pieces()
+                                                //.into_iter()
+                                                //.map(|(_, location)| location)
+                                                //.collect::<Vec<_>>();
 
 
 
@@ -671,13 +671,14 @@ pub mod test_suite {
     }
 
     // -dsls must contain exactly one piece match the target
-    fn swap_parity_test<I: IntoPieces, S: SwapGenerator<I>, Fa, Fb>(
+    fn swap_parity_test<S, Fa, Fb>(
         target: Piece,
         dsls: &[&'static str],
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut S, HexLocation, Option<HexLocation>) -> Vec<I>,
+        S: SwapGenerator,
+        Fa: FnMut(&mut S, HexLocation, Option<HexLocation>) -> Vec<S::Position>,
         Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation, Option<HexLocation>) -> Vec<HexGrid>,
     {
         // the methodology for this is just that we need to generate
@@ -782,13 +783,13 @@ pub mod test_suite {
     // just wanted to play around with generics and closures
     // ... well maybe it's not all that bad, look how clean the final interface ends up being!
     // -dsls must contain exactly one piece matching the target
-    fn move_parity_test<I: IntoPieces, M: MoveGenerator<I>, Fa, Fb>(
+    fn move_parity_test<M: MoveGenerator, Fa, Fb>(
         target: Piece,
         dsls: &[&'static str],
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut M, HexLocation) -> Vec<I>,
+        Fa: FnMut(&mut M, HexLocation) -> Vec<M::Position>,
         Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation) -> Vec<HexGrid>,
     {
         let locations = dsl_to_locations(dsls, target);
@@ -838,7 +839,7 @@ pub mod test_suite {
         return Ok(());
     }
 
-    pub fn test_spider_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_spider_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Spider, White),
             &SPIDER_MOVES[..],
@@ -846,7 +847,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_grasshopper_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_grasshopper_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Grasshopper, White),
             &GRASSHOPPER_MOVES[..],
@@ -854,7 +855,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_queen_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_queen_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Queen, White),
             &QUEEN_MOVES[..],
@@ -862,7 +863,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_ant_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_ant_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Ant, White),
             &ANT_MOVES[..],
@@ -870,7 +871,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_beetle_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_beetle_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Beetle, White),
             &BEETLE_MOVES[..],
@@ -878,7 +879,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_ladybug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_ladybug_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Ladybug, White),
             &LADYBUG_MOVES[..],
@@ -886,7 +887,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_pillbug_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_pillbug_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Pillbug, White),
             &PILLBUG_MOVES[..],
@@ -894,7 +895,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_mosquito_moves<I: IntoPieces, M: MoveGenerator<I>>() -> Result<(), ()> {
+    pub fn test_mosquito_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Mosquito, White),
             &MOSQUITO_MOVES[..],
@@ -902,7 +903,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_pillbug_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()> {
+    pub fn test_pillbug_swaps<S: SwapGenerator>() -> Result<(), ()> {
         swap_parity_test(
             Piece::new(Pillbug, White),
             &PILLBUG_SWAPS[..],
@@ -910,7 +911,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_mosquito_swaps<I: IntoPieces, S: SwapGenerator<I>>() -> Result<(), ()>{
+    pub fn test_mosquito_swaps<S: SwapGenerator>() -> Result<(), ()>{
         swap_parity_test(
             Piece::new(Mosquito, White),
             &MOSQUITO_SWAPS[..],
@@ -918,7 +919,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_placements<I: FromHex, P: PlacementGenerator>() -> Result<(), ()> {
+    pub fn test_placements<P: PlacementGenerator>() -> Result<(), ()> {
         placement_parity_test(
             &PLACEMENTS[..],
             (P::placements, PositionGeneratorDebugger::placements),

@@ -533,6 +533,8 @@ impl HexGrid {
 }
 
 impl IntoPieces for HexGrid {
+    type Output = HexLocation;
+
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
         for (&(q, r), stack) in self.fast_grid.iter() {
@@ -567,7 +569,7 @@ pub trait HexGridConvertible: IntoPieces {}
 
 impl<I: HexGridConvertible> From<I> for HexGrid {
     fn from(item: I) -> Self {
-        HexGrid::from_pieces(item.pieces())
+        unimplemented!()
     }
 }
 
@@ -587,7 +589,7 @@ impl Position for HexGrid {
     }
 }
 
-pub trait FromWrappingHexes : FromHex {
+pub trait FromWrappingHexes : FromHexLocation {
     // Returns a list of F that correspond to the given hexes, if the hexes can be converted to
     // F. The list of HexLocations must be able to fit within the bounding box specified by
     // valid_bounding_box() for the conversion. Returns an error if they cannot fit.

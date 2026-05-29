@@ -116,13 +116,13 @@ impl Shiftable for HexLocation {
     }
 }
 
-impl FromHex for HexLocation {
+impl FromHexLocation for HexLocation {
     fn from_hex(hex: HexLocation) -> HexLocation {
         hex
     }
 }
 
-pub trait FromHex: PartialEq + std::fmt::Debug + Sized {
+pub trait FromHexLocation: PartialEq + std::fmt::Debug + Sized {
     // Creates a new location from the given hex location. 
     //
     // Guarantees that every HexLocation has at least one
@@ -131,7 +131,7 @@ pub trait FromHex: PartialEq + std::fmt::Debug + Sized {
     fn from_hex(hex: HexLocation) -> Self;
 }
 
-pub trait Shiftable : std::hash::Hash + Eq + Clone + FromHex {
+pub trait Shiftable : std::hash::Hash + Eq + Clone + FromHexLocation {
     // Deterministically shifts the location west by one hex.
     fn shift_west(&self) -> Self;
     // Deterministically shifts the location east by one hex.

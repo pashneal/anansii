@@ -57,7 +57,8 @@ impl MiniGenerator {
 }
 
 
-impl MoveGenerator<MiniBitGrid> for MiniGenerator {
+impl MoveGenerator for MiniGenerator {
+    type Position = MiniBitGrid;
 
     fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
@@ -268,7 +269,9 @@ impl MoveGenerator<MiniBitGrid> for MiniGenerator {
     }
 }
 
-impl SwapGenerator<MiniBitGrid> for MiniGenerator {
+impl SwapGenerator for MiniGenerator {
+    type Position = MiniBitGrid;
+
     fn pillbug_swaps(&mut self, location: HexLocation, immobilized: Option<HexLocation>) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
@@ -304,61 +307,61 @@ mod tests {
 
     #[test]
     fn test_spider_suite() {
-        let result = test_spider_moves::<_, MiniGenerator>();
+        let result = test_spider_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_ant_suite() {
-        let result = test_ant_moves::<_, MiniGenerator>();
+        let result = test_ant_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_grasshopper_suite() {
-        let result = test_grasshopper_moves::<_, MiniGenerator>();
+        let result = test_grasshopper_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_queen_suite() {
-        let result = test_queen_moves::<_, MiniGenerator>();
+        let result = test_queen_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_beetle_suite() {
-        let result = test_beetle_moves::<_, MiniGenerator>();
+        let result = test_beetle_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_mosquito_suite() {
-        let result = test_mosquito_moves::<_, MiniGenerator>();
+        let result = test_mosquito_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_pillbug_moves_suite() {
-        let result = test_pillbug_moves::<_, MiniGenerator>();
+        let result = test_pillbug_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_ladybug_moves_suite() {
-        let result = test_ladybug_moves::<_, MiniGenerator>();
+        let result = test_ladybug_moves::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_pillbug_swaps_suite() {
-        let result = test_pillbug_swaps::<_, MiniGenerator>();
+        let result = test_pillbug_swaps::<MiniGenerator>();
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_mosquito_swaps_suite() {
-        let result = test_mosquito_swaps::<_, MiniGenerator>();
+        let result = test_mosquito_swaps::<MiniGenerator>();
         assert!(result.is_ok());
     }
 }

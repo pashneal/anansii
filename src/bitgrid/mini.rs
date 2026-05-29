@@ -1,7 +1,7 @@
 use super::*;
 use crate::generator::change::{Change, Diff};
 use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes};
-use crate::location::{Direction, FromHex, HexLocation, Shiftable};
+use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
 use std::fmt::{self, Display};
@@ -670,7 +670,7 @@ impl MiniBitGrid {
 
     /// Deterministically chooses a HexLocation that contains at least one piece
     /// on the board. Returns none if the board is empty
-    fn find_one_hex(&self) -> Option<HexLocation> {
+    fn find_one_hex(&self) -> Option<MiniBitGridLocation> {
         let left = -(BITBOARD_WIDTH as i8);
         let right = BITBOARD_WIDTH as i8;
         let top = -(BITBOARD_HEIGHT as i8);
@@ -681,7 +681,7 @@ impl MiniBitGrid {
                 let hex_location = HexLocation::new(row, col);
                 let bit_location: MiniBitGridLocation = hex_location.into();
                 if self.top(bit_location).is_some() {
-                    return Some(hex_location);
+                    return Some(bit_location);
                 }
             }
         }
@@ -1134,7 +1134,10 @@ impl MiniBitGrid {
 }
 
 impl IntoPieces for MiniBitGrid {
-    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
+    type Output = MiniBitGridLocation;
+
+
+    fn pieces(&self) -> Vec<(Vec<Piece>, MiniBitGridLocation)> {
         // TODO: start working from here - is this true? can't we define the 
         // conversion from MiniBitGridLocation to HexLocation even if the One Hive rule is not
         // satisfied?
@@ -1189,18 +1192,15 @@ impl IntoPieces for MiniBitGrid {
 
         fn dfs(
             grid: &MiniBitGrid,
-            current_loc: HexLocation,
-            visited: &mut HashSet<HexLocation>,
-            result: &mut Vec<(Vec<Piece>, HexLocation)>,
+            current_loc: MiniBitGridLocation,
+            visited: &mut HashSet<MiniBitGridLocation>,
+            result: &mut Vec<(Vec<Piece>, MiniBitGridLocation)>,
         ) {
             if visited.contains(&current_loc) {
                 return;
             }
 
-            // -> Perform step (4)
-            let bit_location: MiniBitGridLocation = current_loc.into();
-
-            let pieces = grid.peek(bit_location);
+            let pieces = grid.peek(current_loc);
             if pieces.is_empty() {
                 return;
             }
@@ -1208,7 +1208,6 @@ impl IntoPieces for MiniBitGrid {
             visited.insert(current_loc);
             result.push((pieces, current_loc));
 
-            // -> Perform step (3)
             for direction in Direction::all() {
                 let next_loc = current_loc.apply(direction);
                 dfs(grid, next_loc, visited, result);
@@ -1224,7 +1223,8 @@ impl IntoPieces for MiniBitGrid {
         dfs(self, hex, &mut visited, &mut result);
 
         // First sort by Hexlocation y then by x
-        result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
+        // TODO: what to do about sorting on non-orientable things 
+        // result.sort_by(|a, b| a.1.y.cmp(&b.1.y).then(a.1.x.cmp(&b.1.x)));
 
         result
     }
@@ -1429,7 +1429,7 @@ impl Shiftable for MiniBitGridLocation {
     }
 }
 
-impl FromHex for MiniBitGridLocation {
+impl FromHexLocation for MiniBitGridLocation {
     fn from_hex(hex: HexLocation) -> MiniBitGridLocation {
         let wrap = |x: i8, y: i8| -> usize {
             let board_x = (x + CENTER_BIT_X).div_euclid(BITBOARD_WIDTH as i8);
@@ -1510,10 +1510,11 @@ impl TryFrom<BasicBitGrid> for MiniBitGrid {
             if stack.len() > 7 {
                 return Err("Cannot convert HexGrid to MiniBitGrid, stack too high");
             }
-            let mini_location: MiniBitGridLocation = location.into();
-            for piece in stack {
-                mini.add_top_unchecked(piece, mini_location);
-            }
+            unimplemented!();
+            //let mini_location: MiniBitGridLocation = location.into();
+            //for piece in stack {
+                //mini.add_top_unchecked(piece, mini_location);
+            //}
         }
 
         // Note: this is a debug assert and NOT a regular assertion because
@@ -1836,7 +1837,8 @@ pub mod tests {
             }
         }
 
-        assert_eq!(basic.pieces(), mini.pieces());
+        unimplemented!("need to make these comparable first");
+        //assert_eq!(basic.pieces(), mini.pieces());
         assert_eq!(basic, mini);
 
         let converted_basic: BasicBitGrid = mini.clone().into();

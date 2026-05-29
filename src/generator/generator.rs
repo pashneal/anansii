@@ -1,4 +1,4 @@
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, FromHexLocation};
 use crate::location::Direction;
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, PIECE_COUNTS};
 use crate::uhp::GameType;
@@ -19,46 +19,48 @@ pub trait FromHexGrid {
     }
 }
 
-pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
+pub trait MoveGenerator: FromHexGrid {
+    type Position: IntoPieces;
+
     /// Returns a list of all possible moves for a spider at a given location
     /// if the spider is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
-    fn spider_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn spider_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a grasshopper at a given location
     /// if the grasshopper is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
-    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn grasshopper_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a queen at a given location
     /// if the queen is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
-    fn queen_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn queen_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for an ant at a given location
     /// if the ant is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
-    fn ant_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn ant_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a beetle at a given location
     /// if the beetle is not covered by any other pieces.
     /// (ignores pillbug swaps)
-    fn beetle_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn beetle_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a ladybug at a given location
     /// if the ladybug is not covered by any other pieces and is on the ground.
     /// (ignores pillbug swaps)
-    fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn ladybug_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
@@ -66,19 +68,20 @@ pub trait MoveGenerator<Position: IntoPieces>: FromHexGrid {
     /// if the pillbug is not covered by any other pieces. Returns an empty 
     /// list if the pillbug is not on the ground.
     /// (ignores pillbug swaps)
-    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn pillbug_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 
     /// Returns a list of all possible moves for a mosquito at a given location
     /// if the mosquito is not covered by any other pieces. 
     /// (ignores pillbug swaps)
-    fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Position> {
+    fn mosquito_moves(&mut self, location: HexLocation) -> Vec<Self::Position> {
         unimplemented!();
     }
 }
 
-pub trait PlacementGenerator: FromHexGrid + IntoPieces{
+pub trait PlacementGenerator: FromHexGrid {
+    type Output: FromHexLocation;
     /// Returns locations that follow the typical placement rules for a given
     /// color. These are all locations which are:
     ///  1) adjacent to some piece on the hive
@@ -87,10 +90,11 @@ pub trait PlacementGenerator: FromHexGrid + IntoPieces{
     ///
     /// If the board has no pieces, placement occurs at the center HexLocation
     /// If the board has one piece, placement only needs follow rule 1
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation>;
+    fn placements(&mut self, placing_color: PieceColor) -> Vec<Self::Output>;
 }
 
-pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
+pub trait SwapGenerator: FromHexGrid {
+    type Position: IntoPieces;
     /// Returns a list of all positions with each possible swap applied to adjacent pieces by
     /// a top-facing pillbug at a given *location*.
     ///
@@ -107,16 +111,16 @@ pub trait SwapGenerator<Position: IntoPieces>: FromHexGrid {
         &mut self,
         pillbug_location: HexLocation,
         immobilized: Option<HexLocation>,
-    ) -> Vec<Position> {
+    ) -> Vec<Self::Position> {
         unimplemented!();
     }
 }
 
-pub trait PositionGenerator<Position: IntoPieces>:
-    MoveGenerator<Position> + PlacementGenerator + SwapGenerator<Position>
+pub trait PositionGenerator<I: IntoPieces>:
+    MoveGenerator<Position = I> + PlacementGenerator<Output = I::Output> + SwapGenerator<Position = I>
 {
     /// Returns the legal positions reachable from the current board state
     /// as if it is the turn of the specified color.
-    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<Position>;
+    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<I>;
 }
 

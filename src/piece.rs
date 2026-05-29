@@ -1,4 +1,4 @@
-use crate::hex_grid::{HexGrid, HexGridError};
+use crate::hex_grid::{HexGrid, HexGridError, FromHexLocation};
 use crate::location::HexLocation;
 use crate::uhp::GameType;
 
@@ -178,18 +178,17 @@ impl std::hash::Hash for Piece {
     }
 }
 
-// Continue working from here - 
-// I need a 
 pub trait IntoPieces {
+    type Output: FromHexLocation;
     /// Returns a list of pieces and their locations in "board order", that
     /// is first by row top to bottom then by column left to right,
     /// and with the stacks of pieces from bottom to top.
     ///
     /// The returned list is required to be deterministic given
     /// the same state of the type.
-    fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)>;
+    fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
 
     fn to_hex_grid(&self) -> HexGrid {
-        HexGrid::from_pieces(self.pieces())
+        unimplemented!()
     }
 }

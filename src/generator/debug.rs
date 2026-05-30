@@ -132,7 +132,7 @@ impl IntoPieces for PositionGeneratorDebugger {
 
 impl PlacementGenerator<HexGrid> for PositionGeneratorDebugger {
 
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation> {
+    fn placements(&self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
 
         if self.grid.num_pieces() == 1 {

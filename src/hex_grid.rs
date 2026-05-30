@@ -664,6 +664,8 @@ pub trait IntoWrappingHexes: IntoPieces  {
     // rule.
     fn into_hex_mapping(&self, hexes: Vec<Self::PieceLocation>) -> Result<Vec<(Self::PieceLocation, HexLocation)>> {
 
+        // TODO: this has to be cleanupable, right? Also be careful about the 
+        // empty edge case
         let combined = self.pieces().into_iter().map(|(_, c)| c).chain(hexes.clone().into_iter());
         let combined = combined.collect::<Vec<_>>();
         let components = Self::PieceLocation::connected_components(combined.clone());
@@ -671,7 +673,10 @@ pub trait IntoWrappingHexes: IntoPieces  {
             println!("Way too many components, cannot perform conversion");
             return Err(HexGridError::OrientationError);
         }
-        if hexes.len() == 0 {
+        println!("Components: {:?}", components);
+        println!("Combined: {:?}", combined);
+        println!("Hexes: {:?}", hexes);
+        if combined.len() == 0 {
             return Ok(vec![]);
         }
 
@@ -680,6 +685,12 @@ pub trait IntoWrappingHexes: IntoPieces  {
 
         let mut reference_hex = HexLocation::center();
         let mut current_hex = combined[0].clone(); 
+
+        
+        if !locations.contains(&(current_hex.clone(), reference_hex.clone())) && hexes.contains(&current_hex) {
+            locations.push((current_hex.clone(), reference_hex.clone()));
+        }
+
         for direction in route {
             if !locations.contains(&(current_hex.clone(), reference_hex.clone())) && hexes.contains(&current_hex) {
                 locations.push((current_hex.clone(), reference_hex.clone()));

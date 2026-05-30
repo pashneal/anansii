@@ -622,8 +622,8 @@ pub mod test_suite {
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut P, PieceColor) -> Vec<I::PieceLocation>,
-        Fb: FnMut(&mut PositionGeneratorDebugger, PieceColor) -> Vec<HexLocation>,
+        Fa: FnMut(&P, PieceColor) -> Vec<I::PieceLocation>,
+        Fb: FnMut(&PositionGeneratorDebugger, PieceColor) -> Vec<HexLocation>,
     {
 
         let colors = [White, Black];
@@ -640,16 +640,19 @@ pub mod test_suite {
                 let actual_locations = gen_func(&mut generator, *color);
                 let expected_locations = ref_func(&mut reference_generator, *color);
 
+                println!("actual locations:\n{:?}\n", actual_locations);
                 let actual_grid = generator.current_grid();
                 let actual_hex_locations = actual_grid.into_hexes(actual_locations).unwrap();
+                println!("actual hex locations:\n{:?}\n", actual_hex_locations);
                 let actual_hex_grid = actual_grid.to_hex_grid();
-
+                
 
                 let actuals = populate_hex_grid_with_hex_locations(
                     &actual_hex_grid, 
                     actual_hex_locations, 
                     Piece::new(WildCard, Black)
                 );
+
                 let expecteds = populate_hex_grid_with_hex_locations(
                     &hex_grid, 
                     expected_locations.clone(), 

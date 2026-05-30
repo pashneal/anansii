@@ -51,7 +51,7 @@ const NEIGHBORHOOD_CENTER_INDEX: i8 = 4;
 ///     .  .  .  .  .  .  .  .
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
-pub struct AxialBitboard(u64);
+pub struct AxialBitboard(pub u64);
 
 pub const BITBOARD_HEIGHT: usize = 8;
 pub const BITBOARD_WIDTH: usize = 8;
@@ -66,6 +66,10 @@ pub struct BitboardCoords {
 impl BitboardCoords {
     pub fn index(&self) -> usize {
         self.y * BITBOARD_WIDTH + self.x
+    }
+
+    pub fn mask(&self) -> u64 {
+        1 << self.index()
     }
 }
 

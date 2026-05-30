@@ -1117,7 +1117,6 @@ impl MiniBitGrid {
 
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
-
         if change.removed.mask != 0 {
             let location = MiniBitGridLocation {
                 board_index: change.removed.board_index,
@@ -1133,6 +1132,63 @@ impl MiniBitGrid {
         };
 
         self.add_top(piece, location);
+    }
+
+    pub fn placements(&self, color: PieceColor) -> Vec<MiniBitGridLocation> {
+        if self.pieces().is_empty() {
+            return vec![MiniBitGridLocation::center()];
+        }
+        let mut placements = Vec::new();
+
+        if self.pieces().len() == 1 {
+            let (stack, location) = self.pieces().first().unwrap().clone();
+            if stack.first().unwrap().color != color {
+                for direction in Direction::all() {
+                    let location = location.apply(direction);
+                    placements.push(location);
+                }
+                return placements;
+            }
+        }
+
+
+        let mut outside = self.outside.clone();
+        let opposite_color = match color {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
+
+        let opposite_pieces = self.pieces()
+            .into_iter()
+            .filter(|(stacks, _)| {
+                let top_piece = stacks.last().unwrap();
+                top_piece.color == opposite_color
+            });
+
+        
+        for (_, loc) in opposite_pieces {
+            for direction in Direction::all() {
+                let location = loc.apply(direction);
+                outside[location.board_index] &= !location.mask;
+            }
+        }
+
+
+        // collect up whatever is remaining in outside
+        // those are the placements
+        for index in 0..GRID_SIZE {
+            let board = outside[index];
+            for bit in board.into_iter() {
+                let mask = bit.mask();
+                let location = MiniBitGridLocation {
+                    board_index: index,
+                    mask,
+                };
+                placements.push(location);
+            }
+        }
+
+        placements
     }
 }
 

@@ -92,7 +92,7 @@ pub trait PlacementGenerator<I: IntoPieces>: FromHexGrid {
     ///
     /// If the board has no pieces, placement occurs at the center HexLocation
     /// If the board has one piece, placement only needs follow rule 1
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<I::PieceLocation>;
+    fn placements(&self, placing_color: PieceColor) -> Vec<I::PieceLocation>;
 
     fn current_grid(&self) -> I;
 }

@@ -302,8 +302,9 @@ impl SwapGenerator for MiniGenerator {
 
 impl PlacementGenerator<MiniBitGrid> for MiniGenerator {
 
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<MiniBitGridLocation> {
-        vec![]
+    fn placements(&self, placing_color: PieceColor) -> Vec<MiniBitGridLocation> {
+        let grid = self.current_grid();
+        grid.placements(placing_color)
     }
 
     fn current_grid(&self) -> MiniBitGrid {

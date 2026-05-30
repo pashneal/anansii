@@ -347,4 +347,20 @@ mod tests {
         assert!(HexLocation::is_isomorphic(shape1.clone(), shape2.clone()));
         assert!(HexLocation::isomorphic_func(&shape1, &shape2).is_some());
     }
+
+    #[test]
+    fn test_unequal_size_not_isomorphic() {
+        let shape1 = vec![HexLocation::new(0, 0), HexLocation::new(1, 0), HexLocation::new(0, 1)];
+        let shape2 = vec![HexLocation::new(2, 2), HexLocation::new(3, 2)];
+        assert!(!HexLocation::is_isomorphic(shape1.clone(), shape2.clone()));
+        assert!(HexLocation::isomorphic_func(&shape1, &shape2).is_none());
+    }
+
+    #[test]
+    fn test_equal_size_not_isomorphic() {
+        let shape1 = vec![HexLocation::new(0, 0), HexLocation::new(1, 0), HexLocation::new(0, 1)];
+        let shape2 = vec![HexLocation::new(2, 2), HexLocation::new(3, 2), HexLocation::new(4, 3)];
+        assert!(!HexLocation::is_isomorphic(shape1.clone(), shape2.clone()));
+        assert!(HexLocation::isomorphic_func(&shape1, &shape2).is_none());
+    }
 }

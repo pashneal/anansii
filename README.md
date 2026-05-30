@@ -17,8 +17,8 @@ I've decided to finish projects that I've started, including this one.
     - [x] beetle_moves
     - [x] ladybug_moves
     - [x] pillbug_moves
-    - [ ] mosquito_moves
-    - [ ] placement generator
+    - [x] mosquito_moves
+    - [x] placement generator
     - [x] swap generator
     - [ ] integration test suite
 - [ ] Speed tests for the mini move generator

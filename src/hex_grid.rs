@@ -665,19 +665,21 @@ pub trait IntoWrappingHexes: IntoPieces  {
     fn into_hex_mapping(&self, hexes: Vec<Self::PieceLocation>) -> Result<Vec<(Self::PieceLocation, HexLocation)>> {
 
         let combined = self.pieces().into_iter().map(|(_, c)| c).chain(hexes.clone().into_iter());
-        let components = Self::PieceLocation::connected_components(combined.collect());
+        let combined = combined.collect::<Vec<_>>();
+        let components = Self::PieceLocation::connected_components(combined.clone());
         if components.len() > 1 {
+            println!("Way too many components, cannot perform conversion");
             return Err(HexGridError::OrientationError);
         }
         if hexes.len() == 0 {
             return Ok(vec![]);
         }
 
-        let route = Self::PieceLocation::route(hexes[0].clone(), components[0].clone());
+        let route = Self::PieceLocation::route(combined[0].clone(), components[0].clone());
         let mut locations = vec![];
 
         let mut reference_hex = HexLocation::center();
-        let mut current_hex = hexes[0].clone(); 
+        let mut current_hex = combined[0].clone(); 
         for direction in route {
             if !locations.contains(&(current_hex.clone(), reference_hex.clone())) && hexes.contains(&current_hex) {
                 locations.push((current_hex.clone(), reference_hex.clone()));

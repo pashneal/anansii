@@ -690,7 +690,7 @@ pub trait IntoWrappingHexes: IntoPieces  {
     }
 
     fn into_hexes(&self, hexes: Vec<Self::Output>) -> Result<Vec<HexLocation>> {
-        let mapping = self.into_hex_mapping(hexes)?;
+        let mapping = self.into_hex_mapping(hexes.clone())?;
         Ok(mapping.into_iter().map(|(_, loc)| loc).collect())
     }
 
@@ -717,12 +717,12 @@ pub trait IntoWrappingHexes: IntoPieces  {
 // TODO: this is some stream of consciousness programming
 // if I've ever seen it, lol. fixup please
 pub trait Isomorphic: IntoWrappingHexes {
-    fn is_isomorphic(&self, hexes: Vec<Self::Output>, comparison: Vec<HexLocation>) -> bool  {
+    fn hexes_isomorphic(&self, hexes: Vec<Self::Output>, comparison: Vec<HexLocation>) -> bool  {
         let hexes = self.into_hexes(hexes).expect("Failed to convert into hexes");
         Distanceable::is_isomorphic(hexes, comparison)
     }
 
-    fn is_equal<F: IntoPieces>(&self, other: &F)-> bool {
+    fn is_equivalent<F: IntoPieces>(&self, other: &F)-> bool {
         // TODO: can be greatly simplified
         let other_pieces = other.pieces();
         let this_pieces = self.pieces();
@@ -736,7 +736,7 @@ pub trait Isomorphic: IntoWrappingHexes {
         let this_hexes = self.into_hexes(locations.clone()).expect("Failed to convert into hexes");
         let other_hexes = other.into_hexes(other_locations.clone()).expect("Failed to convert into hexes");
 
-        if !self.is_isomorphic(locations.clone(), other_hexes.clone()) {
+        if !self.hexes_isomorphic(locations.clone(), other_hexes.clone()) {
             return false;
         }
 
@@ -747,7 +747,6 @@ pub trait Isomorphic: IntoWrappingHexes {
         let map_hex_to_other: HashMap<_, _> = other_to_hex.into_iter().map(|(k, v)| (v, k)).collect();
 
         let isomorphic_func = Distanceable::isomorphic_func(&this_hexes, &other_hexes).expect("Failed to get isomorphic func");
-
 
         fn isomorphic_map <A: Shiftable, B: Shiftable>(
             map_this_to_hex: HashMap<A, HexLocation>, 
@@ -768,11 +767,11 @@ pub trait Isomorphic: IntoWrappingHexes {
         for (output, stack) in this_map.iter() {
             let other_output = match mapper(output.clone()) {
                 Some(other_output) => other_output,
-                None => return false,
+                None => {println!("False because no mapper"); return false}
             };
             let other_stack = match other_map.get(&other_output) {
                 Some(other_stack) => other_stack,
-                None => return false,
+                None => {println!("False because no other_map"); return false} 
             };
             if stack != other_stack {
                 return false;

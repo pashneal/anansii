@@ -1,6 +1,6 @@
 use super::*;
 use crate::generator::change::{Change, Diff};
-use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes};
+use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes, IntoWrappingHexes};
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
 use std::collections::HashSet;
@@ -199,7 +199,6 @@ impl MiniBitGrid {
                 let target_height = self.peek(next_loc).len() as u8;
                 let effective_height = current_height.max(target_height+1);
                 if grid_without_piece.gated(effective_height, location, direction) {
-                    println!("Gated off: {:?} with height {}", direction, target_height+1);
                     continue;
                 }
 
@@ -986,6 +985,7 @@ impl MiniBitGrid {
         let piece_type = self.piece_type(loc);
         pieces.push(Piece::new(piece_type, color));
 
+
         for index in self.stacks.find_all(loc.into()) {
             let entry = self.stacks.get(index);
             let piece_type: PieceType = entry.piece().into();
@@ -1506,16 +1506,15 @@ impl TryFrom<BasicBitGrid> for MiniBitGrid {
         }
 
         let mut mini = MiniBitGrid::new();
-        for (stack, location) in grid.pieces() {
-            if stack.len() > 7 {
-                return Err("Cannot convert HexGrid to MiniBitGrid, stack too high");
-            }
-            unimplemented!();
-            //let mini_location: MiniBitGridLocation = location.into();
-            //for piece in stack {
-                //mini.add_top_unchecked(piece, mini_location);
-            //}
-        }
+        grid.into_hex_pieces(grid.pieces())
+            .unwrap()
+            .into_iter()
+            .for_each(|(stack, location)| {
+                let mini_location: MiniBitGridLocation = location.into();
+                for piece in stack {
+                    mini.add_top_unchecked(piece, mini_location);
+                }
+            });
 
         // Note: this is a debug assert and NOT a regular assertion because
         // implicity, BasicBitGrid should be following the One Hive rule
@@ -1528,6 +1527,10 @@ impl TryFrom<HexGrid> for MiniBitGrid {
     type Error = &'static str;
 
     fn try_from(grid: HexGrid) -> Result<Self, Self::Error> {
+        // TODO: can't this be parametrically implemented now?
+        // TODO: CONTINUE WORKING FROM HERE -  I'm pretty sure each of these 
+        // checks can now be implemented using isomorphism stuff
+        //
         let bounds = grid.bounding_box();
         if bounds.is_none() {
             return Ok(MiniBitGrid::new());
@@ -1554,6 +1557,10 @@ impl TryFrom<HexGrid> for MiniBitGrid {
         // Note: this is checked explicitly because HexGrids do not
         // make any restriction on whether pieces must follow the One
         // Hive rule
+        //
+        // TODO: I don't think this is true
+        // I think we've changed the HexGrid implementation so that it now 
+        // implicitly follows the One Hive rule, so this may be a redundant check.
         if !mini.is_one_hive() {
             return Err("Expected One Hive rule to be observed");
         }
@@ -1569,7 +1576,7 @@ impl TryFrom<HexGrid> for MiniBitGrid {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::hex_grid::HexGrid;
+    use crate::hex_grid::{HexGrid, Isomorphic};
     use crate::testing_utils::is_localized;
 
     #[test]
@@ -1837,15 +1844,22 @@ pub mod tests {
             }
         }
 
-        unimplemented!("need to make these comparable first");
-        //assert_eq!(basic.pieces(), mini.pieces());
-        assert_eq!(basic, mini);
+        assert!(
+            basic.is_equivalent(&mini), 
+            "Expected BasicBitGrid and MiniBitGrid to be equivalent"
+        );
 
         let converted_basic: BasicBitGrid = mini.clone().into();
-        assert_eq!(basic, converted_basic);
+        assert!(
+            basic.is_equivalent(&converted_basic), 
+            "Expected BasicBitGrid and converted BasicBitGrid to be equivalent"
+        );
 
         let converted_hex: HexGrid = mini.into();
-        assert_eq!(hex_grid, converted_hex);
+        assert!(
+            hex_grid.is_equivalent(&converted_hex), 
+            "Expected HexGrid and converted HexGrid to be equivalent"
+        );
     }
 
     #[test]

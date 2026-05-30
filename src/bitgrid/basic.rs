@@ -653,9 +653,14 @@ pub trait BasicBitConvertible: IntoPieces {}
 impl<I: BasicBitConvertible> From<I> for BasicBitGrid {
     fn from(iter: I) -> Self {
         let mut grid = BasicBitGrid::new();
-        for (stack, loc) in iter.pieces() {
-            unimplemented!()
-        }
+        iter.into_hex_pieces(iter.pieces())
+            .unwrap()
+            .into_iter()
+            .for_each(|(stack, location)| {
+                for piece in stack {
+                    grid.add(piece, location.into());
+                }
+            });
         grid
     }
 }
@@ -771,7 +776,7 @@ mod tests {
                 .map(|(p, l)| (p, BitGridLocation::from_hex(l)))
                 .collect::<Vec<_>>()
         );
-        assert_eq!(bit_grid, hex_grid, "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&hex_grid), "These board's pieces should match");
     }
 
     #[test]
@@ -803,7 +808,7 @@ mod tests {
                 .map(|(p, l)| (p, BitGridLocation::from_hex(l)))
                 .collect::<Vec<_>>()
         );
-        assert!(bit_grid == hex_grid, "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&hex_grid), "These board's pieces should match");
     }
 
     #[test]
@@ -825,7 +830,7 @@ mod tests {
             }
         }
 
-        assert!(bit_grid == hex_grid, "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&hex_grid), "These board's pieces should match");
 
         let hex_grid = HexGrid::from_dsl(concat!(
             " . a . . . .\n",
@@ -855,7 +860,7 @@ mod tests {
                 .map(|(p, l)| (p, BitGridLocation::from_hex(l)))
                 .collect::<Vec<_>>()
         );
-        assert!(bit_grid == hex_grid, "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&hex_grid), "These board's pieces should match");
     }
 
     #[test]
@@ -884,9 +889,9 @@ mod tests {
         let test: HexGrid = bit_grid.clone().try_into().unwrap();
         println!("{}", test.to_dsl());
         println!("{}", hex_grid.to_dsl());
-        assert!(test == hex_grid, "These board's pieces should match");
-        assert!(bit_grid == test, "These board's pieces should match");
-        assert!(bit_grid == hex_grid, "These board's pieces should match");
+        assert!(test.is_equivalent(&hex_grid), "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&test), "These board's pieces should match");
+        assert!(bit_grid.is_equivalent(&hex_grid), "These board's pieces should match");
 
         for (stack, loc) in hex_grid.pieces() {
             for &piece in stack.iter().rev() {
@@ -917,7 +922,9 @@ mod tests {
         let bit_grid: BasicBitGrid = hex_grid.clone().into();
         let result: HexGrid = bit_grid.try_into().unwrap();
 
-        assert_eq!(result, hex_grid, "These board's pieces should match");
+        println!("{}", hex_grid.to_dsl());
+        println!("{}", result.to_dsl());
+        assert!(result.is_equivalent(&hex_grid), "These board's pieces should match");
     }
 
     #[test]

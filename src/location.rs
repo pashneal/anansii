@@ -167,8 +167,9 @@ pub trait Distanceable: Shiftable {
     fn distance(&self, other: &Self) -> (i8, i8); 
 
     fn distance_func(&self, other: Self) -> impl Fn(Self) -> Self {
+        let (dx, dy) = self.distance(&other);
         move |loc: Self| {
-            let (mut dx, mut dy) = self.distance(&loc);
+            let (mut dx, mut dy) = (dx, dy);
             let mut loc = loc;
             while dx > 0 {
                 loc = loc.shift_east();
@@ -208,7 +209,7 @@ pub trait Distanceable: Shiftable {
         // it's slow but it works and we are going for correctness right now
 
         for candidate in shape2.clone().into_iter() {
-            let distance_func = shape1[0].distance_func(candidate);
+            let distance_func = shape1[0].distance_func(candidate.clone());
             let transformed_shape: Vec<Self> = shape1.iter().map(|n| distance_func(n.clone())).collect();
             if transformed_shape.iter().all(|n| shape2.contains(n)) {
                 return true;
@@ -222,7 +223,7 @@ pub trait Distanceable: Shiftable {
     // returns an isomorphic_func for the lifetime of the two shapes,
     // meaning that it transforms shape1 into shape2 and preserves relative
     // distances (after shifting).
-    fn isomorphic_func<'a>(shape1: &'a Vec<Self>, shape2: &'a Vec<Self>) -> Option<impl Fn(Self) -> Self + 'a> {
+    fn isomorphic_func(shape1: & Vec<Self>, shape2: & Vec<Self>) -> Option<impl Fn(Self) -> Self> {
         if shape1.len() != shape2.len() {
             return None;
         }
@@ -326,4 +327,24 @@ impl <T: Shiftable> Topology<T> for T {
         route
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_distance() {
+        let loc1 = HexLocation::new(0, 0);
+        let loc2 = HexLocation::new(1, -1);
+        assert_eq!(loc1.distance(&loc2), (1, -1));
+    }
+
+    #[test]
+    fn test_is_isomorphic() {
+        let shape1 = vec![HexLocation::new(0, 0), HexLocation::new(1, 0), HexLocation::new(0, 1)];
+        let shape2 = vec![HexLocation::new(2, 2), HexLocation::new(3, 2), HexLocation::new(2, 3)];
+        assert!(HexLocation::is_isomorphic(shape1.clone(), shape2.clone()));
+        assert!(HexLocation::isomorphic_func(&shape1, &shape2).is_some());
+    }
 }

@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes, Isomorphic};
 use crate::piece::*;
 use crate::uhp::GameType;
 
@@ -750,26 +750,34 @@ pub mod test_suite {
                 .map(|x| x.to_hex_grid())
                 .collect::<Vec<_>>();
 
+            let mut successful = true;
+
             for position in expected_result.iter() {
-                if !actual_result.contains(&position) {
+                let matches_one_reference = actual_result.iter().any(|actual_position| {
+                    actual_position.is_equivalent(position)
+                });
+                if !matches_one_reference {
                     println!("----------");
                     println!("expected position missing:\n{}\n", position.to_dsl());
                     println!("----------");
+                    successful = false;
                 }
+
             }
 
             for position in actual_result.iter() {
-                if !expected_result.contains(&position) {
+                let matches_no_references = expected_result.iter().all(|expected_position| {
+                    !expected_position.is_equivalent(position)
+                });
+                if matches_no_references {
                     println!("----------");
-                    println!("unexpected position:\n{}\n", position.to_dsl());
+                    println!("unexpected position found:\n{}\n", position.to_dsl());
                     println!("----------");
+                    successful = false;
                 }
             }
 
-            if !expected_result.iter().all(|x| actual_result.contains(x)) {
-                return Err(());
-            }
-            if !actual_result.iter().all(|x| expected_result.contains(x)) {
+            if !successful {
                 return Err(());
             }
 
@@ -811,26 +819,34 @@ pub mod test_suite {
                 .map(|x| x.to_hex_grid())
                 .collect::<Vec<_>>();
 
+            let mut successful = true;
+
             for position in expected_result.iter() {
-                if !actual_result.contains(&position) {
+                let matches_one_reference = actual_result.iter().any(|actual_position| {
+                    actual_position.is_equivalent(position)
+                });
+                if !matches_one_reference {
                     println!("----------");
                     println!("expected position missing:\n{}\n", position.to_dsl());
                     println!("----------");
+                    successful = false;
                 }
+
             }
 
             for position in actual_result.iter() {
-                if !expected_result.contains(&position) {
+                let matches_no_references = expected_result.iter().all(|expected_position| {
+                    !expected_position.is_equivalent(position)
+                });
+                if matches_no_references {
                     println!("----------");
                     println!("unexpected position found:\n{}\n", position.to_dsl());
                     println!("----------");
+                    successful = false;
                 }
             }
 
-            if !expected_result.iter().all(|x| actual_result.contains(x)) {
-                return Err(());
-            }
-            if !actual_result.iter().all(|x| expected_result.contains(x)) {
+            if !successful {
                 return Err(());
             }
 

@@ -80,9 +80,11 @@ pub trait MoveGenerator: FromHexGrid {
     }
 }
 
-pub trait PlacementGenerator: FromHexGrid {
-    type Output: FromHexLocation;
-    /// Returns locations that follow the typical placement rules for a given
+pub trait PlacementGenerator<I: IntoPieces>: FromHexGrid {
+
+
+
+    /// Returns positions that follow the typical placement rules for a given
     /// color. These are all locations which are:
     ///  1) adjacent to some piece on the hive
     ///  2) not adjacent to a piece of the opposite color
@@ -90,7 +92,9 @@ pub trait PlacementGenerator: FromHexGrid {
     ///
     /// If the board has no pieces, placement occurs at the center HexLocation
     /// If the board has one piece, placement only needs follow rule 1
-    fn placements(&mut self, placing_color: PieceColor) -> Vec<Self::Output>;
+    fn placements(&mut self, placing_color: PieceColor) -> Vec<I::PieceLocation>;
+
+    fn current_grid(&self) -> I;
 }
 
 pub trait SwapGenerator: FromHexGrid {
@@ -117,7 +121,7 @@ pub trait SwapGenerator: FromHexGrid {
 }
 
 pub trait PositionGenerator<I: IntoPieces>:
-    MoveGenerator<Position = I> + PlacementGenerator<Output = I::Output> + SwapGenerator<Position = I>
+    MoveGenerator<Position = I> + PlacementGenerator<I> + SwapGenerator<Position = I>
 {
     /// Returns the legal positions reachable from the current board state
     /// as if it is the turn of the specified color.

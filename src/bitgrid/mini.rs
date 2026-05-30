@@ -899,6 +899,7 @@ impl MiniBitGrid {
             Pillbug => self.pillbugs[board_index],
             Ladybug => self.ladybugs[board_index],
             Mosquito => self.mosquitos[board_index],
+            WildCard => todo!(),
         }
     }
     fn piece_type_mut(&mut self, piece_type: PieceType, board_index: usize) -> &mut AxialBitboard {
@@ -912,6 +913,7 @@ impl MiniBitGrid {
             Pillbug => &mut self.pillbugs[board_index],
             Ladybug => &mut self.ladybugs[board_index],
             Mosquito => &mut self.mosquitos[board_index],
+            WildCard => todo!(),
         }
     }
 
@@ -1057,6 +1059,7 @@ impl MiniBitGrid {
                 Pillbug => self.pillbugs[board_index] |= piece_bit,
                 Ladybug => self.ladybugs[board_index] |= piece_bit,
                 Mosquito => self.mosquitos[board_index] |= piece_bit,
+                PieceType::WildCard => todo!(),
             }
         }
 
@@ -1134,7 +1137,7 @@ impl MiniBitGrid {
 }
 
 impl IntoPieces for MiniBitGrid {
-    type Output = MiniBitGridLocation;
+    type PieceLocation = MiniBitGridLocation;
 
 
     fn pieces(&self) -> Vec<(Vec<Piece>, MiniBitGridLocation)> {
@@ -1527,10 +1530,6 @@ impl TryFrom<HexGrid> for MiniBitGrid {
     type Error = &'static str;
 
     fn try_from(grid: HexGrid) -> Result<Self, Self::Error> {
-        // TODO: can't this be parametrically implemented now?
-        // TODO: CONTINUE WORKING FROM HERE -  I'm pretty sure each of these 
-        // checks can now be implemented using isomorphism stuff
-        //
         let bounds = grid.bounding_box();
         if bounds.is_none() {
             return Ok(MiniBitGrid::new());

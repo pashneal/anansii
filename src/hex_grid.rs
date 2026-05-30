@@ -533,7 +533,7 @@ impl HexGrid {
 }
 
 impl IntoPieces for HexGrid {
-    type Output = HexLocation;
+    type PieceLocation = HexLocation;
 
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         let mut pieces = vec![];
@@ -662,10 +662,10 @@ pub trait IntoWrappingHexes: IntoPieces  {
     //
     // The set of hexes formed by self.pieces union hexes must also satisfy the one hive
     // rule.
-    fn into_hex_mapping(&self, hexes: Vec<Self::Output>) -> Result<Vec<(Self::Output, HexLocation)>> {
+    fn into_hex_mapping(&self, hexes: Vec<Self::PieceLocation>) -> Result<Vec<(Self::PieceLocation, HexLocation)>> {
 
         let combined = self.pieces().into_iter().map(|(_, c)| c).chain(hexes.clone().into_iter());
-        let components = Self::Output::connected_components(combined.collect());
+        let components = Self::PieceLocation::connected_components(combined.collect());
         if components.len() > 1 {
             return Err(HexGridError::OrientationError);
         }
@@ -673,7 +673,7 @@ pub trait IntoWrappingHexes: IntoPieces  {
             return Ok(vec![]);
         }
 
-        let route = Self::Output::route(hexes[0].clone(), components[0].clone());
+        let route = Self::PieceLocation::route(hexes[0].clone(), components[0].clone());
         let mut locations = vec![];
 
         let mut reference_hex = HexLocation::center();
@@ -689,14 +689,14 @@ pub trait IntoWrappingHexes: IntoPieces  {
         Ok(locations)
     }
 
-    fn into_hexes(&self, hexes: Vec<Self::Output>) -> Result<Vec<HexLocation>> {
+    fn into_hexes(&self, hexes: Vec<Self::PieceLocation>) -> Result<Vec<HexLocation>> {
         let mapping = self.into_hex_mapping(hexes.clone())?;
         Ok(mapping.into_iter().map(|(_, loc)| loc).collect())
     }
 
     // TODO: it's feeling like ordered hash map would be a more convenient data structure here
     // see IndexMap
-    fn into_hex_pieces(&self, hexes: Vec<(Vec<Piece>, Self::Output)>) -> Result<Vec<(Vec<Piece>, HexLocation)>> {
+    fn into_hex_pieces(&self, hexes: Vec<(Vec<Piece>, Self::PieceLocation)>) -> Result<Vec<(Vec<Piece>, HexLocation)>> {
         let mapping = self.into_hex_mapping(hexes.iter().map(|(_, output)| output.clone()).collect())?;
         let corrected_mapping = mapping.into_iter().map(|(output, loc)| {
             let piece_stack = hexes.iter().find(|(_, o)| o == &output).unwrap().0.clone();
@@ -716,8 +716,36 @@ pub trait IntoWrappingHexes: IntoPieces  {
 
 // TODO: this is some stream of consciousness programming
 // if I've ever seen it, lol. fixup please
+//  TODO: hard problem. I don't know if I like the solution I came up with.
+//  We wanted a stateless conversion from HexLocation -> F and from
+//  F -> HexLocation. A good abstraction over the board representation
+//  of "wrapping" boards.
+//
+//  The crux of the problem is this, due to wrapping, we have a surjective mapping 
+//  HexLocation -> F but not an injective one. Same for F -> HexLocation. 
+//
+//  We've made it injective by narrowing the input space to eliminate wrapping 
+//  in the HexLocation -> F case, and by requiring a one-hive board orienter in the 
+//  F -> HexLocation case (see `FromWrappingHexes` and `IntoWrappingHexes`).
+//
+//  But that means, this code is *hard* to understand without digesting a few
+//  too many domain concepts. It might be hard to get collaborators to understand 
+//  it in the future? Perhaps that's ok for the flexibility afforded. 
+//
+//  The main benefit is that we have an incredibly expressive and flexible 
+//  test harness, and as much as we can we can create "drop" in test cases
+//  by just writing out the expected results in the same DSL as the input boards.
+//
+//  Our test framework (in part, here) handles the conversion from DSL -> HexGrid -> F and
+//  from DSL -> HexGrid -> HexLocation, so the test cases themselves can just be in
+//  terms of the DSL which is much easier to understand.
+//
+//  Neal: This may be overcorrecting on my part with my earlier iteration of 
+//  this bot (where I found myself writing out tests that were hard to understand +
+//  debug, and board representations that were too tightly coupled and not ready
+//  for change). But hey, you live, you learn.
 pub trait Isomorphic: IntoWrappingHexes {
-    fn hexes_isomorphic(&self, hexes: Vec<Self::Output>, comparison: Vec<HexLocation>) -> bool  {
+    fn hexes_isomorphic(&self, hexes: Vec<Self::PieceLocation>, comparison: Vec<HexLocation>) -> bool  {
         let hexes = self.into_hexes(hexes).expect("Failed to convert into hexes");
         Distanceable::is_isomorphic(hexes, comparison)
     }

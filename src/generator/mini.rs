@@ -300,6 +300,17 @@ impl SwapGenerator for MiniGenerator {
     }
 }
 
+impl PlacementGenerator<MiniBitGrid> for MiniGenerator {
+
+    fn placements(&mut self, placing_color: PieceColor) -> Vec<MiniBitGridLocation> {
+        vec![]
+    }
+
+    fn current_grid(&self) -> MiniBitGrid {
+        self.grid.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,6 +373,12 @@ mod tests {
     #[test]
     fn test_mosquito_swaps_suite() {
         let result = test_mosquito_swaps::<MiniGenerator>();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_placements_suite() {
+        let result = test_placements::<_, MiniGenerator>();
         assert!(result.is_ok());
     }
 }

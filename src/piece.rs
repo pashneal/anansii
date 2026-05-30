@@ -25,6 +25,7 @@ pub enum PieceType {
     Pillbug,
     Ladybug,
     Mosquito,
+    WildCard,
 }
 
 impl PieceType {
@@ -39,6 +40,7 @@ impl PieceType {
             Pillbug => "P",
             Ladybug => "L",
             Mosquito => "M",
+            WildCard => "*",
         }
     }
 
@@ -179,14 +181,12 @@ impl std::hash::Hash for Piece {
 }
 
 pub trait IntoPieces {
-    type Output: Shiftable;
+    type PieceLocation: Shiftable;
     /// Returns a list of pieces and their locations in "board order", that
     /// is first by row top to bottom then by column left to right,
     /// and with the stacks of pieces from bottom to top.
     ///
     /// The returned list is required to be deterministic given
     /// the same state of the type.
-    fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
-
-
+    fn pieces(&self) -> Vec<(Vec<Piece>, Self::PieceLocation)>;
 }

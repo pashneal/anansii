@@ -243,6 +243,7 @@ impl BasicBitGrid {
             PieceType::Pillbug => &mut self.pillbugs,
             PieceType::Ladybug => &mut self.ladybugs,
             PieceType::Mosquito => &mut self.mosquitos,
+            PieceType::WildCard => todo!(),
         }
     }
 
@@ -256,6 +257,7 @@ impl BasicBitGrid {
             PieceType::Pillbug => &self.pillbugs,
             PieceType::Ladybug => &self.ladybugs,
             PieceType::Mosquito => &self.mosquitos,
+            PieceType::WildCard => todo!(),
         }
     }
 
@@ -534,7 +536,7 @@ impl Shiftable for BitGridLocation {
 }
 
 impl IntoPieces for BasicBitGrid {
-    type Output = BitGridLocation;
+    type PieceLocation = BitGridLocation;
 
     fn pieces(&self) -> Vec<(Vec<Piece>, BitGridLocation)> {
         // We use the fact that the equivalence of

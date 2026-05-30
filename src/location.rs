@@ -167,6 +167,7 @@ pub trait Distanceable: Shiftable {
     fn distance(&self, other: &Self) -> (i8, i8); 
 
     fn distance_func(&self, other: Self) -> impl Fn(Self) -> Self {
+        // TODO: can just do add?
         let (dx, dy) = self.distance(&other);
         move |loc: Self| {
             let (mut dx, mut dy) = (dx, dy);

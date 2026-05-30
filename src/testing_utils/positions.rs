@@ -602,12 +602,27 @@ pub mod test_suite {
             .collect::<Vec<_>>()
     }
 
-    fn placement_parity_test<P: PlacementGenerator, Fa, Fb>(
+    fn populate_hex_grid_with_hex_locations(
+        hex_grid: &HexGrid,
+        locations: Vec<HexLocation>,
+        piece: Piece,
+    ) -> Vec<HexGrid> {
+        let mut hex_grids = Vec::new();
+        for location in locations {
+            let mut new_hex_grid = hex_grid.clone();
+            new_hex_grid.add(piece, location);
+            hex_grids.push(new_hex_grid);
+        }
+        hex_grids
+    }
+
+
+    fn placement_parity_test<I: IntoPieces, P: PlacementGenerator<I>, Fa, Fb>(
         dsls: &[&'static str],
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut P, PieceColor) -> Vec<P::Output>,
+        Fa: FnMut(&mut P, PieceColor) -> Vec<I::PieceLocation>,
         Fb: FnMut(&mut PositionGeneratorDebugger, PieceColor) -> Vec<HexLocation>,
     {
 
@@ -622,44 +637,55 @@ pub mod test_suite {
             println!("generating placements from:\n{}\n...", hex_grid.to_dsl());
 
             for color in colors.iter() {
-                let actual_result = gen_func(&mut generator, *color);
-                let expected_result = ref_func(&mut reference_generator, *color);
+                let actual_locations = gen_func(&mut generator, *color);
+                let expected_locations = ref_func(&mut reference_generator, *color);
 
-                //let generator_pieces = generator.pieces()
-                                                //.into_iter()
-                                                //.map(|(_, location)| location)
-                                                //.collect::<Vec<_>>();
-
+                let actual_grid = generator.current_grid();
+                let actual_hex_locations = actual_grid.into_hexes(actual_locations).unwrap();
+                let actual_hex_grid = actual_grid.to_hex_grid();
 
 
-                //  TODO: hard problem. I don't know if I like the solution I came up with.
-                //  We wanted a stateless conversion from HexLocation -> F and from
-                //  F -> HexLocation. A good abstraction over the board representation
-                //  of "wrapping" boards.
-                //
-                //  The crux of the problem is this, due to wrapping, we have a surjective mapping 
-                //  HexLocation -> F but not an injective one. Same for F -> HexLocation. 
-                //
-                //  We've made it injective by narrowing the input space to eliminate wrapping 
-                //  in the HexLocation -> F case, and by requiring a one-hive board orienter in the 
-                //  F -> HexLocation case (see `FromWrappingHexes` and `IntoWrappingHexes`).
-                //
-                //  But that means, this code is *hard* to understand without digesting a few
-                //  too many domain concepts. It might be hard to get collaborators to understand 
-                //  it in the future? Perhaps that's ok for the flexibility afforded. 
-                //
-                //  The main benefit is that we have an incredibly expressive and flexible 
-                //  test harness, and as much as we can we can create "drop" in test cases
-                //  by just writing out the expected results in the same DSL as the input boards.
-                //
-                //  Our test framework (in part, here) handles the conversion from DSL -> HexGrid -> F and
-                //  from DSL -> HexGrid -> HexLocation, so the test cases themselves can just be in
-                //  terms of the DSL which is much easier to understand.
-                //
-                //  Neal: This may be overcorrecting on my part with my earlier iteration of 
-                //  this bot (where I found myself writing out tests that were hard to understand +
-                //  debug, and board representations that were too tightly coupled and not ready
-                //  for change). But hey, you live, you learn.
+                let actuals = populate_hex_grid_with_hex_locations(
+                    &actual_hex_grid, 
+                    actual_hex_locations, 
+                    Piece::new(WildCard, Black)
+                );
+                let expecteds = populate_hex_grid_with_hex_locations(
+                    &hex_grid, 
+                    expected_locations.clone(), 
+                    Piece::new(WildCard, Black)
+                );
+
+
+                let mut successful = true;
+                for expected in expecteds.iter() {
+                    let matches_one_reference = actuals.iter().any(|actual| {
+                        actual.is_equivalent(expected)
+                    });
+                    if !matches_one_reference {
+                        println!("----------");
+                        println!("expected position missing:\n{}\n", expected.to_dsl());
+                        println!("----------");
+                        successful = false;
+                    }
+                }
+
+                for actual in actuals.iter() {
+                    let matches_no_references = expecteds.iter().all(|expected| {
+                        !expected.is_equivalent(actual)
+                    });
+                    if matches_no_references {
+                        println!("----------");
+                        println!("unexpected position found:\n{}\n", actual.to_dsl());
+                        println!("----------");
+                        successful = false;
+                    }
+                }
+
+                if !successful {
+                    return Err(());
+                }
+
 
 
             }
@@ -935,7 +961,7 @@ pub mod test_suite {
         )
     }
 
-    pub fn test_placements<P: PlacementGenerator>() -> Result<(), ()> {
+    pub fn test_placements<I : IntoPieces, P: PlacementGenerator<I>>() -> Result<(), ()> {
         placement_parity_test(
             &PLACEMENTS[..],
             (P::placements, PositionGeneratorDebugger::placements),

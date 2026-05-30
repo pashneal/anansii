@@ -123,15 +123,14 @@ impl FromHexGrid for PositionGeneratorDebugger {
 }
 
 impl IntoPieces for PositionGeneratorDebugger {
-    type Output = HexLocation;
+    type PieceLocation = HexLocation;
 
     fn pieces(&self) -> Vec<(Vec<Piece>, HexLocation)> {
         self.grid.pieces()
     }
 }
 
-impl PlacementGenerator for PositionGeneratorDebugger {
-    type Output = HexLocation;
+impl PlacementGenerator<HexGrid> for PositionGeneratorDebugger {
 
     fn placements(&mut self, placing_color: PieceColor) -> Vec<HexLocation> {
         let mut placements = self.outside.clone();
@@ -158,6 +157,10 @@ impl PlacementGenerator for PositionGeneratorDebugger {
         }
 
         placements.into_iter().collect()
+    }
+
+    fn current_grid(&self) -> HexGrid {
+        self.grid.clone()
     }
 }
 
@@ -474,6 +477,7 @@ impl MoveGenerator for PositionGeneratorDebugger {
                 Pillbug => {
                     grids.extend(self.pillbug_moves(location).into_iter());
                 }
+                WildCard => {}
             }
         }
 
@@ -619,6 +623,7 @@ impl PositionGenerator<HexGrid> for PositionGeneratorDebugger {
                 PieceType::Ladybug => self.ladybug_moves(location),
                 PieceType::Mosquito => self.mosquito_moves(location),
                 PieceType::Pillbug => self.pillbug_moves(location),
+                PieceType::WildCard => todo!()
             };
 
             let neighbors = self.grid.get_neighbors(location);

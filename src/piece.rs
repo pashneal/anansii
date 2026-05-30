@@ -1,4 +1,4 @@
-use crate::hex_grid::{HexGrid, HexGridError, FromHexLocation};
+use crate::hex_grid::{HexGrid, HexGridError, Shiftable};
 use crate::location::HexLocation;
 use crate::uhp::GameType;
 
@@ -179,7 +179,7 @@ impl std::hash::Hash for Piece {
 }
 
 pub trait IntoPieces {
-    type Output: FromHexLocation;
+    type Output: Shiftable;
     /// Returns a list of pieces and their locations in "board order", that
     /// is first by row top to bottom then by column left to right,
     /// and with the stacks of pieces from bottom to top.
@@ -188,7 +188,5 @@ pub trait IntoPieces {
     /// the same state of the type.
     fn pieces(&self) -> Vec<(Vec<Piece>, Self::Output)>;
 
-    fn to_hex_grid(&self) -> HexGrid {
-        unimplemented!()
-    }
+
 }

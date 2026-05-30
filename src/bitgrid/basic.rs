@@ -12,36 +12,9 @@ const GRID_WIDTH: usize = 7;
 const GRID_HEIGHT: usize = 7;
 const GRID_SIZE: usize = GRID_WIDTH * GRID_HEIGHT;
 
-/// Represents positions of Hive with Pillbug Mosquito and Ladybug
-/// that follow the One Hive rules (see Hive Rules for more information)
-/// and has no greater than 6 pieces with height > 1
-///
-/// Only beetles and mosquitos can be at height > 1 in this representation
-/// as opposed to HexGrid which is more relaxed in its constraints.
-/// As a result, all BasicBitGrids can be converted to HexGrids.
-///
-/// See the documentation of the bit grid's AxialBitboard to
-/// understand how the grid is represented at the bit level
-///
-/// Zooming out, the grid is represented instead as
-/// a 7x7 grid of AxialBitboards
-///
-/// The grid indices are laid out in the conventional x-y axis follows:
-/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps
-/// compare it to HexGridLocation instead
-///
-/// ```
-///    48 47 46 45 44 43 42
-///    41 40 39 38 37 36 35
-///    34 33 32 31 30 29 28
-///    27 26 25 24 23 22 21
-///    20 19 18 17 16 15 14
-///    13 12 11 10 09 08 07
-///    06 05 04 03 02 01 00
-/// ```
-///
-/// The center is assigned to board index 24 at the bitboard index 28
 pub type Grid = [AxialBitboard; GRID_SIZE];
+
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridBounds {
     pub top_left: BitGridLocation,
@@ -95,6 +68,38 @@ impl GridBounds {
         height as usize
     }
 }
+
+/// Represents positions of Hive with Pillbug Mosquito and Ladybug
+/// that follow the One Hive rules (see Hive Rules for more information)
+/// and has no greater than 6 pieces with height > 1
+///
+/// Only beetles and mosquitos can be at height > 1 in this representation
+/// as opposed to HexGrid which is more relaxed in its constraints.
+/// As a result, all BasicBitGrids can be converted to HexGrids.
+///
+/// See the documentation of the bit grid's AxialBitboard to
+/// understand how the grid is represented at the bit level
+///
+/// Zooming out, the grid is represented instead as
+/// a 7x7 grid of AxialBitboards
+///
+/// The grid indices are laid out in the conventional x-y axis follows:
+/// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps
+/// compare it to HexGridLocation instead
+///
+/// TODO: should we enforce the one-hive rule precondition? 
+///
+/// ```
+///    48 47 46 45 44 43 42
+///    41 40 39 38 37 36 35
+///    34 33 32 31 30 29 28
+///    27 26 25 24 23 22 21
+///    20 19 18 17 16 15 14
+///    13 12 11 10 09 08 07
+///    06 05 04 03 02 01 00
+/// ```
+///
+/// The center is assigned to board index 24 at the bitboard index 28
 #[derive(Debug, Clone)]
 pub struct BasicBitGrid {
     pub queens: Grid,

@@ -122,7 +122,7 @@ impl FromHexLocation for HexLocation {
     }
 }
 
-pub trait FromHexLocation: PartialEq + std::fmt::Debug + Sized {
+pub trait FromHexLocation: PartialEq + std::fmt::Debug + Sized + Clone {
     // Creates a new location from the given hex location. 
     //
     // Guarantees that every HexLocation has at least one
@@ -166,7 +166,7 @@ pub trait Shiftable : std::hash::Hash + Eq + Clone + FromHexLocation {
 pub trait Distanceable: Shiftable {
     fn distance(&self, other: &Self) -> (i8, i8); 
 
-    fn distance_func(&self, other: &Self) -> impl Fn(Self) -> Self {
+    fn distance_func(&self, other: Self) -> impl Fn(Self) -> Self {
         move |loc: Self| {
             let (mut dx, mut dy) = self.distance(&loc);
             let mut loc = loc;
@@ -208,9 +208,9 @@ pub trait Distanceable: Shiftable {
         // it's slow but it works and we are going for correctness right now
 
         for candidate in shape2.clone().into_iter() {
-            let distance_func = shape1[0].distance_func(&candidate);
-            let transformed_needle: Vec<Self> = shape1.iter().map(|n| distance_func(n.clone())).collect();
-            if transformed_needle.iter().all(|n| shape2.contains(n)) {
+            let distance_func = shape1[0].distance_func(candidate);
+            let transformed_shape: Vec<Self> = shape1.iter().map(|n| distance_func(n.clone())).collect();
+            if transformed_shape.iter().all(|n| shape2.contains(n)) {
                 return true;
             }
         }
@@ -218,6 +218,29 @@ pub trait Distanceable: Shiftable {
 
         false
     }
+
+    // returns an isomorphic_func for the lifetime of the two shapes,
+    // meaning that it transforms shape1 into shape2 and preserves relative
+    // distances (after shifting).
+    fn isomorphic_func<'a>(shape1: &'a Vec<Self>, shape2: &'a Vec<Self>) -> Option<impl Fn(Self) -> Self + 'a> {
+        if shape1.len() != shape2.len() {
+            return None;
+        }
+        if shape1.is_empty() {
+            return None;
+        }
+
+        for candidate in shape2.clone().into_iter() {
+            let distance_func = shape1[0].distance_func(candidate);
+            let transformed_shape: Vec<Self> = shape1.iter().map(|n| distance_func(n.clone())).collect();
+            if transformed_shape.iter().all(|n| shape2.contains(n)) {
+                return Some(distance_func);
+            }
+        }
+
+        None
+    }
+
 }
 
 

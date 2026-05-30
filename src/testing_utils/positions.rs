@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable, FromHexLocation};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes};
 use crate::piece::*;
 use crate::uhp::GameType;
 

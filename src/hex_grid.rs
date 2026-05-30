@@ -569,7 +569,7 @@ pub trait HexGridConvertible: IntoPieces {}
 
 impl<I: HexGridConvertible> From<I> for HexGrid {
     fn from(item: I) -> Self {
-        unimplemented!()
+        item.to_hex_grid()
     }
 }
 
@@ -623,7 +623,7 @@ pub trait FromWrappingHexes : FromHexLocation {
     }
 }
 
-pub trait IntoWrappingHexes: Shiftable  {
+pub trait IntoWrappingHexes: IntoPieces  {
     // Returns a list of HexLocations that correspond to the given Vec<Self>, if the Vec<Self> can be
     // converted to HexLocations. 
     //
@@ -655,17 +655,17 @@ pub trait IntoWrappingHexes: Shiftable  {
     //   . . . B .
     //
     // Because of this, a Vec<Self> -> Vec<HexLocation> is not well defined. Our solution to 
-    // this is to require an additional parameter - orienting_topology, which is a Vec<Self> that
+    // this is to require an additional parameter - self, which can produce a Vec<Self> that
     // defines the topology of the hexes in the output. The hexes in orienting_topology must obey
     // the one hive rule, and the relative positions of the hexes in orienting_topology determine
     // the relative positions of the hexes in the output.
     //
-    // The set of hexes formed by orienting_topology union hexes must also satisfy the one hive
+    // The set of hexes formed by self.pieces union hexes must also satisfy the one hive
     // rule.
-    fn into_hexes(orienting_topology: Vec<Self>, hexes: Vec<Self>) -> Result<Vec<(Self, HexLocation)>> {
+    fn into_hex_mapping(&self, hexes: Vec<Self::Output>) -> Result<Vec<(Self::Output, HexLocation)>> {
 
-        let combined = orienting_topology.into_iter().chain(hexes.clone().into_iter());
-        let components = Self::connected_components(combined.collect());
+        let combined = self.pieces().into_iter().map(|(_, c)| c).chain(hexes.clone().into_iter());
+        let components = Self::Output::connected_components(combined.collect());
         if components.len() > 1 {
             return Err(HexGridError::OrientationError);
         }
@@ -673,7 +673,7 @@ pub trait IntoWrappingHexes: Shiftable  {
             return Ok(vec![]);
         }
 
-        let route = Self::route(hexes[0].clone(), components[0].clone());
+        let route = Self::Output::route(hexes[0].clone(), components[0].clone());
         let mut locations = vec![];
 
         let mut reference_hex = HexLocation::center();
@@ -688,22 +688,104 @@ pub trait IntoWrappingHexes: Shiftable  {
 
         Ok(locations)
     }
-}
 
-pub trait Isomorphic: IntoWrappingHexes {
-    fn is_isomorphic(orienting_topology: Vec<Self>, hexes: Vec<Self>, comparison: Vec<HexLocation>) -> bool  {
-        let hexes = Self::into_hexes(orienting_topology, hexes).expect("Failed to convert to hexes");
-        let hexes = hexes.into_iter().map(|(_, loc)| loc).collect();
-        Distanceable::is_isomorphic(hexes, comparison)
+    fn into_hexes(&self, hexes: Vec<Self::Output>) -> Result<Vec<HexLocation>> {
+        let mapping = self.into_hex_mapping(hexes)?;
+        Ok(mapping.into_iter().map(|(_, loc)| loc).collect())
+    }
+
+    // TODO: it's feeling like ordered hash map would be a more convenient data structure here
+    // see IndexMap
+    fn into_hex_pieces(&self, hexes: Vec<(Vec<Piece>, Self::Output)>) -> Result<Vec<(Vec<Piece>, HexLocation)>> {
+        let mapping = self.into_hex_mapping(hexes.iter().map(|(_, output)| output.clone()).collect())?;
+        let corrected_mapping = mapping.into_iter().map(|(output, loc)| {
+            let piece_stack = hexes.iter().find(|(_, o)| o == &output).unwrap().0.clone();
+            (piece_stack, loc)
+        }).collect();
+
+        Ok(corrected_mapping)
+    }
+
+
+    fn to_hex_grid(&self) -> HexGrid {
+        let pieces = self.pieces();
+        let hexes = self.into_hex_pieces(pieces).expect("Failed to convert into hex pieces");
+        HexGrid::from_pieces(hexes)
     }
 }
 
+// TODO: this is some stream of consciousness programming
+// if I've ever seen it, lol. fixup please
+pub trait Isomorphic: IntoWrappingHexes {
+    fn is_isomorphic(&self, hexes: Vec<Self::Output>, comparison: Vec<HexLocation>) -> bool  {
+        let hexes = self.into_hexes(hexes).expect("Failed to convert into hexes");
+        Distanceable::is_isomorphic(hexes, comparison)
+    }
+
+    fn is_equal<F: IntoPieces>(&self, other: &F)-> bool {
+        // TODO: can be greatly simplified
+        let other_pieces = other.pieces();
+        let this_pieces = self.pieces();
+
+        let (stacks, locations): (Vec<_>, Vec<_>) = this_pieces.into_iter().unzip();
+        let (other_stacks, other_locations): (Vec<_>, Vec<_>) = other_pieces.into_iter().unzip();
+
+        let this_map: HashMap<_, Vec<Piece>> = locations.clone().into_iter().zip(stacks).collect();
+        let other_map: HashMap<_, Vec<Piece>> = other_locations.clone().into_iter().zip(other_stacks).collect();
+
+        let this_hexes = self.into_hexes(locations.clone()).expect("Failed to convert into hexes");
+        let other_hexes = other.into_hexes(other_locations.clone()).expect("Failed to convert into hexes");
+
+        if !self.is_isomorphic(locations.clone(), other_hexes.clone()) {
+            return false;
+        }
+
+        let this_to_hex = self.into_hex_mapping(locations.clone()).expect("Failed to convert into hex mapping");
+        let other_to_hex = other.into_hex_mapping(other_locations.clone()).expect("Failed to convert into hex mapping");
+
+        let map_this_to_hex: HashMap<_, _> = this_to_hex.into_iter().collect();
+        let map_hex_to_other: HashMap<_, _> = other_to_hex.into_iter().map(|(k, v)| (v, k)).collect();
+
+        let isomorphic_func = Distanceable::isomorphic_func(&this_hexes, &other_hexes).expect("Failed to get isomorphic func");
 
 
+        fn isomorphic_map <A: Shiftable, B: Shiftable>(
+            map_this_to_hex: HashMap<A, HexLocation>, 
+            map_hex_to_other: HashMap<HexLocation, B>,
+            isomorphic_func: impl Fn(HexLocation) -> HexLocation
+        ) -> impl Fn(A) -> Option<B>{
+            move |output: A| {
+                let hex = map_this_to_hex.get(&output)?;
+                let isomorphic_hex = isomorphic_func(hex.clone());
+                let other_output = map_hex_to_other.get(&isomorphic_hex)?;
+                Some(other_output.clone())
+            }
+        }
+
+        // use the isomorphic map to check that the pieces also match up
+        let mapper = isomorphic_map(map_this_to_hex, map_hex_to_other, isomorphic_func);
+
+        for (output, stack) in this_map.iter() {
+            let other_output = match mapper(output.clone()) {
+                Some(other_output) => other_output,
+                None => return false,
+            };
+            let other_stack = match other_map.get(&other_output) {
+                Some(other_stack) => other_stack,
+                None => return false,
+            };
+            if stack != other_stack {
+                return false;
+            }
+        }
+
+        true
+    } 
+}
 
 // You get some nice traits for free if you implement Shiftable, which is the main
 // requirement for being able to convert to a HexLocation
-impl <T: Shiftable> IntoWrappingHexes for T {}
+impl <T: IntoPieces> IntoWrappingHexes for T {}
 impl <T: IntoWrappingHexes> Isomorphic for T {}
 
 #[cfg(test)]

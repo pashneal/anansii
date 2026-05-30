@@ -1,6 +1,6 @@
 # Anansii
 I've decided to finish projects that I've started, including this one.
-
+- [ ] Spend some time cleaning up TODOS
 - [x] Simplify over engineered code 
   - [x] src/*.rs
     - [x] better naming

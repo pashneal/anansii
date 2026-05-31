@@ -640,10 +640,8 @@ pub mod test_suite {
                 let actual_locations = gen_func(&mut generator, *color);
                 let expected_locations = ref_func(&mut reference_generator, *color);
 
-                println!("actual locations:\n{:?}\n", actual_locations);
                 let actual_grid = generator.current_grid();
                 let actual_hex_locations = actual_grid.into_hexes(actual_locations).unwrap();
-                println!("actual hex locations:\n{:?}\n", actual_hex_locations);
                 let actual_hex_grid = actual_grid.to_hex_grid();
                 
 

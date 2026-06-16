@@ -4,6 +4,8 @@ use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes, Isomor
 use crate::piece::*;
 use crate::uhp::GameType;
 
+use std::collections::HashSet;
+
 const SPIDER_MOVES: [&'static str; 8] = [
     concat!(
         " . . . . . . .\n",
@@ -882,6 +884,82 @@ pub mod test_suite {
         return Ok(());
     }
 
+    fn perft_parity<I: IntoPieces, P: PositionGenerator<I>, Fa, Fb>(
+        dsls: &[&'static str],
+        funcs: (Fa, Fb),
+        depth: usize,
+    ) -> std::result::Result<(), ()>
+    where
+        Fa: FnMut(&mut P, PieceColor) -> HashSet<I>,
+        Fb: FnMut(&mut PositionGeneratorDebugger, PieceColor) -> HashSet<HexGrid>,
+    {
+        let hex_grids = dsl_to_hex_grids(dsls);
+        let (mut gen_func, mut ref_func) = funcs;
+
+        for hex_grid in hex_grids.iter() {
+            let mut generating_positions = vec![hex_grid.clone()];
+            for depth in 0..=depth {
+                let mut new_generating_positions = Vec::new();
+
+                for grid in generating_positions.iter() {
+                    let mut reference_generator = PositionGeneratorDebugger::from_default(&grid);
+                    let mut generator = P::from_default(&grid);
+
+
+                    println!("generating positions from:\n{}\n...", grid.to_dsl());
+                    println!("perft depth: {}\n", depth);
+
+                    let color = if depth % 2 == 0 { White } else { Black };
+                    let actual_positions = gen_func(&mut generator, color);
+                    let expected_positions = ref_func(&mut reference_generator, color);
+
+                    let actual_positions = actual_positions
+                        .into_iter()
+                        .map(|x| x.to_hex_grid())
+                        .collect::<Vec<_>>();
+
+                    let mut successful = true;
+
+                    for position in expected_positions.iter() {
+                        let matches_one_reference = actual_positions.iter().any(|actual_position| {
+                            actual_position.is_equivalent(position)
+                        });
+                        if !matches_one_reference {
+                            println!("----------");
+                            println!("expected position missing:\n{}\n", position.to_dsl());
+                            println!("----------");
+                            successful = false;
+                        }
+
+                    }
+
+                    for position in actual_positions.iter() {
+                        let matches_no_references = expected_positions.iter().all(|expected_position| {
+                            !expected_position.is_equivalent(position)
+                        });
+                        if matches_no_references {
+                            println!("----------");
+                            println!("unexpected position found:\n{}\n", position.to_dsl());
+                            println!("----------");
+                            successful = false;
+                        }
+                    }
+
+                    if !successful {
+                        return Err(());
+                    }
+
+                    new_generating_positions.extend(actual_positions.clone());
+                }
+                generating_positions = new_generating_positions;
+            }
+
+            println!("...success\n");
+        }
+
+        Ok(())
+    }
+
     pub fn test_spider_moves<M: MoveGenerator>() -> Result<(), ()> {
         move_parity_test(
             Piece::new(Spider, White),
@@ -966,6 +1044,29 @@ pub mod test_suite {
         placement_parity_test(
             &PLACEMENTS[..],
             (P::placements, PositionGeneratorDebugger::placements),
+        )
+    }
+
+    pub fn test_perft<I : IntoPieces, P: PositionGenerator<I>>() -> Result<(), ()> {
+        let perft_positions  = SPIDER_MOVES
+            .iter()
+            .chain(GRASSHOPPER_MOVES.iter())
+            .chain(QUEEN_MOVES.iter())
+            .chain(ANT_MOVES.iter())
+            .chain(BEETLE_MOVES.iter())
+            .chain(LADYBUG_MOVES.iter())
+            .chain(PILLBUG_MOVES.iter())
+            .chain(MOSQUITO_MOVES.iter())
+            .chain(PILLBUG_SWAPS.iter())
+            .chain(MOSQUITO_SWAPS.iter())
+            .chain(PLACEMENTS.iter())
+            .map(|x| *x)
+            .collect::<Vec<_>>(); 
+
+        perft_parity(
+            &perft_positions,
+            (P::generate_positions_for, PositionGeneratorDebugger::generate_positions_for),
+            4,
         )
     }
     

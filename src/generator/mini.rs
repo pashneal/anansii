@@ -3,6 +3,7 @@ use crate::constants::EXPECTED_MAX_BRANCHING_FACTOR;
 use crate::generator::*;
 use crate::hex_grid::{HexGrid, HexLocation};
 use crate::uhp::GameType;
+use std::collections::HashSet;
 pub use crate::piece::*;
 
 /// Generator that generates legal positions
@@ -312,6 +313,16 @@ impl PlacementGenerator<MiniBitGrid> for MiniGenerator {
     }
 }
 
+impl PositionGenerator<MiniBitGrid> for MiniGenerator
+{
+    /// Returns the legal positions reachable from the current board state
+    /// as if it is the turn of the specified color.
+    fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<MiniBitGrid> {
+        unimplemented!()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -380,6 +391,12 @@ mod tests {
     #[test]
     fn test_placements_suite() {
         let result = test_placements::<_, MiniGenerator>();
+        assert!(result.is_ok());
+    }
+
+    #[test] 
+    fn test_perft_suite() {
+        let result = test_perft::<_, MiniGenerator>();
         assert!(result.is_ok());
     }
 }

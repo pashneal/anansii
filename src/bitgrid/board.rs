@@ -50,7 +50,7 @@ const NEIGHBORHOOD_CENTER_INDEX: i8 = 4;
 ///     .  .  .  .  .  .  .  .
 ///     .  .  .  .  .  .  .  .
 /// ```
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct AxialBitboard(pub u64);
 
 pub const BITBOARD_HEIGHT: usize = 8;
@@ -218,6 +218,10 @@ impl AxialBitboard {
     pub fn lsb(&self) -> Self {
         let bit = ((self.0 as i64) & -(self.0 as i64)) as u64;
         AxialBitboard(bit)
+    }
+
+    pub fn to_u64(&self) -> u64 {
+        self.0
     }
 
     #[inline(always)]

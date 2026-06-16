@@ -15,7 +15,7 @@ pub const PRESENCE_MASK: u32 = 1 << 17;
 /// pieces, their height, color all in a few bytes!
 ///
 /// Supports operations for BasicBitGrids.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct BasicBitStackEntry {
     /// 1 bit for piece (beetle/mosquito)
     /// 3 bits for height (can represent 2 - 7)
@@ -40,7 +40,7 @@ impl BasicBitStackEntry {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BasicBitStack {
     bitset: SmallBitset,
     stack: [BasicBitStackEntry; 6],
@@ -249,7 +249,7 @@ impl BasicBitStack {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SmallBitset {
     set: u8,
 }

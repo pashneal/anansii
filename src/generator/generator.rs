@@ -20,6 +20,12 @@ pub trait FromHexGrid {
 }
 
 pub trait MoveGenerator: FromHexGrid {
+    // TODO: WORKING this requires some thought, 
+    // HexLocation is required for the move generator
+    // but that complicates the implementation detail somewhat
+    // in that the interface is expecting MiniBitGridLocation 
+    // rather than HexLocations. We *could* just check for board equivalence?
+    // not quite sure but good stopping point cause this is an annoying decession
     type Position: IntoPieces;
 
     /// Returns a list of all possible moves for a spider at a given location

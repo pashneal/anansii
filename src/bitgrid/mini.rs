@@ -58,7 +58,7 @@ pub type MiniGrid = [AxialBitboard; 4];
 /// TODO: it is underspecified whether the various bitboards
 /// should only represent the lower level pieces (as they currently do) 
 /// or if they should represent all pieces at a location (including stacks).
-#[derive(Clone)]
+#[derive(Clone, Hash, Eq)]
 pub struct MiniBitGrid {
     queens: MiniGrid,
     beetles: MiniGrid,
@@ -76,7 +76,7 @@ pub struct MiniBitGrid {
     metainfo: MiniMetaInfo,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct MiniMetaInfo {
     /// Represents for each row, whether at least one piece is present
     pub row_presence: u16,
@@ -998,6 +998,33 @@ impl MiniBitGrid {
         pieces
     }
 
+    pub fn queen(&self, color: PieceColor) -> Option<MiniBitGridLocation> {
+        if color == PieceColor::White {
+            for board_index in 0..GRID_SIZE {
+                let queens = self.queens[board_index] & self.white_pieces[board_index];
+                if queens != AxialBitboard::empty() {
+                    let mask = queens.lsb().to_u64();
+                    return Some(MiniBitGridLocation {
+                        board_index,
+                        mask,
+                    });
+                }
+            }
+        } else {
+            for board_index in 0..GRID_SIZE {
+                let queens = self.queens[board_index] & self.black_pieces[board_index];
+                if queens != AxialBitboard::empty() {
+                    let mask = queens.lsb().to_u64();
+                    return Some(MiniBitGridLocation {
+                        board_index,
+                        mask,
+                    });
+                }
+            }
+        }
+        None
+    }
+
     /// Returns true if a piece is present at the given location
     /// or there is a stack at the location
     pub fn presence(&self, location: MiniBitGridLocation) -> bool {
@@ -1113,6 +1140,21 @@ impl MiniBitGrid {
 
         self.metainfo.row_presence.count_ones() >= width_heuristic as u32
             || self.metainfo.column_presence.count_ones() >= height_heuristic as u32
+    }
+
+    pub fn add_piece(&mut self, piece: Piece, location: MiniBitGridLocation) {
+        self.apply_change(Change {
+            removed: Diff {
+                piece,
+                board_index: 0,
+                mask: 0,
+            },
+            added: Diff {
+                board_index: location.board_index,
+                mask: location.mask,
+                piece,
+            },
+        });
     }
 
     /// TODO: may be a candidate for optimization

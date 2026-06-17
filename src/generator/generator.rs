@@ -100,6 +100,7 @@ pub trait PlacementGenerator<I: IntoPieces>: FromHexGrid {
 
 pub trait SwapGenerator: FromHexGrid {
     type Position: IntoPieces;
+    type PieceLocation: Shiftable + FromHexLocation;
     /// Returns a list of all positions with each possible swap applied to adjacent pieces by
     /// a top-facing pillbug at a given *location*.
     ///
@@ -114,8 +115,8 @@ pub trait SwapGenerator: FromHexGrid {
     /// location. Returns an empty list if the piece at the pillbug_location is not on the ground.
     fn pillbug_swaps(
         &mut self,
-        pillbug_location: HexLocation,
-        immobilized: Option<HexLocation>,
+        pillbug_location: Self::PieceLocation,
+        immobilized: Option<Self::PieceLocation>,
     ) -> Vec<Self::Position> {
         unimplemented!();
     }

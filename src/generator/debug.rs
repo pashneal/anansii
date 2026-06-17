@@ -488,6 +488,7 @@ impl MoveGenerator for PositionGeneratorDebugger {
 
 impl SwapGenerator for PositionGeneratorDebugger {
     type Position = HexGrid;
+    type PieceLocation = HexLocation;
 
     fn pillbug_swaps(
         &mut self,

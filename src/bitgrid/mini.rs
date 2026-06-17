@@ -169,6 +169,18 @@ impl MiniBitGrid {
 
     }
 
+    /// Returns the non-empty locations surrounding a given location
+    pub fn get_neighbors(&self, location: MiniBitGridLocation) -> Vec<MiniBitGridLocation> {
+        let mut neighbors = vec![];
+        for direction in Direction::all().iter() {
+            let loc = location.apply(*direction);
+            if !self.peek(loc).is_empty() {
+                neighbors.push(loc);
+            }
+        }
+        neighbors
+    }
+
     pub fn single_step(&self, location: MiniBitGridLocation, can_climb: bool, current_height : u8) -> Vec<MiniBitGridLocation> {
 
         // TODO extremely inefficient for now, but correctness is our first concern

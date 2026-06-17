@@ -301,8 +301,9 @@ impl MoveGenerator for MiniGenerator {
 
 impl SwapGenerator for MiniGenerator {
     type Position = MiniBitGrid;
+    type PieceLocation = MiniBitGridLocation;
 
-    fn pillbug_swaps(&mut self, location: HexLocation, immobilized: Option<HexLocation>) -> Vec<MiniBitGrid> {
+    fn pillbug_swaps(&mut self, location: Self::PieceLocation, immobilized: Option<Self::PieceLocation>) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
         let (sources, sinks) = self.grid.pillbug_swaps(location, immobilized.map(|loc| loc.into()));
@@ -347,98 +348,97 @@ impl PositionGenerator<MiniBitGrid> for MiniGenerator
     /// Returns the legal positions reachable from the current board state
     /// as if it is the turn of the specified color.
     fn generate_positions_for(&mut self, color: PieceColor) -> HashSet<MiniBitGrid> {
-        panic!()
-        //let mut positions = HashSet::new();
+        let mut positions = HashSet::new();
 
-        //let queen = self.grid.queen(color);
-        //let all_pieces = self.grid.pieces();
-        //let friendly_pieces = all_pieces
-            //.iter()
-            //.flat_map(|(stack, _)| stack)
-            //.filter(|piece| piece.color == color)
-            //.collect::<Vec<_>>();
-        //let num_friendly_pieces = friendly_pieces.len();
+        let queen = self.grid.queen(color);
+        let all_pieces = self.grid.pieces();
+        let friendly_pieces = all_pieces
+            .iter()
+            .flat_map(|(stack, _)| stack)
+            .filter(|piece| piece.color == color)
+            .collect::<Vec<_>>();
+        let num_friendly_pieces = friendly_pieces.len();
 
-        //// Queen not placed
-        //if queen.is_none() && true [>TODO placeholder for tourney modification<] {
-            //// Forced to place a queen by 4th turn
-            //if num_friendly_pieces == 3 {
-                //for placement in self.placements(color) {
-                    //let mut new_grid = self.grid.clone();
-                    //new_grid.add_piece(Piece::new(PieceType::Queen, color), placement);
-                    //positions.insert(new_grid);
-                //}
-                //return positions;
-            //}
-        //}
+        // Queen not placed
+        if queen.is_none() && true /*TODO placeholder for tourney modification*/ {
+            // Forced to place a queen by 4th turn
+            if num_friendly_pieces == 3 {
+                for placement in self.placements(color) {
+                    let mut new_grid = self.grid.clone();
+                    new_grid.add_piece(Piece::new(PieceType::Queen, color), placement);
+                    positions.insert(new_grid);
+                }
+                return positions;
+            }
+        }
 
-        //// 1. Calculate placements
-        //// TODO: keep working from here, implement "pieces in hand"
-        //itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
-            //|(piece, placement)| {
-                //let placement_disallowed =
-                    //piece.piece_type == PieceType::Queen && num_friendly_pieces == 0 && true [> TODO placeholder for tourney modification <];
+        // 1. Calculate placements
+        // TODO: keep working from here, implement "pieces in hand"
+        itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
+            |(piece, placement)| {
+                let placement_disallowed =
+                    piece.piece_type == PieceType::Queen && num_friendly_pieces == 0 && true /* TODO placeholder for tourney modification */;
 
-                //if !placement_disallowed {
-                    //let mut new_grid = self.grid.clone();
-                    //new_grid.add_piece(piece, placement);
-                    //positions.insert(new_grid);
-                //}
-            //},
-        //);
+                if !placement_disallowed {
+                    let mut new_grid = self.grid.clone();
+                    new_grid.add_piece(piece, placement);
+                    positions.insert(new_grid);
+                }
+            },
+        );
 
-        //// Early return if the queen isn't placed yet
-        //if queen.is_none() {
-            //return positions
-        //}
+        // Early return if the queen isn't placed yet
+        if queen.is_none() {
+            return positions
+        }
 
-        //// Then 2. Calculate moves
-        //for (stack, location) in all_pieces {
+        // Then 2. Calculate moves
+        for (stack, location) in all_pieces {
 
-            //// immobilized pieces can't move or be swapped, 
-            //// so skip them entirely when generating moves
-            //if let Some(disallowed) = self.immobilized { 
-                //if location == disallowed {
-                    //continue;
-                //}
-            //}
+            // immobilized pieces can't move or be swapped, 
+            // so skip them entirely when generating moves
+            if let Some(disallowed) = self.immobilized { 
+                if location == disallowed {
+                    continue;
+                }
+            }
 
-            //let top = stack.last().unwrap();
-            //if top.color != color {
-                //continue;
-            //}
-            //let moves = match top.piece_type {
-                //PieceType::Queen => self.queen_moves(location),
-                //PieceType::Grasshopper => self.grasshopper_moves(location),
-                //PieceType::Spider => self.spider_moves(location),
-                //PieceType::Ant => self.ant_moves(location),
-                //PieceType::Beetle => self.beetle_moves(location),
-                //PieceType::Ladybug => self.ladybug_moves(location),
-                //PieceType::Mosquito => self.mosquito_moves(location),
-                //PieceType::Pillbug => self.pillbug_moves(location),
-                //PieceType::WildCard => todo!()
-            //};
+            let top = stack.last().unwrap();
+            if top.color != color {
+                continue;
+            }
+            let moves = match top.piece_type {
+                PieceType::Queen => self.queen_moves(location),
+                PieceType::Grasshopper => self.grasshopper_moves(location),
+                PieceType::Spider => self.spider_moves(location),
+                PieceType::Ant => self.ant_moves(location),
+                PieceType::Beetle => self.beetle_moves(location),
+                PieceType::Ladybug => self.ladybug_moves(location),
+                PieceType::Mosquito => self.mosquito_moves(location),
+                PieceType::Pillbug => self.pillbug_moves(location),
+                PieceType::WildCard => todo!()
+            };
 
-            //let neighbors = self.grid.get_neighbors(location);
-            //let has_pillbug_neighbor = neighbors.iter().any(|&neighbor| {
-                //if let Some(top) = self.grid.top(neighbor) {
-                    //top.piece_type == PieceType::Pillbug
-                //} else {
-                    //false
-                //}
-            //});
+            let neighbors = self.grid.get_neighbors(location);
+            let has_pillbug_neighbor = neighbors.iter().any(|&neighbor| {
+                if let Some(top) = self.grid.top(neighbor) {
+                    top.piece_type == PieceType::Pillbug
+                } else {
+                    false
+                }
+            });
 
 
-            //let swaps = match (top.piece_type, has_pillbug_neighbor) {
-                //(PieceType::Pillbug, _) => self.pillbug_swaps(location, self.immobilized),
-                //(PieceType::Mosquito, true) => self.pillbug_swaps(location, self.immobilized),
-                //_ => Vec::new(),
-            //};
+            let swaps = match (top.piece_type, has_pillbug_neighbor) {
+                (PieceType::Pillbug, _) => self.pillbug_swaps(location, self.immobilized),
+                (PieceType::Mosquito, true) => self.pillbug_swaps(location, self.immobilized),
+                _ => Vec::new(),
+            };
 
-            //positions.extend(moves.into_iter());
-            //positions.extend(swaps.into_iter());
-        //}
-        //return HashSet::new();
+            positions.extend(moves.into_iter());
+            positions.extend(swaps.into_iter());
+        }
+        return HashSet::new();
     }
 }
 

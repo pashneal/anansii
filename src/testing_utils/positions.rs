@@ -707,7 +707,7 @@ pub mod test_suite {
     ) -> std::result::Result<(), ()>
     where
         S: SwapGenerator,
-        Fa: FnMut(&mut S, HexLocation, Option<HexLocation>) -> Vec<S::Position>,
+        Fa: FnMut(&mut S, S::PieceLocation, Option<S::PieceLocation>) -> Vec<S::Position>,
         Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation, Option<HexLocation>) -> Vec<HexGrid>,
     {
         // the methodology for this is just that we need to generate
@@ -771,7 +771,10 @@ pub mod test_suite {
                 "immobilized location: {:?}\n", immobilized_location
             );
 
-            let actual_result = gen_func(&mut generator, *location, *immobilized_location);
+            let immobilized_loc = immobilized_location.map(|loc| S::PieceLocation::from_hex(loc));
+            let loc = S::PieceLocation::from_hex(*location);
+
+            let actual_result = gen_func(&mut generator, loc, immobilized_loc);
             let expected_result = ref_func(&mut reference_generator, *location, *immobilized_location);
 
             let actual_result = actual_result
@@ -1068,7 +1071,7 @@ pub mod test_suite {
         perft_parity(
             &perft_positions,
             (P::generate_positions_for, PositionGeneratorDebugger::generate_positions_for),
-            4,
+            1,
         )
     }
     

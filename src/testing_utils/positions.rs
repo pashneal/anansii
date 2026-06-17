@@ -1052,6 +1052,7 @@ pub mod test_suite {
         )
     }
 
+    // this test is *really* slow
     pub fn test_perft<I : IntoPieces, P: PositionGenerator<I>>() -> Result<(), ()> {
         let perft_positions  = SPIDER_MOVES
             .iter()
@@ -1071,7 +1072,7 @@ pub mod test_suite {
         perft_parity(
             &perft_positions,
             (P::generate_positions_for, PositionGeneratorDebugger::generate_positions_for),
-            1,
+            3,
         )
     }
     

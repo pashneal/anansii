@@ -673,9 +673,7 @@ pub trait IntoWrappingHexes: IntoPieces  {
             println!("Way too many components, cannot perform conversion");
             return Err(HexGridError::OrientationError);
         }
-        println!("Components: {:?}", components);
-        println!("Combined: {:?}", combined);
-        println!("Hexes: {:?}", hexes);
+
         if combined.len() == 0 {
             return Ok(vec![]);
         }

@@ -58,7 +58,7 @@ pub type MiniGrid = [AxialBitboard; 4];
 /// TODO: it is underspecified whether the various bitboards
 /// should only represent the lower level pieces (as they currently do) 
 /// or if they should represent all pieces at a location (including stacks).
-#[derive(Clone, Hash, Eq)]
+#[derive(Clone, Hash, PartialEq, Eq)]
 pub struct MiniBitGrid {
     queens: MiniGrid,
     beetles: MiniGrid,

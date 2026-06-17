@@ -166,6 +166,7 @@ impl PlacementGenerator<HexGrid> for PositionGeneratorDebugger {
 
 impl MoveGenerator for PositionGeneratorDebugger {
     type Position = HexGrid;
+    type PieceLocation = HexLocation;
 
     fn spider_moves(&mut self, location: HexLocation) -> Vec<HexGrid> {
         let stack = self.grid.peek(location);

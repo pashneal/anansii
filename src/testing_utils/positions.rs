@@ -1,6 +1,6 @@
 use crate::generator::debug::*;
 use crate::generator::generator::*;
-use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes, Isomorphic};
+use crate::hex_grid::{HexGrid, HexLocation, Shiftable, IntoWrappingHexes, Isomorphic, FromHexLocation};
 use crate::piece::*;
 use crate::uhp::GameType;
 
@@ -826,7 +826,7 @@ pub mod test_suite {
         funcs: (Fa, Fb),
     ) -> std::result::Result<(), ()>
     where
-        Fa: FnMut(&mut M, HexLocation) -> Vec<M::Position>,
+        Fa: FnMut(&mut M, M::PieceLocation) -> Vec<M::Position>,
         Fb: FnMut(&mut PositionGeneratorDebugger, HexLocation) -> Vec<HexGrid>,
     {
         let locations = dsl_to_locations(dsls, target);
@@ -840,7 +840,9 @@ pub mod test_suite {
 
             println!("generating positions from:\n{}\n...", hex_grid.to_dsl());
 
-            let actual_result = gen_func(&mut generator, *location);
+            let loc : M::PieceLocation = M::PieceLocation::from_hex(*location);
+
+            let actual_result = gen_func(&mut generator, loc);
             let expected_result = ref_func(&mut reference_generator, *location);
 
             let actual_result = actual_result

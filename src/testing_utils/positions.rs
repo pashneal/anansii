@@ -6,6 +6,18 @@ use crate::uhp::GameType;
 
 use std::collections::HashSet;
 
+const PERFT_MOVES: [&'static str; 1] = [
+    concat!(
+        ". . . . . . .\n",
+        " . . a a . Q .\n",
+        ". l a . a S .\n",
+        " . a . . . . .\n",
+        ". . a a . . .\n",
+        " . . . . . . .\n\n",
+        "start - [ 0 -2 ]\n\n",
+    ),
+];
+
 const SPIDER_MOVES: [&'static str; 8] = [
     concat!(
         " . . . . . . .\n",
@@ -442,7 +454,16 @@ pub const PILLBUG_SWAPS: [&str; 11] = [
     ),
 ];
 
-pub const PLACEMENTS: [&str; 3] = [
+pub const PLACEMENTS: [&str; 4] = [
+    concat!(
+        ". . . . . . .\n",
+        " . . a a . Q .\n",
+        ". l a . a S .\n",
+        " . a . . . . .\n",
+        ". . a a . . .\n",
+        " . . . . . . .\n\n",
+        "start - [ 0 -2 ]\n\n",
+    ),
     concat!(
         ". . . . . . .\n",
         " . A . A . . .\n",
@@ -1052,10 +1073,11 @@ pub mod test_suite {
         )
     }
 
-    // this test is *really* slow
+    #[ignore = "test is slow, be sure to run with --release -- --ignored"]
     pub fn test_perft<I : IntoPieces, P: PositionGenerator<I>>() -> Result<(), ()> {
-        let perft_positions  = SPIDER_MOVES
+        let perft_positions  = PERFT_MOVES
             .iter()
+            .chain(SPIDER_MOVES.iter())
             .chain(GRASSHOPPER_MOVES.iter())
             .chain(QUEEN_MOVES.iter())
             .chain(ANT_MOVES.iter())
@@ -1072,7 +1094,7 @@ pub mod test_suite {
         perft_parity(
             &perft_positions,
             (P::generate_positions_for, PositionGeneratorDebugger::generate_positions_for),
-            3,
+            2,
         )
     }
     

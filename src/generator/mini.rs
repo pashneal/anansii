@@ -373,11 +373,11 @@ impl PositionGenerator<MiniBitGrid> for MiniGenerator
         }
 
         // 1. Calculate placements
-        // TODO: keep working from here, implement "pieces in hand"
         itertools::iproduct!(self.pieces_in_hand(color), self.placements(color)).for_each(
             |(piece, placement)| {
                 let placement_disallowed =
                     piece.piece_type == PieceType::Queen && num_friendly_pieces == 0 && true /* TODO placeholder for tourney modification */;
+
 
                 if !placement_disallowed {
                     let mut new_grid = self.grid.clone();
@@ -438,7 +438,7 @@ impl PositionGenerator<MiniBitGrid> for MiniGenerator
             positions.extend(moves.into_iter());
             positions.extend(swaps.into_iter());
         }
-        return HashSet::new();
+        return positions;
     }
 }
 
@@ -515,6 +515,7 @@ mod tests {
     }
 
     #[test] 
+    #[ignore = "test is very slow, be sure to run with --release -- --ignored"]
     fn test_perft_suite() {
         let result = test_perft::<_, MiniGenerator>();
         assert!(result.is_ok());

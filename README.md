@@ -9,7 +9,7 @@ I've decided to finish projects that I've started, including this one.
   - [x] src/data_analysis/*.rs
   - [x] src/generator/*.rs
   - [x] src/testing_utils/*.rs 
-- [ ] Get mini board Generator tests passing
+- [x] Get mini board Generator tests passing
     - [x] spider_moves
     - [x] grasshopper_moves
     - [x] queen_moves
@@ -20,7 +20,7 @@ I've decided to finish projects that I've started, including this one.
     - [x] mosquito_moves
     - [x] placement generator
     - [x] swap generator
-    - [ ] integration test suite
+    - [x] integration test suite
 - [ ] Speed tests for the mini move generator
     - [ ] spider_moves
     - [ ] grasshopper_moves

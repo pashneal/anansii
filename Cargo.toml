@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.22", features = ["derive"] }
 itertools = "0.13.0"
-rand = "0.10.1"
+rand = { version = "0.10.1", features = ["chacha"] }
 regex = "1.11.1"
 thiserror = "2.0.3"
 

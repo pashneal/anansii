@@ -8,7 +8,7 @@ fn bench_stress_test_queen(c: &mut Criterion) {
     use PieceColor::*;
 
     let mut undoer = Undoer::new();
-    let untimed_run = undoer.untimed_run(100);
+    let untimed_run = undoer.untimed_run(200, 46);
     let tracked_run = undoer.track_piece(untimed_run, Piece::new(Queen, White));
 
     c.bench_function("stress_test_queen", |b| 

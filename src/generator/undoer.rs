@@ -4,6 +4,9 @@ use crate::bitgrid::mini::*;
 use crate::generator::*;
 use crate::hex_grid::*;
 use crate::uhp::{GameType, Annotator};
+use std::hint::black_box;
+use rand::{rngs::ChaCha8Rng, SeedableRng};
+
 
 use rand::{self, RngExt};
 
@@ -46,8 +49,10 @@ impl Undoer {
     /// according to the MiniGenerator.
     ///
     /// length - the number of changes to generate 
-    pub fn untimed_run(&mut self, length: usize) -> Vec<Change> {
+    pub fn untimed_run(&mut self, length: usize, seed: u64) -> Vec<Change> {
         let mut moves = Vec::new();
+        let mut rng = ChaCha8Rng::seed_from_u64(seed);
+
         for i in 0..=length {
 
             let color = match i % 2 {
@@ -56,29 +61,23 @@ impl Undoer {
             }; 
 
             let positions = self.generator.generate_positions_for(color);
-            let vec_positions = positions.into_iter().collect::<Vec<_>>();
+            let mut vec_positions = positions.into_iter().collect::<Vec<_>>();
+            // TODO: could make this bench faster by sorting
+            // by a more realistic key
+            vec_positions.sort_by_key(|x| x.to_hex_grid().to_dsl());
 
-            let mut rng = rand::rng();
-
-            let random_position = &vec_positions[
-                rng.random_range(0..vec_positions.len())
-            ];
+            let r = rng.random::<i32>().abs() as usize % vec_positions.len(); 
+            let random_position = &vec_positions[r];
 
             let change = Differ::single_diff(
                 &self.generator.current_grid(), 
                 random_position
             ).expect("could not infer change");
 
-            println!("beforemoves\n{}", self.generator.current_grid().to_hex_grid().to_dsl());
-            println!("aftermoves\n{}", random_position.to_hex_grid().to_dsl());
-
-            println!("applying move: {:?}\n", change);
             moves.push(change);
 
             self.generator.apply(change);
         }
-
-        println!("afterallmoves\n{}", self.generator.current_grid().to_hex_grid().to_dsl());
 
         for change in moves.clone().iter().rev() {
             self.generator.undo(*change)
@@ -110,7 +109,7 @@ impl Undoer {
         for (change, piece_location) in tracked_changes.iter() {
             self.generator.apply(*change);
             if let Some(location) = piece_location {
-                let _queen_moves = self.generator.queen_moves(*location);
+                black_box(self.generator.queen_moves(*location));
             }
         }
 
@@ -129,7 +128,7 @@ pub mod tests {
     #[test]
     pub fn test_sanity_check() {
         let mut undoer = Undoer::new();
-        let moves = undoer.untimed_run(10);
+        let moves = undoer.untimed_run(10, 46);
         let tracked = undoer.track_piece(
             moves.clone(), 
             Piece::new(PieceType::Queen, PieceColor::White)

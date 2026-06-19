@@ -278,7 +278,17 @@ pub const BEETLE_MOVES: [&str; 9] = [
     ),
 ];
 
-pub const LADYBUG_MOVES: [&str; 4] = [
+pub const LADYBUG_MOVES: [&str; 5] = [
+    concat!(
+        ". . . . .\n",
+        " . q l . .\n",
+        ". . . p .\n",
+        " . Q P . .\n",
+        ". S M L .\n",
+        " . . a . .\n",
+        ". . . . .\n\n",
+        "start - [ 1 -4 ]\n\n",
+    ),
     concat!(
         ". . . . . . .\n",
         " . . 2 2 . . .\n",

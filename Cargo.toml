@@ -16,4 +16,3 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "stress_test"
 harness = false
-strip = false

@@ -3,8 +3,6 @@ use crate::bitgrid::mini::*;
 use crate::hex_grid::IntoPieces;
 use std::collections::HashSet;
 
-pub type Result<T> = std::result::Result<T, String>;
-
 /// TODO: does this size affect performance?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Change {
@@ -26,7 +24,7 @@ impl Differ {
     // TODO: ugly function, cleanup or break it up.
     // Additionally, this logic is duplicated for HexGrid in Annotator
     // we can likely dedupe that
-    pub fn single_diff(before: &MiniBitGrid, after: &MiniBitGrid) -> Result<Change> {
+    pub fn single_diff(before: &MiniBitGrid, after: &MiniBitGrid) -> Result<Change, String> {
         let before_pieces = before.pieces();
         let after_pieces = after.pieces();
 

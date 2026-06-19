@@ -518,22 +518,6 @@ impl MiniBitGrid {
             grid_without_piece.presence(*location)
         }).collect();
 
-        // for debugging, create a minibitgrid to combine all the climb up locations and print
-        let mut debug = MiniBitGrid::new();
-        for location in climb_ups.clone() {
-            debug.all_pieces[location.board_index] |= AxialBitboard::from_u64(location.mask);
-        }
-
-        // convert it to the hexgrid so it's easier to read
-        let mut bitgrid = MiniBitGrid::new();
-        for location in climb_ups.clone() {
-            bitgrid.add_top(
-                Piece::new(PieceType::Beetle, PieceColor::White), 
-                location
-            );
-
-        }
-
 
         let mut stay_on_hive : Vec<MiniBitGridLocation> = Vec::new();
         for location in climb_ups {

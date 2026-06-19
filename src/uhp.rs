@@ -1,6 +1,7 @@
 use crate::constants::*;
 use crate::game::*;
 use crate::hex_grid::*;
+use crate::bitgrid::mini::MiniBitGrid;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -79,12 +80,12 @@ impl Annotator {
 
     /// Computes differences between the last state fed into this Annotator
     /// via next_state() and the given current_grid.
-    fn get_differences(&self, current_grid: &HexGrid) -> Vec<Diff> {
+    fn get_differences(prev_grid: &HexGrid, current_grid: &HexGrid) -> Vec<Diff> {
         let mut diffs = Vec::new();
 
         // Look for added pieces
         for (new_stack, loc) in current_grid.pieces() {
-            let old_stack = self.prev_grid.peek(loc);
+            let old_stack = prev_grid.peek(loc);
             // Any piece higher the old stack's length is necessarily added
             // new_stack > old_stack
             for height in old_stack.len()..new_stack.len() {
@@ -111,7 +112,7 @@ impl Annotator {
         }
 
         // Look for removed pieces
-        for (old_stack, loc) in self.prev_grid.pieces() {
+        for (old_stack, loc) in prev_grid.pieces() {
             let new_stack = current_grid.peek(loc);
             // Any piece missing from old stack is necessarily removed
             for height in new_stack.len()..old_stack.len() {
@@ -335,7 +336,7 @@ impl Annotator {
             total_count += count;
         }
 
-        let diffs = self.get_differences(current_grid);
+        let diffs = Annotator::get_differences(&self.prev_grid, current_grid);
 
         // Happy paths:
         // 0 diffs

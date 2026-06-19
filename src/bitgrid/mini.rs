@@ -109,6 +109,7 @@ pub struct MiniBitGridLocation {
 }
 
 
+
 impl MiniBitGrid {
     pub fn new() -> Self {
         MiniBitGrid {
@@ -516,22 +517,6 @@ impl MiniBitGrid {
         let climb_ups: Vec<MiniBitGridLocation> = climb_ups.into_iter().filter(|location| {
             grid_without_piece.presence(*location)
         }).collect();
-
-        // for debugging, create a minibitgrid to combine all the climb up locations and print
-        let mut debug = MiniBitGrid::new();
-        for location in climb_ups.clone() {
-            debug.all_pieces[location.board_index] |= AxialBitboard::from_u64(location.mask);
-        }
-
-        // convert it to the hexgrid so it's easier to read
-        let mut bitgrid = MiniBitGrid::new();
-        for location in climb_ups.clone() {
-            bitgrid.add_top(
-                Piece::new(PieceType::Beetle, PieceColor::White), 
-                location
-            );
-
-        }
 
 
         let mut stay_on_hive : Vec<MiniBitGridLocation> = Vec::new();
@@ -941,6 +926,10 @@ impl MiniBitGrid {
     /// Checks to see if an addition preserves the invariants of this board.
     /// That is, does the addition follow the One Hive rule?
     fn addition_preserves_one_hive(&self, location: MiniBitGridLocation) -> bool {
+        if location.is_empty() {
+            return true
+        }
+
         if self.is_empty() {
             return true;
         }
@@ -1171,6 +1160,22 @@ impl MiniBitGrid {
 
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
+        let piece = change.added.piece;
+        let location = MiniBitGridLocation {
+            board_index: change.added.board_index,
+            mask: change.added.mask,
+        };
+
+        if self.addition_preserves_one_hive(location) == false {
+            let mut test_grid = self.clone();
+            println!("triggering change: {:?}", change);
+            println!("before illegal addition:\n{:?}", test_grid);
+            test_grid.add_top_unchecked(piece, location);
+            println!("after illegal addition:\n{:?}", test_grid);
+        }
+
+        self.add_top(piece, location);
+
         if change.removed.mask != 0 {
             let location = MiniBitGridLocation {
                 board_index: change.removed.board_index,
@@ -1179,13 +1184,6 @@ impl MiniBitGrid {
             self.remove_top(location);
         }
 
-        let piece = change.added.piece;
-        let location = MiniBitGridLocation {
-            board_index: change.added.board_index,
-            mask: change.added.mask,
-        };
-
-        self.add_top(piece, location);
     }
 
     pub fn placements(&self, color: PieceColor) -> Vec<MiniBitGridLocation> {
@@ -1421,6 +1419,10 @@ impl MiniBitGridLocation {
             BITBOARD_WIDTH as u32
         };
         1 << (column + delta)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        return self.board_index == 0 && self.mask == 0;
     }
 
 }

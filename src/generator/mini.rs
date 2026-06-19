@@ -83,6 +83,18 @@ impl MiniGenerator {
 
         result
     }
+
+    pub fn find_piece(&self, piece: Piece) -> Option<MiniBitGridLocation> {
+        for (occupied_stack, location) in self.grid.pieces() {
+            if let Some(top_piece) = occupied_stack.last() {
+                if *top_piece == piece {
+                    return Some(location);
+                }
+            }
+        }
+
+        None
+    }
 }
 
 
@@ -447,6 +459,50 @@ impl PositionGenerator<MiniBitGrid> for MiniGenerator
 mod tests {
     use super::*;
     use crate::testing_utils::positions::test_suite::*;
+    use crate::location::*;
+    use crate::hex_grid::IntoWrappingHexes;
+
+    #[test]
+    fn test_one_hive() {
+        // Regression test for application, seems like something
+        // went wrong with calculation of the "one hive"?
+
+        let board = concat!(
+          ". . . . . .\n",
+          " . . Q . . .\n",
+          ". S S P a .\n",
+          " . . . . m .\n",
+          ". . . l q .\n",
+          " . . . . . .\n\n",
+          "start - [ 0 -2 ]\n\n"
+        );
+
+        let hex_grid = HexGrid::from_dsl(board);
+        let mut mini_gen = MiniGenerator::from_hex_grid(
+            &hex_grid, 
+            GameType::MLP, 
+            None
+        );
+
+        let queen_loc = mini_gen.find_piece(Piece::new(PieceType::Queen, PieceColor::White)).expect("Expected to find white queen");
+
+        let target = queen_loc.apply(Direction::SW).apply(Direction::SE);
+
+        let change = Change {
+            removed: Diff {
+                piece: Piece::new(PieceType::Queen, PieceColor::White),
+                board_index: queen_loc.board_index,
+                mask: queen_loc.mask,
+            },
+            added: Diff {
+                piece: Piece::new(PieceType::Queen, PieceColor::White),
+                board_index: target.board_index,
+                mask: target.mask,
+            }
+        };
+
+        mini_gen.apply(change);
+    }
 
     #[test]
     fn test_spider_suite() {

@@ -214,9 +214,9 @@ impl AxialBitboard {
         self.0.count_ones()
     }
 
-    #[inline(always)]
     pub fn lsb(&self) -> Self {
-        let bit = ((self.0 as i64) & -(self.0 as i64)) as u64;
+        let index = self.0.trailing_zeros() as usize;
+        let bit = 1 << index;
         AxialBitboard(bit)
     }
 

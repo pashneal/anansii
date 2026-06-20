@@ -109,7 +109,7 @@ impl Undoer {
         for (change, piece_location) in tracked_changes.iter() {
             self.generator.apply(*change);
             if let Some(location) = piece_location {
-                black_box(self.generator.queen_moves(*location));
+                black_box(self.generator.current_grid().queen_moves(*location));
             }
         }
 

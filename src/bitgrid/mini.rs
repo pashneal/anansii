@@ -40,10 +40,9 @@ pub type MiniGrid = [AxialBitboard; 4];
 ///
 /// TODO: conventional?? Isn't negative x going in the wrong direction? Perhaps
 /// compare it to HexGridLocation instead
-/// ```
-///     3 2
-///     1 0
-/// ```
+///
+///  3 2
+///  1 0
 ///
 /// The center is assigned to board index 0 at the bitboard index 28
 ///

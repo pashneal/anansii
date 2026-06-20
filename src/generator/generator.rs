@@ -19,6 +19,15 @@ pub trait FromHexGrid {
     }
 }
 
+// This trait is mostly for verification of correctness between
+// the MoveGenerator of some board representation against the
+// MoveGenerator of a reference board representation (e.g. MiniBitGrid vs PositionGeneratorDebugger).
+// 
+// It doesn't have to be performant, and it doesn't have to be used
+// in the implementation of the actual board representation.
+// But to make it easier on testing correctness, it *must* use the 
+// same function that the actual board representation uses to generate 
+// moves, placements, and swaps.
 pub trait MoveGenerator: FromHexGrid {
     type Position: IntoPieces;
     type PieceLocation: Shiftable + FromHexLocation;

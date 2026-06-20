@@ -118,6 +118,117 @@ impl Undoer {
         }
     }
 
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by anticipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn beetle_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().beetle_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by anticipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn pillbug_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().pillbug_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by anticipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn grasshopper_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().grasshopper_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by anticipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn ant_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().ant_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by ladybugicipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn ladybug_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().ladybug_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by mosquitoicipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn mosquito_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().mosquito_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
+
+    // NOTE: Be sure to initialize with a new MiniGenerator/Undoer so that 
+    // the implementor can't cheat the benchmark by anticipating
+    // the moves. Minor risk but adds more validity to the benchmark.
+    pub fn spider_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            if let Some(location) = piece_location {
+                black_box(self.generator.current_grid().spider_moves(*location));
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
 }
 
 

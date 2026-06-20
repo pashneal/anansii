@@ -105,10 +105,6 @@ impl MoveGenerator for MiniGenerator {
     fn grasshopper_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -131,10 +127,6 @@ impl MoveGenerator for MiniGenerator {
     fn pillbug_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -157,10 +149,6 @@ impl MoveGenerator for MiniGenerator {
     fn queen_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -183,10 +171,6 @@ impl MoveGenerator for MiniGenerator {
     fn beetle_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -209,10 +193,6 @@ impl MoveGenerator for MiniGenerator {
     fn ant_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -235,10 +215,6 @@ impl MoveGenerator for MiniGenerator {
     fn spider_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -261,10 +237,6 @@ impl MoveGenerator for MiniGenerator {
     fn ladybug_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");
@@ -287,10 +259,6 @@ impl MoveGenerator for MiniGenerator {
     fn mosquito_moves(&mut self, location: Self::PieceLocation) -> Vec<MiniBitGrid> {
         // TODO make this a little bit more parametric
         let location = location.into();
-        let pinned = self.grid.is_pinned(location);
-        if pinned {
-            return Vec::new();
-        } 
 
         let piece = self.grid.top(location)
             .expect("Expected piece at location");

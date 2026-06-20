@@ -249,6 +249,11 @@ impl MiniBitGrid {
             "No queen or mosquito at the top of the given location"
         );
 
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
         let mut grid = [AxialBitboard::empty(); 4];
         for location in self.single_step(location, false, 1) {
             grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
@@ -267,6 +272,11 @@ impl MiniBitGrid {
             ),
             "No pillbug or mosquito at the top of the given location"
         );
+
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
 
         let mut grid = [AxialBitboard::empty(); 4]; 
         for location in self.single_step(location, false, 1) {
@@ -287,6 +297,7 @@ impl MiniBitGrid {
             ),
             "No top-level swapper at the given location"
         );
+
 
 
         // TODO: optimization - can likely precalculate into lookup table;
@@ -336,6 +347,11 @@ impl MiniBitGrid {
             "No grasshopper or mosquito at the given location"
         );
 
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
         let mut grid = [AxialBitboard::empty(); 4];
 
         for direction in Direction::all() {
@@ -365,6 +381,12 @@ impl MiniBitGrid {
             "No beetle or mosquito at the top of the given location"
         );
 
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
+    
         let mut grid = [AxialBitboard::empty(); 4];
         let current_height = self.peek(location).len() as u8;
         for location in self.single_step(location, true, current_height) {
@@ -383,6 +405,12 @@ impl MiniBitGrid {
             ),
             "No spider or mosquito at the top of the given location"
         );
+
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
 
         // TODO: optimize (likely with lookup tables?)
         let mut final_grid = [AxialBitboard::empty(); 4];
@@ -445,6 +473,12 @@ impl MiniBitGrid {
             "No ant or mosquito at the top of given location"
         );
 
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
+
         let mut final_grid = [AxialBitboard::empty(); 4];
         let mut grid_without_ant = self.clone();
         grid_without_ant.remove_top(location).unwrap();
@@ -499,6 +533,11 @@ impl MiniBitGrid {
             ),
             "No ladybug or mosquito at the top of given location"
         );
+
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
 
 
         //TODO: clean up, this code is so ugly + inefficient it's going to make me cry
@@ -560,6 +599,12 @@ impl MiniBitGrid {
             ),
             "No mosquito at top of the given location"
         );
+
+        let pinned = self.is_pinned(location);
+        if pinned {
+            return MiniGrid::default()
+        } 
+
         let mut grid = [AxialBitboard::empty(); 4];
 
         let mut candidate_pieces : Vec<Piece> = Vec::new();

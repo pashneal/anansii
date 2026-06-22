@@ -55,6 +55,14 @@ pub struct HexGrid {
     fast_grid: HashMap<(usize, usize), Vec<Piece>>,
 }
 
+impl Peekable for HexGrid {
+    type Location = HexLocation;
+
+    fn peek(&self, location: Self::Location) -> Vec<Piece> {
+        self.peek(location)
+    }
+}
+
 impl HexGrid {
     /// Translates a DSL string with "*" characters and reports the
     /// locations of each * on the resulting board

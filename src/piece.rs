@@ -180,6 +180,11 @@ impl std::hash::Hash for Piece {
     }
 }
 
+pub trait Peekable {
+    type Location: Shiftable;
+    fn peek(&self, location : Self::Location) -> Vec<Piece>; 
+}
+
 pub trait IntoPieces {
     type PieceLocation: Shiftable;
     /// Returns a list of pieces and their locations in "board order", that

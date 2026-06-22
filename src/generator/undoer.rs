@@ -69,6 +69,8 @@ impl Undoer {
             let r = rng.random::<i32>().abs() as usize % vec_positions.len(); 
             let random_position = &vec_positions[r];
 
+            println!("generator grid:\n{}", self.generator.current_grid().to_hex_grid().to_dsl());
+            println!("generator position: {}", random_position.to_hex_grid().to_dsl());
             let change = Differ::single_diff(
                 &self.generator.current_grid(), 
                 random_position

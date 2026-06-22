@@ -1,9 +1,10 @@
 use super::*;
 use crate::generator::change::{Change, Diff};
+use crate::generator::cut_vertices::cut_vertices;
 use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes, IntoWrappingHexes};
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
-use crate::piece::{IntoPieces, Piece, PieceColor, PieceType};
-use std::collections::HashSet;
+use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, Peekable};
+use std::collections::{HashSet, HashMap};
 use std::fmt::{self, Display};
 
 const LEFT_OVERFLOW_MASK: u64 = 0x8080808080808080;
@@ -71,6 +72,7 @@ pub struct MiniBitGrid {
     outside: MiniGrid,
     white_pieces: MiniGrid,
     black_pieces: MiniGrid,
+    pinned: MiniGrid,
     stacks: BasicBitStack,
     metainfo: MiniMetaInfo,
 }
@@ -108,7 +110,6 @@ pub struct MiniBitGridLocation {
 }
 
 
-
 impl MiniBitGrid {
     pub fn new() -> Self {
         MiniBitGrid {
@@ -124,6 +125,7 @@ impl MiniBitGrid {
             outside: [AxialBitboard::empty(); 4],
             white_pieces: [AxialBitboard::empty(); 4],
             black_pieces: [AxialBitboard::empty(); 4],
+            pinned: [AxialBitboard::empty(); 4],
             stacks: BasicBitStack::new(),
             metainfo: MiniMetaInfo::new(),
         }
@@ -249,7 +251,7 @@ impl MiniBitGrid {
             "No queen or mosquito at the top of the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -273,7 +275,7 @@ impl MiniBitGrid {
             "No pillbug or mosquito at the top of the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -313,7 +315,7 @@ impl MiniBitGrid {
         let candidate_sources = Direction::all()
             .into_iter()
             .map(|direction| (direction.opposite(), location.apply(direction)))
-            .filter(|(_, loc)| self.presence(*loc) && !self.is_pinned(*loc))
+            .filter(|(_, loc)| self.presence(*loc) && !self.is_top_piece_pinned(*loc))
             .filter(|(_, loc)| {
                 let height = self.peek(*loc).len() as u8;
                 height == 1
@@ -347,7 +349,7 @@ impl MiniBitGrid {
             "No grasshopper or mosquito at the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -381,7 +383,7 @@ impl MiniBitGrid {
             "No beetle or mosquito at the top of the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -406,7 +408,7 @@ impl MiniBitGrid {
             "No spider or mosquito at the top of the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -473,7 +475,7 @@ impl MiniBitGrid {
             "No ant or mosquito at the top of given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -534,7 +536,7 @@ impl MiniBitGrid {
             "No ladybug or mosquito at the top of given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -600,7 +602,7 @@ impl MiniBitGrid {
             "No mosquito at top of the given location"
         );
 
-        let pinned = self.is_pinned(location);
+        let pinned = self.is_top_piece_pinned(location);
         if pinned {
             return MiniGrid::default()
         } 
@@ -792,16 +794,14 @@ impl MiniBitGrid {
         num_connected
     }
 
-    pub fn is_pinned(&self, location: MiniBitGridLocation) -> bool {
+    pub fn is_top_piece_pinned(&self, location: MiniBitGridLocation) -> bool {
         let mut grid = self.all_pieces;
         let height = self.peek(location).len();
         // upper level pieces can't be pinned in the traditional sense
         if height > 1 {
             return false;
         }
-        grid[location.board_index] &= !location.mask;
-        let connected_components = Self::num_connected_components(&grid);
-        connected_components > 1
+        self.pinned[location.board_index] & location.mask != 0
     }
 
     fn neighborhood_to_grid(
@@ -1202,6 +1202,33 @@ impl MiniBitGrid {
         });
     }
 
+    pub fn recalculate_pins(&mut self) {
+        self.pinned = [AxialBitboard::empty(); 4];
+
+        if let Some(location) = self.find_one_hex() {
+            let mut visited = HashSet::new();
+            let mut discovery_time = HashMap::new();
+            let mut low_time = HashMap::new();
+            
+            let cut_vertices = cut_vertices(
+                self, 
+                &mut visited, 
+                &mut discovery_time, 
+                &mut low_time, 
+                location,
+                0, 
+                None
+            );
+
+            for loc in cut_vertices {
+                let board_index = loc.board_index;
+                let mask = loc.mask;
+                self.pinned[board_index] |= mask;
+            }
+
+        } 
+    }
+
     /// TODO: may be a candidate for optimization
     pub fn apply_change(&mut self, change: Change) {
         let piece = change.added.piece;
@@ -1209,14 +1236,6 @@ impl MiniBitGrid {
             board_index: change.added.board_index,
             mask: change.added.mask,
         };
-
-        if self.addition_preserves_one_hive(location) == false {
-            let mut test_grid = self.clone();
-            println!("triggering change: {:?}", change);
-            println!("before illegal addition:\n{:?}", test_grid);
-            test_grid.add_top_unchecked(piece, location);
-            println!("after illegal addition:\n{:?}", test_grid);
-        }
 
         self.add_top(piece, location);
 
@@ -1228,6 +1247,7 @@ impl MiniBitGrid {
             self.remove_top(location);
         }
 
+        self.recalculate_pins();
     }
 
     pub fn placements(&self, color: PieceColor) -> Vec<MiniBitGridLocation> {
@@ -1724,7 +1744,15 @@ impl TryFrom<HexGrid> for MiniBitGrid {
             "Expected number of stacks in HexGrid and MiniBitGrid to match",
         );
 
+        mini.recalculate_pins();
         Ok(mini)
+    }
+}
+
+impl Peekable for MiniBitGrid {
+    type Location = MiniBitGridLocation;
+    fn peek(&self, location: Self::Location) -> Vec<Piece> {
+        self.peek(location)
     }
 }
 
@@ -1736,7 +1764,7 @@ pub mod tests {
 
     #[test]
     pub fn size_sanity_check() {
-        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 416);
+        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 448);
     }
 
     #[test]
@@ -2142,7 +2170,7 @@ pub mod tests {
         ));
 
         for location in pinned_locations {
-            assert!(grid.is_pinned(location.into()));
+            assert!(grid.is_top_piece_pinned(location.into()));
         }
 
         let unpinned_locations = HexGrid::selector(concat!(
@@ -2157,7 +2185,7 @@ pub mod tests {
         ));
 
         for location in unpinned_locations {
-            assert!(!grid.is_pinned(location.into()));
+            assert!(!grid.is_top_piece_pinned(location.into()));
         }
     }
 }

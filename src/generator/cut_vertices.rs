@@ -1,6 +1,7 @@
 use crate::hex_grid::Shiftable;
 use crate::piece::Peekable;
 use crate::location::Direction;
+use rustc_hash::{FxHashSet, FxHashMap};
 use std::collections::{HashSet, HashMap};
 
 fn neighbors<T: Shiftable>(graph: &impl Peekable<Location = T>, node: &T) -> Vec<T> {
@@ -18,20 +19,20 @@ fn neighbors<T: Shiftable>(graph: &impl Peekable<Location = T>, node: &T) -> Vec
 
 pub fn cut_vertices<T: Shiftable>(
     graph: &impl Peekable<Location = T>, 
-    visited: &mut HashSet<T>, 
-    discovery_time: &mut HashMap<T, u32>,
-    low_time: &mut HashMap<T, u32>,
+    visited: &mut FxHashSet<T>, 
+    discovery_time: &mut FxHashMap<T, u32>,
+    low_time: &mut FxHashMap<T, u32>,
     node: T,
     time: u32,
     parent: Option<&T>,
-) -> HashSet<T> {
+) -> FxHashSet<T> {
     let mut children = 0;
     discovery_time.insert(node.clone(), time);
     low_time.insert(node.clone(), time);
     visited.insert(node.clone());
 
 
-    let mut results = HashSet::new();
+    let mut results = FxHashSet::default();
 
     for neighbor in neighbors(graph, &node) {
         if visited.contains(&neighbor){
@@ -62,7 +63,7 @@ pub fn cut_vertices<T: Shiftable>(
 
         if parent.is_none() && children > 1 {
             results.insert(node.clone());
-        } else if parent.is_some() && lo >= discovery_time[&node] {
+        } else if parent.is_some() && low_time[&neighbor] >= discovery_time[&node] {
             results.insert(node.clone());
         }
     }
@@ -81,9 +82,9 @@ pub mod tests {
 
     #[test]
     fn test_cut_vertices() {
-        let mut visited = HashSet::new();
-        let mut discovery_time = HashMap::new();
-        let mut low_time = HashMap::new();
+        let mut visited = FxHashSet::default();
+        let mut discovery_time = FxHashMap::default();
+        let mut low_time = FxHashMap::default();
         
         let grid = concat!(
             ". . . . . . .\n",
@@ -136,9 +137,9 @@ pub mod tests {
 
     #[test]
     fn test_cut_vertices_regression() {
-        let mut visited = HashSet::new();
-        let mut discovery_time = HashMap::new();
-        let mut low_time = HashMap::new();
+        let mut visited = FxHashSet::default();
+        let mut discovery_time = FxHashMap::default();
+        let mut low_time = FxHashMap::default();
         
         let grid = concat!(
             ". . . . . . . . . . . . . .\n",

@@ -4,6 +4,7 @@ use crate::generator::cut_vertices::cut_vertices;
 use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes, IntoWrappingHexes};
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, Peekable};
+use rustc_hash::{FxHashSet, FxHashMap};
 use std::collections::{HashSet, HashMap};
 use std::fmt::{self, Display};
 
@@ -1206,9 +1207,9 @@ impl MiniBitGrid {
         self.pinned = [AxialBitboard::empty(); 4];
 
         if let Some(location) = self.find_one_hex() {
-            let mut visited = HashSet::new();
-            let mut discovery_time = HashMap::new();
-            let mut low_time = HashMap::new();
+            let mut visited = FxHashSet::default();
+            let mut discovery_time = FxHashMap::default();
+            let mut low_time = FxHashMap::default();
             
             let cut_vertices = cut_vertices(
                 self, 

@@ -102,12 +102,6 @@ fn bench_stress_test_grasshopper(c: &mut Criterion) {
     );
 }
 
-
-
-
-
-
-
 criterion_group!(
     benches,
     bench_stress_test_queen, 

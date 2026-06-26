@@ -8,6 +8,7 @@ clap = { version = "4.5.22", features = ["derive"] }
 itertools = "0.13.0"
 rand = { version = "0.10.1", features = ["chacha"] }
 regex = "1.11.1"
+rustc-hash = "2.1.2"
 thiserror = "2.0.3"
 
 [dev-dependencies]

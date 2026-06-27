@@ -739,26 +739,26 @@ impl MiniBitGrid {
         }
 
         for i in 0..GRID_SIZE {
-            let mut neighborhood = frontier[i].neighborhood();
-            let grid = Self::neighborhood_to_grid(&mut neighborhood, i);
-
-            for j in 0..GRID_SIZE {
-                new_frontier[j] |= grid[j] & all_pieces[j] & !visited[j];
+            let calculated = AxialBitboard::neighbors_grid(*frontier, i);
+            for i in 0..GRID_SIZE {
+                new_frontier[i] |= calculated[i] & all_pieces[i] & !visited[i];
             }
         }
 
         for index in 0..GRID_SIZE {
-            frontier[index] = new_frontier[index] & all_pieces[index];
+            frontier[index] = new_frontier[index] 
         }
     }
 
+    pub fn is_empty_frontier(frontier: &MiniGrid) -> bool {
+        frontier.iter().all(|board| board.is_empty())
+    }
+
     pub fn flood_fill(frontier: &mut MiniGrid, all_pieces: &MiniGrid) -> MiniGrid {
-        let is_empty =
-            |frontier: &MiniGrid| -> bool { frontier.iter().all(|board| board.is_empty()) };
 
         let mut visited = [AxialBitboard::empty(); GRID_SIZE];
 
-        while !is_empty(frontier) {
+        while !Self::is_empty_frontier(frontier) {
             Self::flood_fill_step(frontier, &mut visited, all_pieces);
         }
 
@@ -802,7 +802,10 @@ impl MiniBitGrid {
         if height > 1 {
             return false;
         }
-        self.pinned[location.board_index] & location.mask != 0
+
+        grid[location.board_index] &= !location.mask;
+        let connected_components = Self::num_connected_components(&grid);
+        connected_components > 1
     }
 
     fn neighborhood_to_grid(
@@ -1248,7 +1251,7 @@ impl MiniBitGrid {
             self.remove_top(location);
         }
 
-        self.recalculate_pins();
+        //self.recalculate_pins();
     }
 
     pub fn placements(&self, color: PieceColor) -> Vec<MiniBitGridLocation> {
@@ -1745,7 +1748,7 @@ impl TryFrom<HexGrid> for MiniBitGrid {
             "Expected number of stacks in HexGrid and MiniBitGrid to match",
         );
 
-        mini.recalculate_pins();
+        //mini.recalculate_pins();
         Ok(mini)
     }
 }

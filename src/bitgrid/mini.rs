@@ -739,7 +739,14 @@ impl MiniBitGrid {
         }
 
         for i in 0..GRID_SIZE {
-            let calculated = AxialBitboard::neighbors_grid(*frontier, i);
+            let calculated: [AxialBitboard; 4];
+
+            if frontier[i].is_centered() {
+                calculated = AxialBitboard::fast_neighbors_grid(*frontier, i) 
+            } else {
+                calculated = AxialBitboard::neighbors_grid(*frontier, i);
+            }
+
             for i in 0..GRID_SIZE {
                 new_frontier[i] |= calculated[i] & all_pieces[i] & !visited[i];
             }
@@ -1299,7 +1306,7 @@ impl MiniBitGrid {
         for index in 0..GRID_SIZE {
             let board = outside[index];
             for bit in board.into_iter() {
-                let mask = bit.mask();
+                let mask = bit.to_u64();
                 let location = MiniBitGridLocation {
                     board_index: index,
                     mask,

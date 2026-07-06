@@ -1,12 +1,13 @@
 use super::*;
 use crate::location::*;
-use std::cell::OnceCell;
+use std::sync::OnceLock;
+
 use rustc_hash::{ FxHashMap};
 use itertools::*;
 
 const SURROUND : AxialBitboard = AxialBitboard(0x30506);
 const TEST_GATE: AxialBitboard = AxialBitboard(0x200);
-const GATES : OnceCell<FxHashMap<AxialBitboard, AxialBitboard>> = OnceCell::new();
+static GATES : OnceLock<FxHashMap<AxialBitboard, AxialBitboard>> = OnceLock::new();
 //const STRING: OnceLock<String> = OnceLock::new();
 
 fn gated_locations(board: AxialBitboard, center: AxialBitboard) -> AxialBitboard {
@@ -42,8 +43,7 @@ fn surround_power_set() -> Vec<AxialBitboard> {
 
 pub fn gated_neighbors(board : AxialBitboard, location : MiniBitGridLocation) -> AxialBitboard {
     assert!(AxialBitboard(location.mask).is_centered());
-    let gates = GATES;
-    let boards = gates.get_or_init(|| {
+    let boards = GATES.get_or_init(|| {
         surround_power_set().into_iter().map(|gates| (gates, gated_locations(gates, TEST_GATE))).collect()
     });
     let mut start = AxialBitboard(location.mask);

@@ -4,6 +4,7 @@ use crate::generator::cut_vertices::cut_vertices;
 use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes, IntoWrappingHexes};
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, Peekable};
+use crate::bitgrid::gates::gated_neighbors;
 use rustc_hash::{FxHashSet, FxHashMap};
 use std::collections::{HashSet, HashMap};
 use std::fmt::{self, Display};
@@ -258,6 +259,25 @@ impl MiniBitGrid {
         } 
 
         let mut grid = [AxialBitboard::empty(); 4];
+
+        // Performance optimization: skip single_step if the board is centered
+        if AxialBitboard(location.mask).is_centered() {
+            let gated_neighbors = gated_neighbors(
+                self.all_pieces[location.board_index], 
+                location
+            );
+            let mut original_neighbors = AxialBitboard(location.mask).centered_neighbors();
+            original_neighbors &= self.all_pieces[location.board_index];
+
+            let mut grid = [AxialBitboard::empty(); 4];
+            grid[location.board_index] |= original_neighbors;
+            let original_reach = AxialBitboard::fast_neighbors_grid(grid, location.board_index); 
+            let original_reach_board = original_reach[location.board_index]; 
+
+            grid[location.board_index] = original_reach_board & gated_neighbors;
+            return grid
+        }
+
         for location in self.single_step(location, false, 1) {
             grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
         }

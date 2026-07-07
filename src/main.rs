@@ -9,6 +9,7 @@ mod location;
 mod piece;
 mod testing_utils;
 mod uhp;
+mod magic_search;
 
 use clap::{Parser, Subcommand};
 use uhp::UHPInterface;
@@ -27,6 +28,10 @@ enum MainCommands {
 
     /// Runs a script to analyze the certain statistics for hive positions
     Analyze,
+
+    /// Runs a script to try and determine a magic number set up by 
+    /// the magic_search module
+    MagicSearch,
 
     /// Interprets a number as an Axial and prints the bitboard
     Bitboard { number: u64 },
@@ -54,6 +59,10 @@ pub fn main() {
         Some(MainCommands::Bitboard { number }) => {
             let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
             println!("{}", bitboard);
+        }
+        Some(MainCommands::MagicSearch) => {
+            let magic_number = magic_search::find_magic();
+            println!("Found magic number: {}", magic_number);
         }
 
         None => run_universal_hive_protocol(),

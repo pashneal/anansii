@@ -2,13 +2,13 @@ use super::*;
 use crate::location::*;
 use std::sync::OnceLock;
 
-use rustc_hash::{ FxHashMap};
 use itertools::*;
+
+const SURROUND_MAGIC : u64 = 0x1081080000000000;
 
 const SURROUND : AxialBitboard = AxialBitboard(0x30506);
 const TEST_GATE: AxialBitboard = AxialBitboard(0x200);
-static GATES : OnceLock<FxHashMap<AxialBitboard, AxialBitboard>> = OnceLock::new();
-//const STRING: OnceLock<String> = OnceLock::new();
+static GATES : OnceLock<Vec<AxialBitboard>> = OnceLock::new();
 
 fn gated_locations(board: AxialBitboard, center: AxialBitboard) -> AxialBitboard {
     assert!(center.lsb() == center);
@@ -32,10 +32,20 @@ fn gated_locations(board: AxialBitboard, center: AxialBitboard) -> AxialBitboard
         }
     }
 
+    let mut original_neighbors = AxialBitboard(location.mask).centered_neighbors();
+    original_neighbors &= board;
+
+    let mut grid = [AxialBitboard::empty(); 4];
+    grid[location.board_index] |= original_neighbors;
+    let original_reach = AxialBitboard::fast_neighbors_grid(grid, location.board_index); 
+    let original_reach_board = original_reach[location.board_index]; 
+
+    final_board = original_reach_board & final_board;
+
     final_board
 }
 
-fn surround_power_set() -> Vec<AxialBitboard> {
+pub fn surround_power_set() -> Vec<AxialBitboard> {
     SURROUND.into_iter().powerset().map(
         |v| v.into_iter().fold(AxialBitboard(0), |acc, x| acc | x)
     ).collect()
@@ -43,8 +53,18 @@ fn surround_power_set() -> Vec<AxialBitboard> {
 
 pub fn gated_neighbors(board : AxialBitboard, location : MiniBitGridLocation) -> AxialBitboard {
     assert!(AxialBitboard(location.mask).is_centered());
+    let index_func = |x: AxialBitboard| (SURROUND_MAGIC.wrapping_mul(x.to_u64()) >> (64 - 6)) as usize; 
     let boards = GATES.get_or_init(|| {
-        surround_power_set().into_iter().map(|gates| (gates, gated_locations(gates, TEST_GATE))).collect()
+        let powerset : Vec<(AxialBitboard, AxialBitboard)> = surround_power_set()
+            .into_iter()
+            .map(|gates| (gates, gated_locations(gates, TEST_GATE)))
+            .collect();
+        let mut map = vec![AxialBitboard::empty(); powerset.len()];
+        for (gates, value) in powerset {
+            let index = index_func(gates);
+            map[index] = value;
+        }
+        map
     });
     let mut start = AxialBitboard(location.mask);
 
@@ -54,7 +74,7 @@ pub fn gated_neighbors(board : AxialBitboard, location : MiniBitGridLocation) ->
     let mut candidate = board & start;
     if shift >= 0 { candidate <<= shift } else { candidate >>= -shift}
 
-    let solution = boards.get(&candidate).expect("Didn't find board in GATES").clone();
+    let solution = boards[index_func(candidate)];
     let solution = if shift >= 0 {solution >> shift} else { solution << -shift };
 
     solution

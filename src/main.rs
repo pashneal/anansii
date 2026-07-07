@@ -28,6 +28,17 @@ enum MainCommands {
     /// Runs a script to analyze the certain statistics for hive positions
     Analyze,
 
+<<<<<<< Updated upstream
+=======
+    /// Runs a script to try and determine a magic number set up by 
+    /// the magic_search module
+    MagicSearch,
+
+    /// Runs a script to try and determine a magic number set up by 
+    /// the magic_search module
+    MagicSearches,
+
+>>>>>>> Stashed changes
     /// Interprets a number as an Axial and prints the bitboard
     Bitboard { number: u64 },
 }
@@ -54,6 +65,11 @@ pub fn main() {
         Some(MainCommands::Bitboard { number }) => {
             let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
             println!("{}", bitboard);
+        }
+
+        Some(MainCommands::MagicSearches) => {
+            let magic_numbers = magic_search::find_centered_magics();
+            println!("Found magic numbers: {:#?}", magic_numbers);
         }
 
         None => run_universal_hive_protocol(),

@@ -227,7 +227,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_west(&self) -> AxialBitboard {
+    pub fn flip_west(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> BITBOARD_WIDTH - 1)
     }
 
@@ -237,7 +237,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_east(&self) -> AxialBitboard {
+    pub fn flip_east(&self) -> AxialBitboard {
         AxialBitboard(self.0 << BITBOARD_WIDTH - 1)
     }
 
@@ -247,7 +247,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_northwest(&self) -> AxialBitboard {
+    pub fn flip_northwest(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> (BITBOARD_HEIGHT - 1) * BITBOARD_WIDTH)
     }
 
@@ -257,7 +257,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_northeast(&self) -> AxialBitboard {
+    pub fn flip_northeast(&self) -> AxialBitboard {
         AxialBitboard(self.0 >> (BITBOARD_HEIGHT - 1) * (BITBOARD_WIDTH - 1))
     }
 
@@ -267,7 +267,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_southwest(&self) -> AxialBitboard {
+    pub fn flip_southwest(&self) -> AxialBitboard {
         AxialBitboard(self.0 << (BITBOARD_HEIGHT - 1) * (BITBOARD_WIDTH - 1))
     }
 
@@ -277,7 +277,7 @@ impl AxialBitboard {
     }
 
     #[inline(always)]
-    fn flip_southeast(&self) -> AxialBitboard {
+    pub fn flip_southeast(&self) -> AxialBitboard {
         AxialBitboard(self.0 << (BITBOARD_HEIGHT - 1) * BITBOARD_WIDTH)
     }
 

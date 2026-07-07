@@ -971,8 +971,8 @@ mod tests {
     }
 
     fn add_board_to_grid(grid: &mut BasicBitGrid, board_index: usize, bitboard: AxialBitboard) {
-        for coords in bitboard.into_iter() {
-            let bit_index = coords.y * BITBOARD_WIDTH + coords.x;
+        for b in bitboard.into_iter() {
+            let bit_index = b.trailing_zeros() as usize;
             let loc = BitGridLocation::new(board_index, bit_index);
             let filler_piece = Piece::new(PieceType::Ant, PieceColor::Black);
             grid.add(filler_piece, loc);

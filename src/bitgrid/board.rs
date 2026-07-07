@@ -11,6 +11,7 @@ const NORTHEAST_CORNER: AxialBitboard = AxialBitboard(0x100000000000000);
 const SOUTHWEST_CORNER: AxialBitboard = AxialBitboard(0x80);
 const NORTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0xfe00000000000000);
 const SOUTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0x000000000000007f);
+const BORDERS: AxialBitboard = AxialBitboard(0xff818181818181ff);
 const NEIGHBORHOOD_HEIGHT: i8 = 3;
 const NEIGHBORHOOD_WIDTH: i8 = 3;
 const NEIGHBORHOOD_CENTER_INDEX: i8 = 4;
@@ -290,8 +291,14 @@ impl AxialBitboard {
         (self.0 & (1 << index)) != 0
     }
 
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.0 == 0
+    }
+
+    #[inline(always)]
+    pub fn trailing_zeros(&self) -> u32 {
+        self.0.trailing_zeros()
     }
 
     /// Returns the smallest bounding box of the bitboard, containing all
@@ -324,6 +331,72 @@ impl AxialBitboard {
         })
     }
 
+    #[inline(always)]
+    pub fn centered_neighbors(self) -> AxialBitboard {
+        debug_assert!(self.is_centered());
+        Self::center_neighbors(self, self)
+    }
+
+    #[inline(always)]
+    pub fn center_neighbors(original : AxialBitboard, center: AxialBitboard) -> AxialBitboard{
+        let mut center: AxialBitboard = AxialBitboard::empty();
+        center |= (original & !WEST_OVERFLOW_MASK).shift_west();
+        center |= (original & !EAST_OVERFLOW_MASK).shift_east();
+        center |= (original & !NORTHWEST_OVERFLOW_MASK).shift_northwest();
+        center |= (original & !NORTHEAST_OVERFLOW_MASK).shift_northeast();
+        center |= (original & !SOUTHWEST_OVERFLOW_MASK).shift_southwest();
+        center |= (original & !SOUTHEAST_OVERFLOW_MASK).shift_southeast();
+        center &= !original;
+        center
+    }
+
+    #[inline(always)]
+    pub fn center_right_neighbors(original: AxialBitboard, center_right: AxialBitboard) -> AxialBitboard {
+        let mut center_right: AxialBitboard = AxialBitboard::empty();
+        center_right |= (original & EAST_OVERFLOW_MASK).flip_east();
+        center_right |= (original & EAST_OVERFLOW_MASK).shift_northwest().flip_east();
+        center_right
+    }
+
+    #[inline(always)]
+    pub fn center_left_neighbors(original: AxialBitboard, center_left: AxialBitboard) -> AxialBitboard{
+
+        let mut center_left: AxialBitboard = AxialBitboard::empty();
+        center_left |= (original & WEST_OVERFLOW_MASK).flip_west();
+        center_left |= (original & WEST_OVERFLOW_MASK).shift_southeast().flip_west();
+        center_left
+    }
+
+    #[inline(always)]
+    pub fn top_neighbors(original: AxialBitboard, top: AxialBitboard) -> AxialBitboard {
+        let mut top: AxialBitboard = AxialBitboard::empty();
+        top |= (original & NORTHWEST_OVERFLOW_MASK).flip_northwest();
+        top |= (original & NORTH_WITHOUT_CORNER).shift_east().flip_northwest();
+        top
+    }
+
+    #[inline(always)]
+    pub fn bottom_neighbors(original: AxialBitboard, bottom: AxialBitboard) -> AxialBitboard{
+        let mut bottom: AxialBitboard = AxialBitboard::empty();
+        bottom |= (original & SOUTHEAST_OVERFLOW_MASK).flip_southeast();
+        bottom |= (original & SOUTH_WITHOUT_CORNER).shift_west().flip_southeast();
+        bottom
+    }
+
+    #[inline(always)]
+    pub fn top_right_neighbors(original: AxialBitboard, top_right: AxialBitboard) -> AxialBitboard{
+        let mut top_right: AxialBitboard = AxialBitboard::empty();
+        top_right |= (original & NORTHEAST_CORNER).flip_northeast();
+        top_right
+    }
+
+    #[inline(always)]
+    pub fn bottom_left_neighbors(original: AxialBitboard, bottom_left: AxialBitboard) -> AxialBitboard{
+        let mut bottom_left: AxialBitboard = AxialBitboard::empty();
+        bottom_left |= (original & SOUTHWEST_CORNER).flip_southwest();
+        bottom_left
+    }
+
     /// Returns a neighborhood representing all empty adjacent spaces
     /// next to current existing set bits. These adjacent neighbors are
     /// specifically bits arrived at by shifting set bits of the current bitboard
@@ -332,38 +405,57 @@ impl AxialBitboard {
         let mut neighbors = Neighborhood::new();
         let original = *self;
 
-        *neighbors.center() |= (original & !WEST_OVERFLOW_MASK).shift_west();
-        *neighbors.center() |= (original & !EAST_OVERFLOW_MASK).shift_east();
-        *neighbors.center() |= (original & !NORTHWEST_OVERFLOW_MASK).shift_northwest();
-        *neighbors.center() |= (original & !NORTHEAST_OVERFLOW_MASK).shift_northeast();
-        *neighbors.center() |= (original & !SOUTHWEST_OVERFLOW_MASK).shift_southwest();
-        *neighbors.center() |= (original & !SOUTHEAST_OVERFLOW_MASK).shift_southeast();
-        *neighbors.center() &= !original;
-
-        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK).flip_east();
-        *neighbors.center_right() |= (original & EAST_OVERFLOW_MASK)
-            .shift_northwest()
-            .flip_east();
-
-        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK).flip_west();
-        *neighbors.center_left() |= (original & WEST_OVERFLOW_MASK)
-            .shift_southeast()
-            .flip_west();
-
-        *neighbors.top() |= (original & NORTHWEST_OVERFLOW_MASK).flip_northwest();
-        *neighbors.top() |= (original & NORTH_WITHOUT_CORNER)
-            .shift_east()
-            .flip_northwest();
-
-        *neighbors.bottom() |= (original & SOUTHEAST_OVERFLOW_MASK).flip_southeast();
-        *neighbors.bottom() |= (original & SOUTH_WITHOUT_CORNER)
-            .shift_west()
-            .flip_southeast();
-
-        *neighbors.top_right() |= (original & NORTHEAST_CORNER).flip_northeast();
-        *neighbors.bottom_left() |= (original & SOUTHWEST_CORNER).flip_southwest();
+        *neighbors.center() = Self::center_neighbors(original, *neighbors.center());
+        *neighbors.center_right() = Self::center_right_neighbors(original, *neighbors.center_right());
+        *neighbors.center_left() = Self::center_left_neighbors(original, *neighbors.center_left());
+        *neighbors.top() = Self::top_neighbors(original, *neighbors.top());
+        *neighbors.bottom() = Self::bottom_neighbors(original, *neighbors.bottom());
+        *neighbors.top_right() = Self::top_right_neighbors(original, *neighbors.top_right());
+        *neighbors.bottom_left() = Self::bottom_left_neighbors(original, *neighbors.bottom_left());
 
         neighbors
+    }
+
+    #[inline(always)]
+    pub fn is_centered(self) -> bool {
+        BORDERS & self == 0
+    }
+
+    pub fn fast_neighbors_grid(
+        grid: [AxialBitboard; 4],
+        neighborhood_center: usize,
+    ) -> [AxialBitboard; 4] {
+
+        let original = grid[neighborhood_center];
+        let mut final_result = [AxialBitboard::empty(); 4];
+        final_result[neighborhood_center] |= Self::center_neighbors(original, final_result[neighborhood_center]);
+        final_result
+    }
+
+    pub fn neighbors_grid(
+        grid: [AxialBitboard; 4], 
+        neighborhood_center: usize, 
+    ) -> [AxialBitboard; 4] {
+        let vertical_index = (neighborhood_center + 2) % 4;
+        let horizontal_index = neighborhood_center ^ 1;
+        let diagonal_index = ((neighborhood_center + 2) % 4) ^ 1;
+
+        let mut final_result = [AxialBitboard::empty(); 4];
+
+        let original = grid[neighborhood_center];
+
+        final_result[vertical_index] |= Self::top_neighbors(original, final_result[vertical_index]);
+        final_result[vertical_index] |= Self::bottom_neighbors(original, final_result[vertical_index]);
+
+        final_result[horizontal_index] |= Self::center_left_neighbors(original, final_result[horizontal_index]);
+        final_result[horizontal_index] |= Self::center_right_neighbors(original, final_result[horizontal_index]);
+
+        final_result[diagonal_index] |= Self::top_right_neighbors(original, final_result[diagonal_index]);
+        final_result[diagonal_index] |= Self::bottom_left_neighbors(original, final_result[diagonal_index]);
+
+        final_result[neighborhood_center] |= Self::center_neighbors(original, final_result[neighborhood_center]);
+
+        final_result
     }
 }
 
@@ -372,25 +464,24 @@ pub struct AxialBitboardIter {
 }
 
 impl Iterator for AxialBitboardIter {
-    type Item = BitboardCoords;
+    type Item = AxialBitboard;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.board.is_empty() {
             return None;
         }
 
-        let lsb = self.board.0.trailing_zeros() as usize;
-        let x = lsb % BITBOARD_WIDTH;
-        let y = lsb / BITBOARD_WIDTH;
+        let lsb = self.board.trailing_zeros() as usize;
+        let bit = 1 << lsb;
 
-        self.board.0 &= self.board.0 - 1;
+        self.board.0 &= !bit;
 
-        Some(BitboardCoords { x, y })
+        Some(AxialBitboard(bit))
     }
 }
 
 impl IntoIterator for AxialBitboard {
-    type Item = BitboardCoords;
+    type Item = AxialBitboard;
     type IntoIter = AxialBitboardIter;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -477,6 +568,94 @@ impl ops::BitAndAssign<u64> for AxialBitboard {
     #[inline(always)]
     fn bitand_assign(&mut self, rhs: u64) {
         self.0 &= rhs;
+    }
+}
+
+impl ops::ShrAssign<i32> for AxialBitboard {
+    #[inline(always)]
+    fn shr_assign(&mut self, rhs: i32) {
+        self.0 >>= rhs
+    }
+}
+impl ops::ShrAssign<u64> for AxialBitboard {
+    #[inline(always)]
+    fn shr_assign(&mut self, rhs: u64) {
+        self.0 >>= rhs
+    }
+}
+
+impl ops::ShrAssign<Self> for AxialBitboard {
+    #[inline(always)]
+    fn shr_assign(&mut self, rhs: Self) {
+        self.0 >>= rhs.0
+    }
+}
+
+impl ops::Shr<Self> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shr(self, rhs: Self) -> Self {
+        AxialBitboard(self.0 >> rhs.0)
+    }
+}
+
+impl ops::Shr<u64> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shr(self, rhs: u64) -> Self {
+        AxialBitboard(self.0 >> rhs)
+    }
+}
+
+impl ops::Shr<i32> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shr(self, rhs: i32) -> Self {
+        AxialBitboard(self.0 >> rhs)
+    }
+}
+
+impl ops::ShlAssign<i32> for AxialBitboard {
+    #[inline(always)]
+    fn shl_assign(&mut self, rhs: i32) {
+        self.0 <<= rhs
+    }
+}
+impl ops::ShlAssign<u64> for AxialBitboard {
+    #[inline(always)]
+    fn shl_assign(&mut self, rhs: u64) {
+        self.0 <<= rhs
+    }
+}
+
+impl ops::ShlAssign<Self> for AxialBitboard {
+    #[inline(always)]
+    fn shl_assign(&mut self, rhs: Self) {
+        self.0 <<= rhs.0
+    }
+}
+
+impl ops::Shl<Self> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shl(self, rhs: Self) -> Self {
+        AxialBitboard(self.0 << rhs.0)
+    }
+}
+
+impl ops::Shl<u64> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shl(self, rhs: u64) -> Self {
+        AxialBitboard(self.0 << rhs)
+    }
+}
+
+impl ops::Shl<i32> for AxialBitboard {
+    type Output = Self;
+    #[inline(always)]
+    fn shl(self, rhs: i32) -> Self {
+        AxialBitboard(self.0 << rhs)
     }
 }
 

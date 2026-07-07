@@ -4,6 +4,7 @@ use crate::generator::cut_vertices::cut_vertices;
 use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes, IntoWrappingHexes};
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, Peekable};
+use crate::bitgrid::gates::gated_neighbors;
 use rustc_hash::{FxHashSet, FxHashMap};
 use std::collections::{HashSet, HashMap};
 use std::fmt::{self, Display};
@@ -258,6 +259,25 @@ impl MiniBitGrid {
         } 
 
         let mut grid = [AxialBitboard::empty(); 4];
+
+        // Performance optimization: skip single_step if the board is centered
+        if AxialBitboard(location.mask).is_centered() {
+            let gated_neighbors = gated_neighbors(
+                self.all_pieces[location.board_index], 
+                location
+            );
+            let mut original_neighbors = AxialBitboard(location.mask).centered_neighbors();
+            original_neighbors &= self.all_pieces[location.board_index];
+
+            let mut grid = [AxialBitboard::empty(); 4];
+            grid[location.board_index] |= original_neighbors;
+            let original_reach = AxialBitboard::fast_neighbors_grid(grid, location.board_index); 
+            let original_reach_board = original_reach[location.board_index]; 
+
+            grid[location.board_index] = original_reach_board & gated_neighbors;
+            return grid
+        }
+
         for location in self.single_step(location, false, 1) {
             grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
         }
@@ -739,26 +759,33 @@ impl MiniBitGrid {
         }
 
         for i in 0..GRID_SIZE {
-            let mut neighborhood = frontier[i].neighborhood();
-            let grid = Self::neighborhood_to_grid(&mut neighborhood, i);
+            let calculated: [AxialBitboard; 4];
 
-            for j in 0..GRID_SIZE {
-                new_frontier[j] |= grid[j] & all_pieces[j] & !visited[j];
+            if frontier[i].is_centered() {
+                calculated = AxialBitboard::fast_neighbors_grid(*frontier, i) 
+            } else {
+                calculated = AxialBitboard::neighbors_grid(*frontier, i);
+            }
+
+            for i in 0..GRID_SIZE {
+                new_frontier[i] |= calculated[i] & all_pieces[i] & !visited[i];
             }
         }
 
         for index in 0..GRID_SIZE {
-            frontier[index] = new_frontier[index] & all_pieces[index];
+            frontier[index] = new_frontier[index] 
         }
     }
 
+    pub fn is_empty_frontier(frontier: &MiniGrid) -> bool {
+        frontier.iter().all(|board| board.is_empty())
+    }
+
     pub fn flood_fill(frontier: &mut MiniGrid, all_pieces: &MiniGrid) -> MiniGrid {
-        let is_empty =
-            |frontier: &MiniGrid| -> bool { frontier.iter().all(|board| board.is_empty()) };
 
         let mut visited = [AxialBitboard::empty(); GRID_SIZE];
 
-        while !is_empty(frontier) {
+        while !Self::is_empty_frontier(frontier) {
             Self::flood_fill_step(frontier, &mut visited, all_pieces);
         }
 
@@ -802,7 +829,10 @@ impl MiniBitGrid {
         if height > 1 {
             return false;
         }
-        self.pinned[location.board_index] & location.mask != 0
+
+        grid[location.board_index] &= !location.mask;
+        let connected_components = Self::num_connected_components(&grid);
+        connected_components > 1
     }
 
     fn neighborhood_to_grid(
@@ -1248,7 +1278,7 @@ impl MiniBitGrid {
             self.remove_top(location);
         }
 
-        self.recalculate_pins();
+        //self.recalculate_pins();
     }
 
     pub fn placements(&self, color: PieceColor) -> Vec<MiniBitGridLocation> {
@@ -1296,7 +1326,7 @@ impl MiniBitGrid {
         for index in 0..GRID_SIZE {
             let board = outside[index];
             for bit in board.into_iter() {
-                let mask = bit.mask();
+                let mask = bit.to_u64();
                 let location = MiniBitGridLocation {
                     board_index: index,
                     mask,
@@ -1745,7 +1775,7 @@ impl TryFrom<HexGrid> for MiniBitGrid {
             "Expected number of stacks in HexGrid and MiniBitGrid to match",
         );
 
-        mini.recalculate_pins();
+        //mini.recalculate_pins();
         Ok(mini)
     }
 }

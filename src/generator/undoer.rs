@@ -1,6 +1,8 @@
 use super::*;
 use crate::generator::mini::*;
 use crate::bitgrid::mini::*;
+use crate::bitgrid::gates::*;
+use crate::bitgrid::board::AxialBitboard;
 use crate::generator::*;
 use crate::hex_grid::*;
 use crate::uhp::{GameType, Annotator};
@@ -84,6 +86,13 @@ impl Undoer {
         }
 
         moves
+    }
+
+    pub fn warmup_gates(&mut self) {
+        gated_neighbors(
+            AxialBitboard(0x0000000000), 
+            MiniBitGridLocation {board_index: 0, mask: 0x0000020000}
+        );
     }
 
     // Given a piece, and a set of moves, track the presence

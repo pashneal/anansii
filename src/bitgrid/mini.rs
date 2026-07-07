@@ -266,15 +266,8 @@ impl MiniBitGrid {
                 self.all_pieces[location.board_index], 
                 location
             );
-            let mut original_neighbors = AxialBitboard(location.mask).centered_neighbors();
-            original_neighbors &= self.all_pieces[location.board_index];
-
             let mut grid = [AxialBitboard::empty(); 4];
-            grid[location.board_index] |= original_neighbors;
-            let original_reach = AxialBitboard::fast_neighbors_grid(grid, location.board_index); 
-            let original_reach_board = original_reach[location.board_index]; 
-
-            grid[location.board_index] = original_reach_board & gated_neighbors;
+            grid[location.board_index] = gated_neighbors;
             return grid
         }
 
@@ -300,6 +293,17 @@ impl MiniBitGrid {
         if pinned {
             return MiniGrid::default()
         } 
+
+        // Performance optimization: skip single_step if the board is centered
+        if AxialBitboard(location.mask).is_centered() {
+            let gated_neighbors = gated_neighbors(
+                self.all_pieces[location.board_index], 
+                location
+            );
+            let mut grid = [AxialBitboard::empty(); 4];
+            grid[location.board_index] = gated_neighbors;
+            return grid
+        }
 
         let mut grid = [AxialBitboard::empty(); 4]; 
         for location in self.single_step(location, false, 1) {
@@ -754,26 +758,31 @@ impl MiniBitGrid {
     fn flood_fill_step(frontier: &mut MiniGrid, visited: &mut MiniGrid, all_pieces: &MiniGrid) {
         let mut new_frontier = [AxialBitboard::empty(); GRID_SIZE];
 
-        for index in 0..GRID_SIZE {
-            visited[index] |= frontier[index];
+        for i in 0..GRID_SIZE {
+            visited[i] |= frontier[i];
         }
 
         for i in 0..GRID_SIZE {
-            let calculated: [AxialBitboard; 4];
 
-            if frontier[i].is_centered() {
-                calculated = AxialBitboard::fast_neighbors_grid(*frontier, i) 
-            } else {
-                calculated = AxialBitboard::neighbors_grid(*frontier, i);
+            // skip useless frontiers
+            if frontier[i].is_empty() { 
+                continue; 
             }
 
-            for i in 0..GRID_SIZE {
-                new_frontier[i] |= calculated[i] & all_pieces[i] & !visited[i];
+            // todo can do other things
+            let calculated = if frontier[i].is_centered() {
+                AxialBitboard::fast_neighbors_grid(*frontier, i) 
+            } else {
+                AxialBitboard::neighbors_grid(*frontier, i)
+            };
+
+            for j in 0..GRID_SIZE {
+                new_frontier[j] |= calculated[j];
             }
         }
 
-        for index in 0..GRID_SIZE {
-            frontier[index] = new_frontier[index] 
+        for i in 0..GRID_SIZE {
+            frontier[i] = new_frontier[i] & all_pieces[i] & !visited[i];
         }
     }
 
@@ -794,6 +803,30 @@ impl MiniBitGrid {
         }
 
         visited
+    }
+
+    pub fn fast_single_connected_component(grid: &MiniGrid) -> bool {
+        let next_board = |grid: &MiniGrid| {
+            grid.iter()
+                .enumerate()
+                .find(|&(_, &board)| !board.is_empty())
+                .map(|(index, &board)| (index, board))
+        };
+
+        if let Some((index, board)) = next_board(grid) {
+            let mut frontier = MiniGrid::default();
+            // Select only one bit that has not yet been visited
+            frontier[index] = board.lsb();
+            let connected = Self::flood_fill(&mut frontier, grid);
+
+            for i in 0..GRID_SIZE {
+                if (grid[i] & !connected[i]).0 > 0 {
+                    return false;
+                }
+            }
+        }
+
+        return true
     }
 
     pub fn num_connected_components(grid: &MiniGrid) -> usize {
@@ -831,8 +864,7 @@ impl MiniBitGrid {
         }
 
         grid[location.board_index] &= !location.mask;
-        let connected_components = Self::num_connected_components(&grid);
-        connected_components > 1
+        !Self::fast_single_connected_component(&grid)
     }
 
     fn neighborhood_to_grid(

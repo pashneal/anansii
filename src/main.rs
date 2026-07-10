@@ -65,6 +65,11 @@ pub fn main() {
             println!("Found magic number: {}", magic_number);
         }
 
+        Some(MainCommands::MagicSearch) => {
+            let magic_numbers = magic_search::find_centered_magics();
+            println!("Found magic numbers: {:#?}", magic_numbers);
+        }
+
         None => run_universal_hive_protocol(),
     }
 }

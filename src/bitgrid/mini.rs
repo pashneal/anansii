@@ -870,6 +870,11 @@ impl MiniBitGrid {
         }
 
         for i in 0..GRID_SIZE {
+            if frontier[i].is_empty() {
+                continue;
+            }
+
+            let calculated: [AxialBitboard; 4];
 
             // skip useless frontiers
             if frontier[i].is_empty() { 

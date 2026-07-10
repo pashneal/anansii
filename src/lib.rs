@@ -9,3 +9,4 @@ pub mod location;
 pub mod piece;
 pub mod testing_utils;
 pub mod uhp;
+pub mod magic_search;   

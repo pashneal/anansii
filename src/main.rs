@@ -69,11 +69,6 @@ pub fn main() {
             println!("Found magic number: {}", magic_number);
         }
 
-        Some(MainCommands::MagicSearch) => {
-            let magic_number = magic_search::find_magic();
-            println!("Found magic numbers: {:#?}", magic_number);
-        }
-
         Some(MainCommands::MagicSearches) => {
             let magic_numbers = magic_search::find_centered_magics();
             println!("Found magic numbers: {:#?}", magic_numbers);

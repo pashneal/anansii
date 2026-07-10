@@ -64,6 +64,10 @@ pub fn main() {
             let bitboard = bitgrid::board::AxialBitboard::from_u64(number);
             println!("{}", bitboard);
         }
+        Some(MainCommands::MagicSearch) => {
+            let magic_number = magic_search::find_magic();
+            println!("Found magic number: {}", magic_number);
+        }
 
         Some(MainCommands::MagicSearch) => {
             let magic_number = magic_search::find_magic();

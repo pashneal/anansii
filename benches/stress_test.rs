@@ -59,8 +59,9 @@ fn bench_stress_test_pillbug(c: &mut Criterion) {
     use PieceColor::*;
 
     let mut undoer = Undoer::new();
-    let untimed_run = undoer.untimed_run(200, 50);
+    let untimed_run = undoer.untimed_run(200, 57);
     let tracked_run = undoer.track_piece(untimed_run, Piece::new(Pillbug, White));
+    undoer.warmup_gates();
 
     c.bench_function("stress_test_pillbug", |b| 
         b.iter(|| undoer.pillbug_run(tracked_run.clone()))

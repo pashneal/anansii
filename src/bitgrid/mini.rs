@@ -15,6 +15,8 @@ pub const BOTTOM_OVERFLOW_MASK: u64 = 0x00000000000000FF;
 pub const TOP_OVERFLOW_MASK: u64 = 0xFF00000000000000;
 pub const ALL_OVERFLOWS : u64 = LEFT_OVERFLOW_MASK | RIGHT_OVERFLOW_MASK | BOTTOM_OVERFLOW_MASK | TOP_OVERFLOW_MASK;
 
+pub const CORNER_MASK: u64 = 0x8100000000000081;
+
 const CENTER_BOARD_INDEX: usize = 0;
 const CENTER_BIT_X: i8 = 4;
 const CENTER_BIT_Y: i8 = 3;
@@ -513,38 +515,32 @@ impl MiniBitGrid {
         let mut grid_without_ant = self.clone();
         grid_without_ant.remove_top(location).unwrap();
 
-        fn dfs(
-            grid: &MiniBitGrid,
-            visited: &mut HashSet<MiniBitGridLocation>,
+        fn fast_dfs(
+            grid_without_ant: &MiniBitGrid,
+            visited: &mut [AxialBitboard; 4],
             loc: MiniBitGridLocation,
         ) {
-            if visited.contains(&loc) {
+            if visited[loc.board_index] & loc.mask != 0 {
                 return;
             }
-
-            if grid.outside[loc.board_index] & loc.mask == 0 {
-                return;
-            }
-
-            visited.insert(loc);
-
-            for direction in Direction::all() {
-                if grid.gated(1, loc, direction) {
-                    continue;
+            visited[loc.board_index] |= AxialBitboard::from_u64(loc.mask);
+            let neighbors = grid_without_ant.fast_step(loc, grid_without_ant.all_pieces);
+            for (index, grid) in neighbors.iter().enumerate() {
+                for loc in *grid {
+                    let location  = MiniBitGridLocation {
+                        board_index: index, 
+                        mask: loc.to_u64(),
+                    };
+                    fast_dfs(grid_without_ant, visited, location);
                 }
-                dfs(grid, visited, loc.apply(direction));
             }
         }
 
-        let mut visited = HashSet::new();
-        dfs(&grid_without_ant, &mut visited, location);
+        let mut visited = [AxialBitboard::empty(); 4];
+        fast_dfs(&grid_without_ant, &mut visited, location);
 
-        for candidate in visited {
-            // make sure candidate is in the "outside" of the grid without 
-            // the ant, otherwise the ant can't move there
-            if grid_without_ant.outside[candidate.board_index] & candidate.mask != 0 {
-                final_grid[candidate.board_index] |= AxialBitboard::from_u64(candidate.mask);
-            }
+        for index in 0..GRID_SIZE {
+            final_grid[index] |= visited[index] & grid_without_ant.outside[index];
         }
 
         // make sure final grid doesn't have location
@@ -679,7 +675,18 @@ impl MiniBitGrid {
     pub fn fast_step(&self, location: MiniBitGridLocation, pieces: [AxialBitboard; 4]) -> [AxialBitboard; 4] {
 
         let mut grid = [AxialBitboard::empty(); 4];
-        if location.is_centered() {
+        if location.is_corner() {
+            // fall back to slow gated in multiple directions
+            for direction in Direction::all() {
+                let next_loc = location.apply(direction);
+                if self.presence(next_loc) == false {
+                    if !self.gated(1, location, direction) {
+                        grid[next_loc.board_index] |= AxialBitboard::from_u64(next_loc.mask);
+                    }
+                }
+            }
+
+        } else if location.is_centered() {
             let neighbors = gated_neighbors(
                 pieces[location.board_index], 
                 location
@@ -762,15 +769,7 @@ impl MiniBitGrid {
             grid[location.board_index] |= neighbors;
 
         } else {
-            // fall back to slow gated in multiple directions
-            for direction in Direction::all() {
-                let next_loc = location.apply(direction);
-                if self.presence(next_loc) == false {
-                    if !self.gated(1, location, direction) {
-                        grid[next_loc.board_index] |= AxialBitboard::from_u64(next_loc.mask);
-                    }
-                }
-            }
+            panic!("Invalid location for fast_step: {:?}", location);
         }
 
         grid
@@ -1606,6 +1605,10 @@ impl MiniBitGridLocation {
             board_index,
             mask: 1 << bitboard_index,
         }
+    }
+
+    pub fn is_corner(&self) -> bool {
+        self.mask & CORNER_MASK != 0
     }
 
     #[inline(always)]

@@ -33,6 +33,10 @@ enum MainCommands {
     /// the magic_search module
     MagicSearch,
 
+    /// Runs a script to try and determine a magic number set up by 
+    /// the magic_search module
+    MagicSearches,
+
     /// Interprets a number as an Axial and prints the bitboard
     Bitboard { number: u64 },
 }
@@ -65,10 +69,11 @@ pub fn main() {
             println!("Found magic number: {}", magic_number);
         }
 
-        Some(MainCommands::MagicSearch) => {
+        Some(MainCommands::MagicSearches) => {
             let magic_numbers = magic_search::find_centered_magics();
             println!("Found magic numbers: {:#?}", magic_numbers);
         }
+
 
         None => run_universal_hive_protocol(),
     }

@@ -1,5 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::ops;
+use super::*;
+
+pub const BORDERS: AxialBitboard = AxialBitboard(0xff818181818181ff);
 
 const NORTHWEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0xff00000000000000);
 const SOUTHEAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x00000000000000ff);
@@ -11,7 +14,6 @@ const NORTHEAST_CORNER: AxialBitboard = AxialBitboard(0x100000000000000);
 const SOUTHWEST_CORNER: AxialBitboard = AxialBitboard(0x80);
 const NORTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0xfe00000000000000);
 const SOUTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0x000000000000007f);
-const BORDERS: AxialBitboard = AxialBitboard(0xff818181818181ff);
 const NEIGHBORHOOD_HEIGHT: i8 = 3;
 const NEIGHBORHOOD_WIDTH: i8 = 3;
 const NEIGHBORHOOD_CENTER_INDEX: i8 = 4;

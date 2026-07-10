@@ -13,6 +13,9 @@ pub const LEFT_OVERFLOW_MASK: u64 = 0x8080808080808080;
 pub const RIGHT_OVERFLOW_MASK: u64 = 0x0101010101010101;
 pub const BOTTOM_OVERFLOW_MASK: u64 = 0x00000000000000FF;
 pub const TOP_OVERFLOW_MASK: u64 = 0xFF00000000000000;
+pub const ALL_OVERFLOWS : u64 = LEFT_OVERFLOW_MASK | RIGHT_OVERFLOW_MASK | BOTTOM_OVERFLOW_MASK | TOP_OVERFLOW_MASK;
+
+pub const CORNER_MASK: u64 = 0x8100000000000081;
 
 const CENTER_BOARD_INDEX: usize = 0;
 const CENTER_BIT_X: i8 = 4;
@@ -132,6 +135,8 @@ impl MiniBitGrid {
             metainfo: MiniMetaInfo::new(),
         }
     }
+
+
 
 
     pub fn decompose(
@@ -510,38 +515,32 @@ impl MiniBitGrid {
         let mut grid_without_ant = self.clone();
         grid_without_ant.remove_top(location).unwrap();
 
-        fn dfs(
-            grid: &MiniBitGrid,
-            visited: &mut HashSet<MiniBitGridLocation>,
+        fn fast_dfs(
+            grid_without_ant: &MiniBitGrid,
+            visited: &mut [AxialBitboard; 4],
             loc: MiniBitGridLocation,
         ) {
-            if visited.contains(&loc) {
+            if visited[loc.board_index] & loc.mask != 0 {
                 return;
             }
-
-            if grid.outside[loc.board_index] & loc.mask == 0 {
-                return;
-            }
-
-            visited.insert(loc);
-
-            for direction in Direction::all() {
-                if grid.gated(1, loc, direction) {
-                    continue;
+            visited[loc.board_index] |= AxialBitboard::from_u64(loc.mask);
+            let neighbors = grid_without_ant.fast_step(loc, grid_without_ant.all_pieces);
+            for (index, grid) in neighbors.iter().enumerate() {
+                for loc in *grid {
+                    let location  = MiniBitGridLocation {
+                        board_index: index, 
+                        mask: loc.to_u64(),
+                    };
+                    fast_dfs(grid_without_ant, visited, location);
                 }
-                dfs(grid, visited, loc.apply(direction));
             }
         }
 
-        let mut visited = HashSet::new();
-        dfs(&grid_without_ant, &mut visited, location);
+        let mut visited = [AxialBitboard::empty(); 4];
+        fast_dfs(&grid_without_ant, &mut visited, location);
 
-        for candidate in visited {
-            // make sure candidate is in the "outside" of the grid without 
-            // the ant, otherwise the ant can't move there
-            if grid_without_ant.outside[candidate.board_index] & candidate.mask != 0 {
-                final_grid[candidate.board_index] |= AxialBitboard::from_u64(candidate.mask);
-            }
+        for index in 0..GRID_SIZE {
+            final_grid[index] |= visited[index] & grid_without_ant.outside[index];
         }
 
         // make sure final grid doesn't have location
@@ -664,6 +663,113 @@ impl MiniBitGrid {
             for index in 0..GRID_SIZE {
                 grid[index] |= moves[index];
             }
+        }
+
+        grid
+    }
+
+    // This function is gonna be pretty ugly, sorry not sorry
+    // It's intended to be the optimized version of a single
+    // gated step in some direction, and it's still adjacent to
+    // some neighbor
+    pub fn fast_step(&self, location: MiniBitGridLocation, pieces: [AxialBitboard; 4]) -> [AxialBitboard; 4] {
+
+        let mut grid = [AxialBitboard::empty(); 4];
+        if location.is_corner() {
+            // fall back to slow gated in multiple directions
+            for direction in Direction::all() {
+                let next_loc = location.apply(direction);
+                if self.presence(next_loc) == false {
+                    if !self.gated(1, location, direction) {
+                        grid[next_loc.board_index] |= AxialBitboard::from_u64(next_loc.mask);
+                    }
+                }
+            }
+
+        } else if location.is_centered() {
+            let neighbors = gated_neighbors(
+                pieces[location.board_index], 
+                location
+            );
+            grid[location.board_index] |= neighbors;
+
+        } else if location.is_left() {
+
+            let left_index = match location.board_index {
+                0 => 1,
+                1 => 0,
+                2 => 3,
+                3 => 2,
+                _ => panic!("Invalid left board index"),
+            };
+
+            let (left_neighbors, neighbors) = left_gated_neighbors(
+                pieces[left_index], 
+                pieces[location.board_index], 
+                location
+            );
+
+            grid[left_index] |= left_neighbors;
+            grid[location.board_index] |= neighbors;
+
+        } else if location.is_right() {
+
+            let right_index = match location.board_index {
+                0 => 1,
+                1 => 0,
+                2 => 3,
+                3 => 2,
+                _ => panic!("Invalid left board index"),
+            };
+            let (neighbors, right_neighbors) = right_gated_neighbors(
+                pieces[right_index], 
+                pieces[location.board_index], 
+                location
+            );
+
+            grid[right_index] |= right_neighbors;
+            grid[location.board_index] |= neighbors;
+
+        } else if location.is_top() {
+
+            let top_index = match location.board_index {
+                0 => 2,
+                1 => 3,
+                2 => 0,
+                3 => 1,
+                _ => panic!("Invalid top board index"),
+            };
+
+            let (top_neighbors, neighbors) = top_gated_neighbors(
+                pieces[top_index], 
+                pieces[location.board_index], 
+                location
+            );
+
+            grid[top_index] |= top_neighbors;
+            grid[location.board_index] |= neighbors;
+
+        } else if location.is_bottom() {
+
+            let bottom_index = match location.board_index {
+                0 => 2,
+                1 => 3,
+                2 => 0,
+                3 => 1,
+                _ => panic!("Invalid bottom board index"),
+            };
+
+            let (neighbors, bottom_neighbors) = bottom_gated_neighbors(
+                pieces[bottom_index], 
+                pieces[location.board_index], 
+                location
+            );
+
+            grid[bottom_index] |= bottom_neighbors;
+            grid[location.board_index] |= neighbors;
+
+        } else {
+            panic!("Invalid location for fast_step: {:?}", location);
         }
 
         grid
@@ -1381,28 +1487,6 @@ impl IntoPieces for MiniBitGrid {
 
 
     fn pieces(&self) -> Vec<(Vec<Piece>, MiniBitGridLocation)> {
-        // TODO: start working from here - is this true? can't we define the 
-        // conversion from MiniBitGridLocation to HexLocation even if the One Hive rule is not
-        // satisfied?
-        // 
-        // No I don't think so. It's annoying but I think I have to rework IntoPieces to 
-        // decouple the converstion to HexLocation (there's already some helper 
-        // traits that can now - given that the board respects the one hive rule -
-        // convert MiniBitGridLocations to HexLocations). So IntoPieces should just be a 
-        // marker trait on top of those helpers
-        //
-        // So functionally the plan is some Trait capturing
-        // fn pieces(&self) -> Vec<(Vec<Piece>, T)> 
-        // and another capturing
-        // fn mapping(orienting board, Vec<T>) -> Vec<(T, HexLocation)>
-        // ^ where this is already implemented for you as long as you define Shiftable 
-        // and the above trait.
-        //
-        // All this because I wanted to go on a side quest to make a bijective mapping from 
-        // HexGrid to MiniBitGrid :D
-        //
-        // for example, using the relative locations of some starting arbitrary piece and
-        // preserving relative distances. food for thought
         debug_assert!( 
             self.is_one_hive(), 
             "Expected grid to satisfy the One Hive rule, otherwise the conversion to HexLocation is not well defined. {:?}",
@@ -1522,6 +1606,36 @@ impl MiniBitGridLocation {
             mask: 1 << bitboard_index,
         }
     }
+
+    pub fn is_corner(&self) -> bool {
+        self.mask & CORNER_MASK != 0
+    }
+
+    #[inline(always)]
+    pub fn is_centered(&self) -> bool {
+        self.mask & ALL_OVERFLOWS == 0
+    }
+
+    #[inline(always)]
+    pub fn is_left(&self) -> bool {
+        self.mask & LEFT_OVERFLOW_MASK != 0
+    }
+
+    #[inline(always)]
+    pub fn is_right(&self) -> bool {
+        self.mask & RIGHT_OVERFLOW_MASK != 0
+    }
+
+    #[inline(always)]
+    pub fn is_top(&self) -> bool {
+        self.mask & TOP_OVERFLOW_MASK != 0
+    }
+
+    #[inline(always)]
+    pub fn is_bottom(&self) -> bool {
+        self.mask & BOTTOM_OVERFLOW_MASK != 0
+    }
+
 
     pub fn from_u64(board_index: usize, mask: u64) -> Self {
         debug_assert!(board_index < 4);

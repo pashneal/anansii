@@ -60,7 +60,7 @@ pub fn bottom_gated_neighbors(
 
     let neighbors = gated_neighbors(
         (board_bottom & TOP_OVERFLOW_MASK).flip_northwest() | (board_center << 8),
-        MiniBitGridLocation {board_index: location.board_index, mask: location.mask << 8}
+        MiniBitGridLocation {board_index: location.board_index, mask: location.mask << 8},
     );
 
     let bottom_neighbors = (neighbors & BOTTOM_OVERFLOW_MASK).flip_southeast();
@@ -121,7 +121,7 @@ pub fn left_gated_neighbors(
 }
 
 pub fn gated_neighbors(board : AxialBitboard, location : MiniBitGridLocation) -> AxialBitboard {
-    assert!(AxialBitboard(location.mask).is_centered());
+    //assert!(AxialBitboard(location.mask).is_centered());
     let index_func = |x: AxialBitboard| (SURROUND_MAGIC.wrapping_mul(x.to_u64()) >> (64 - 6)) as usize; 
     let boards = GATES.get_or_init(|| {
         let powerset : Vec<(AxialBitboard, AxialBitboard)> = surround_power_set()

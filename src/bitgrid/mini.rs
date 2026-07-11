@@ -78,6 +78,7 @@ pub struct MiniBitGrid {
     white_pieces: MiniGrid,
     black_pieces: MiniGrid,
     pinned: MiniGrid,
+    upper_levels: [MiniGrid; 3],
     stacks: BasicBitStack,
     metainfo: MiniMetaInfo,
 }
@@ -131,6 +132,7 @@ impl MiniBitGrid {
             white_pieces: [AxialBitboard::empty(); 4],
             black_pieces: [AxialBitboard::empty(); 4],
             pinned: [AxialBitboard::empty(); 4],
+            upper_levels: [[AxialBitboard::empty(); 4]; 3],
             stacks: BasicBitStack::new(),
             metainfo: MiniMetaInfo::new(),
         }
@@ -194,22 +196,25 @@ impl MiniBitGrid {
 
         // TODO extremely inefficient for now, but correctness is our first concern
         let mut grid_without_piece = self.clone();
-        grid_without_piece.remove_top(location).unwrap();
-        let piece_type = self.piece_type(location);
-        let piece = self.piece_type_copy(piece_type, location.board_index) & location.mask;
+        grid_without_piece.remove_top(location);
 
         let mut final_locations :Vec<MiniBitGridLocation> = Vec::new();
 
 
         // must be in contact with one of its original neighbors
-        let mut adjacent = piece.neighborhood();
-        let mut original_neighbors = Self::neighborhood_to_grid(
-            &mut adjacent, 
-            location.board_index,
-        );
-        for index in 0..GRID_SIZE {
-            original_neighbors[index] &= self.all_pieces[index];
-        }
+        let mut original_neighbors : [AxialBitboard; 4] = [AxialBitboard::empty(); 4];
+        if current_height <= 1 {  
+            original_neighbors[location.board_index] = AxialBitboard::from_u64(location.mask);
+            let adjacent = if location.is_centered() {
+                AxialBitboard::fast_neighbors_grid(original_neighbors, location.board_index) 
+            } else {
+                AxialBitboard::neighbors_grid(original_neighbors, location.board_index)
+            };
+            for i in 0..GRID_SIZE {
+                original_neighbors[i] = adjacent[i] & grid_without_piece.all_pieces[i];
+            }
+        } 
+
 
         for direction in Direction::all() {
             let next_loc = location.apply(direction);
@@ -217,19 +222,22 @@ impl MiniBitGrid {
 
                 // TODO(performance): pretty sure this can be a lookup table
                 // must not be gated off
-                let target_height = self.peek(next_loc).len() as u8;
+                let target_height = self.peek_psuedo_height(next_loc) as u8;
                 let effective_height = current_height.max(target_height+1);
                 if grid_without_piece.gated(effective_height, location, direction) {
                     continue;
                 }
 
                 // TODO(style): can likely encapsulate bit operations better
-                // TODO(performance): also can just use bit twiddling tricks
                 let new_piece = AxialBitboard::from_u64(next_loc.mask);
-                let mut new_neighborhood = new_piece.neighborhood();
-                let new_neighbors = Self::neighborhood_to_grid(
-                    &mut new_neighborhood, next_loc.board_index
-                );
+                let mut new_grid = [AxialBitboard::empty(); 4]; 
+                new_grid[next_loc.board_index] |= new_piece;
+
+                let new_neighbors = if new_piece.is_centered() {
+                    AxialBitboard::fast_neighbors_grid(new_grid, next_loc.board_index) 
+                } else {
+                    AxialBitboard::neighbors_grid(new_grid, next_loc.board_index)
+                };
                 let mut has_contact = effective_height > 1;
 
 
@@ -421,6 +429,7 @@ impl MiniBitGrid {
     
         let mut grid = [AxialBitboard::empty(); 4];
         let current_height = self.peek(location).len() as u8;
+
         for location in self.single_step(location, true, current_height) {
             grid[location.board_index] |= AxialBitboard::from_u64(location.mask);
         }
@@ -585,7 +594,7 @@ impl MiniBitGrid {
 
         let mut stay_on_hive : Vec<MiniBitGridLocation> = Vec::new();
         for location in climb_ups {
-            let height = grid_without_piece.peek(location).len() as u8 + 1;
+            let height = grid_without_piece.peek_psuedo_height(location) as u8 + 1;
             let next_loc = self.single_step(location, true, height);
             // make sure loc is stil on top of hive
             for n in next_loc {
@@ -781,13 +790,13 @@ impl MiniBitGrid {
         let right = location.apply(right_gate);
         
         let left_height = if self.presence(left) {
-            self.peek(left).len() as u8
+            self.peek_psuedo_height(left) as u8
         } else {
             0
         };
 
         let right_height = if self.presence(right) {
-            self.peek(right).len() as u8
+            self.peek_psuedo_height(right) as u8
         } else {
             0
         };
@@ -1194,6 +1203,22 @@ impl MiniBitGrid {
         return false;
     }
 
+    // Peeks to a height up to 3, and returns the height of the stack at the given location
+    // The reason this is useful is because at height 4, no gates
+    // can be formed, so we don't need to check for gates at height 4
+    fn peek_psuedo_height(&self, loc: MiniBitGridLocation) -> usize {
+        if self.presence(loc) == false {
+            return 0;
+        }
+
+        let mut i = 0;
+        while i < 3 && self.upper_levels[i][loc.board_index] & loc.mask != 0 {
+            i += 1;
+        } 
+
+        i + 1
+    }
+
     /// Returns the stack of all pieces at the given location from bottom to top
     fn peek(&self, loc: MiniBitGridLocation) -> Vec<Piece> {
         let mut pieces = Vec::new();
@@ -1290,6 +1315,10 @@ impl MiniBitGrid {
 
         if bottom_piece_exists {
             self.stacks.add_piece(piece, location);
+            let height = self.peek(location).len(); 
+            if height <= 4 {
+                self.upper_levels[height - 2][board_index] |= piece_bit;
+            }
         } else {
             *all_pieces |= piece_bit;
             match piece.color {
@@ -1322,6 +1351,10 @@ impl MiniBitGrid {
         }
 
         if let Some(_) = self.stacks.find_one(location.into()) {
+            let height = self.peek(location).len();
+            if height <= 4 {
+                self.upper_levels[height - 2][location.board_index] &= !location.mask;
+            }
             return self.stacks.remove_top(location.into());
         }
 
@@ -1946,7 +1979,7 @@ pub mod tests {
 
     #[test]
     pub fn size_sanity_check() {
-        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 448);
+        assert_eq!(std::mem::size_of::<MiniBitGrid>(), 544);
     }
 
     #[test]

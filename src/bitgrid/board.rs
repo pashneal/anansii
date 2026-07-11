@@ -434,10 +434,6 @@ impl AxialBitboard {
         final_result
     }
 
-    //pub fn left_neighbors_grid(
-        //grid: [AxialBitboard; 4],
-    //) -> AxialBitboard
-
     pub fn neighbors_grid(
         grid: [AxialBitboard; 4], 
         neighborhood_center: usize, 

@@ -1,4 +1,5 @@
 # Anansii
+Likely abandoning this project until next year, pivoting to another project that is a bit more exciting!
 - [ ] Spend some time cleaning up TODOS
 - [x] Simplify over engineered code 
   - [x] src/*.rs

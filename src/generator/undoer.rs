@@ -238,6 +238,25 @@ impl Undoer {
             self.generator.undo(*change);
         }
     }
+
+    pub fn pillbug_swaps_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, piece_location) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            let immobilized = Some(MiniBitGridLocation{
+                board_index: change.added.board_index,
+                mask: change.added.mask,
+            });
+            if let Some(location) = piece_location {
+                black_box(
+                    self.generator.current_grid().pillbug_swaps(*location, immobilized)
+                );
+            }
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
 }
 
 

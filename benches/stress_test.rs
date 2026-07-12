@@ -110,6 +110,19 @@ fn bench_stress_test_grasshopper(c: &mut Criterion) {
     );
 }
 
+fn bench_stress_test_pillbug_swaps(c: &mut Criterion) {
+    use PieceType::*;
+    use PieceColor::*;
+
+    let mut undoer = Undoer::new();
+    let untimed_run = undoer.untimed_run(200, 57);
+    let tracked_run = undoer.track_piece(untimed_run, Piece::new(Pillbug, White));
+    undoer.warmup_gates();
+
+    c.bench_function("stress_test_pillbug_swaps", |b| 
+        b.iter(|| undoer.pillbug_swaps_run(tracked_run.clone()))
+    );
+}
 criterion_group!(
     benches,
     bench_stress_test_queen, 
@@ -120,5 +133,6 @@ criterion_group!(
     bench_stress_test_pillbug,
     bench_stress_test_grasshopper,
     bench_stress_test_ant,
+    bench_stress_test_pillbug_swaps,
 );
 criterion_main!(benches);

@@ -257,6 +257,17 @@ impl Undoer {
             self.generator.undo(*change);
         }
     }
+
+    pub fn placements_run(&mut self, tracked_changes: Vec<(Change, Option<MiniBitGridLocation>)>) {
+        for (change, _) in tracked_changes.iter() {
+            self.generator.apply(*change);
+            black_box(self.generator.placements(change.added.piece.color));
+        }
+
+        for (change, _) in tracked_changes.iter().rev() {
+            self.generator.undo(*change);
+        }
+    }
 }
 
 

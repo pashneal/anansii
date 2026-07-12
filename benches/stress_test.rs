@@ -123,6 +123,22 @@ fn bench_stress_test_pillbug_swaps(c: &mut Criterion) {
         b.iter(|| undoer.pillbug_swaps_run(tracked_run.clone()))
     );
 }
+
+fn bench_stress_test_placements(c: &mut Criterion) {
+    use PieceType::*;
+    use PieceColor::*;
+
+    let mut undoer = Undoer::new();
+    let untimed_run = undoer.untimed_run(200, 48);
+    // the piece doesn't matter for placements, so we can just use an ant 
+    let tracked_run = undoer.track_piece(untimed_run, Piece::new(Ant, White));
+    undoer.warmup_gates();
+
+    c.bench_function("stress_test_ant_swaps", |b| 
+        b.iter(|| undoer.placements_run(tracked_run.clone()))
+    );
+}
+
 criterion_group!(
     benches,
     bench_stress_test_queen, 
@@ -134,5 +150,6 @@ criterion_group!(
     bench_stress_test_grasshopper,
     bench_stress_test_ant,
     bench_stress_test_pillbug_swaps,
+    bench_stress_test_placements,
 );
 criterion_main!(benches);

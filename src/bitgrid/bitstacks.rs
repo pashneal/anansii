@@ -35,7 +35,7 @@ impl BasicBitStackEntry {
 
     pub fn color(&self) -> StackColor {
         unsafe {
-            std::mem::transmute((self.data >> (PIECE_BITS + HEIGHT_BITS + LOCATION_BITS) & 0b1) as u8)
+            std::mem::transmute(((self.data >> (PIECE_BITS + HEIGHT_BITS + LOCATION_BITS) ) & 0b1) as u8)
         }
     }
 }

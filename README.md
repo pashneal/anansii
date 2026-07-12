@@ -1,5 +1,4 @@
 # Anansii
-I've decided to finish projects that I've started, including this one.
 - [ ] Spend some time cleaning up TODOS
 - [x] Simplify over engineered code 
   - [x] src/*.rs
@@ -21,18 +20,18 @@ I've decided to finish projects that I've started, including this one.
     - [x] placement generator
     - [x] swap generator
     - [x] integration test suite
-- [ ] Speed tests for the mini move generator
-    - [ ] spider_moves
-    - [ ] grasshopper_moves
-    - [ ] queen_moves
-    - [ ] ant_moves
-    - [ ] beetle_moves
-    - [ ] ladybug_moves
-    - [ ] pillbug_moves
-    - [ ] mosquito_moves
-    - [ ] perft 
-        - [ ] (optional) with time breakdown by piece
-    - [ ] placement generator
-    - [ ] swap generator
-    - [ ] integration test suite
+- [x] Speed tests for the mini move generator
+    - [x] spider_moves
+    - [x] grasshopper_moves
+    - [x] queen_moves
+    - [x] ant_moves
+    - [x] beetle_moves
+    - [x] ladybug_moves
+    - [x] pillbug_moves
+    - [x] mosquito_moves
+    - [x] perft 
+        - [x] (optional) with time breakdown by piece
+    - [x] placement generator
+    - [x] swap generator
+    - [x] integration test suite
 - [x] Attack and solve this [issue](https://github.com/pashneal/anansii/issues/1)

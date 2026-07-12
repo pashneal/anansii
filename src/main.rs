@@ -39,6 +39,9 @@ enum MainCommands {
 
     /// Interprets a number as an Axial and prints the bitboard
     Bitboard { number: u64 },
+
+    /// Tests a vectorized single step instruction on a bitboard
+    SingleStep,
 }
 
 pub fn run_universal_hive_protocol() {
@@ -74,6 +77,20 @@ pub fn main() {
             println!("Found magic numbers: {:#?}", magic_numbers);
         }
 
+        Some(MainCommands::SingleStep) => {
+            let mut bitboards = [
+                bitgrid::board::AxialBitboard::from_u64(0x0000000000000001),
+                bitgrid::board::AxialBitboard::from_u64(0x0000000000000002),
+                bitgrid::board::AxialBitboard::from_u64(0x0000000000000004),
+                bitgrid::board::AxialBitboard::from_u64(0x0000000000000008),
+            ];
+
+            bitgrid::vectorized::single_step::single_step(&mut bitboards);
+
+            for (i, bb) in bitboards.iter().enumerate() {
+                println!("Bitboard {}: {:#018x}", i, bb.to_u64());
+            }
+        }
 
         None => run_universal_hive_protocol(),
     }

@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::ops;
 use super::*;
+use crate::bitgrid::vectorized::single_step::single_step;
 
 pub const BORDERS: AxialBitboard = AxialBitboard(0xff818181818181ff);
 
@@ -8,10 +9,12 @@ const NORTHWEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0xff00000000000000)
 const SOUTHEAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x00000000000000ff);
 const WEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x8080808080808080);
 const EAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x0101010101010101);
+
 const NORTHEAST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0xff01010101010101);
 const SOUTHWEST_OVERFLOW_MASK: AxialBitboard = AxialBitboard(0x80808080808080ff);
 const NORTHEAST_CORNER: AxialBitboard = AxialBitboard(0x100000000000000);
 const SOUTHWEST_CORNER: AxialBitboard = AxialBitboard(0x80);
+
 const NORTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0xfe00000000000000);
 const SOUTH_WITHOUT_CORNER: AxialBitboard = AxialBitboard(0x000000000000007f);
 const NEIGHBORHOOD_HEIGHT: i8 = 3;
@@ -438,26 +441,9 @@ impl AxialBitboard {
         grid: [AxialBitboard; 4], 
         neighborhood_center: usize, 
     ) -> [AxialBitboard; 4] {
-        let vertical_index = (neighborhood_center + 2) % 4;
-        let horizontal_index = neighborhood_center ^ 1;
-        let diagonal_index = ((neighborhood_center + 2) % 4) ^ 1;
 
-        let mut final_result = [AxialBitboard::empty(); 4];
+        single_step(&grid)
 
-        let original = grid[neighborhood_center];
-
-        final_result[vertical_index] |= Self::top_neighbors(original, final_result[vertical_index]);
-        final_result[vertical_index] |= Self::bottom_neighbors(original, final_result[vertical_index]);
-
-        final_result[horizontal_index] |= Self::center_left_neighbors(original, final_result[horizontal_index]);
-        final_result[horizontal_index] |= Self::center_right_neighbors(original, final_result[horizontal_index]);
-
-        final_result[diagonal_index] |= Self::top_right_neighbors(original, final_result[diagonal_index]);
-        final_result[diagonal_index] |= Self::bottom_left_neighbors(original, final_result[diagonal_index]);
-
-        final_result[neighborhood_center] |= Self::center_neighbors(original, final_result[neighborhood_center]);
-
-        final_result
     }
 }
 

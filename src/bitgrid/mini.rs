@@ -5,6 +5,7 @@ use crate::hex_grid::{GridBounds, HexGrid, HexGridConvertible, FromWrappingHexes
 use crate::location::{Direction, FromHexLocation, HexLocation, Shiftable};
 use crate::piece::{IntoPieces, Piece, PieceColor, PieceType, Peekable};
 use crate::bitgrid::gates::gated_neighbors;
+use crate::bitgrid::vectorized::single_step::single_step;
 use rustc_hash::{FxHashSet, FxHashMap};
 use std::collections::{HashSet, HashMap};
 use std::fmt::{self, Display};
@@ -13,6 +14,14 @@ pub const LEFT_OVERFLOW_MASK: u64 = 0x8080808080808080;
 pub const RIGHT_OVERFLOW_MASK: u64 = 0x0101010101010101;
 pub const BOTTOM_OVERFLOW_MASK: u64 = 0x00000000000000FF;
 pub const TOP_OVERFLOW_MASK: u64 = 0xFF00000000000000;
+pub const SOUTHWEST_INNER_MASK: u64 = 0x7f7f7f7f7f7f7f00; 
+pub const NORTHEAST_INNER_MASK: u64 = 0xfefefefefefefe;
+
+pub const NORTHEAST_CORNER_MASK: u64 = 0x100000000000000;
+pub const SOUTHWEST_CORNER_MASK: u64 = 0x80;
+pub const SOUTHWEST_OVERFLOW_MASK: u64 =  0x7f;
+pub const NORTHWEST_OVERFLOW_MASK: u64 = 0xfe00000000000000;
+
 pub const ALL_OVERFLOWS : u64 = LEFT_OVERFLOW_MASK | RIGHT_OVERFLOW_MASK | BOTTOM_OVERFLOW_MASK | TOP_OVERFLOW_MASK;
 
 pub const CORNER_MASK: u64 = 0x8100000000000081;
@@ -603,10 +612,9 @@ impl MiniBitGrid {
                 }
             }
         }
-        
 
         let mut climb_down = Vec::new();
-        for loc in stay_on_hive.clone() {
+        for loc in stay_on_hive {
             let height = grid_without_piece.peek(loc).len() as u8 + 1;
             let next_loc = self.single_step(loc, true, height);
             for n in next_loc {
